@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getSupabaseEnv } from '@ai-visibility-os/database';
+import { getSupabaseEnv, hasSupabaseEnv } from '@ai-visibility-os/database';
 
 /**
  * Refreshes the Supabase auth session cookie on incoming network requests.
@@ -12,6 +12,11 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
       headers: request.headers,
     },
   });
+
+  // Bypass session refresh if Supabase environment variables are not configured
+  if (!hasSupabaseEnv()) {
+    return response;
+  }
 
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
