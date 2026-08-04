@@ -298,6 +298,92 @@ export interface Database {
           },
         ];
       };
+      business_context_versions: {
+        Row: {
+          id: string;
+          project_id: string;
+          version_number: number;
+          is_current: boolean;
+          generated_at: string;
+          generation_method: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          version_number: number;
+          is_current?: boolean;
+          generated_at?: string;
+          generation_method: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          version_number?: number;
+          is_current?: boolean;
+          generated_at?: string;
+          generation_method?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_context_versions_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      business_context_fields: {
+        Row: {
+          id: string;
+          context_version_id: string;
+          field_name: string;
+          field_value: string;
+          confidence_score: number;
+          source_page_id: string | null;
+          extraction_method: 'deterministic' | 'ai_inferred';
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          context_version_id: string;
+          field_name: string;
+          field_value: string;
+          confidence_score: number;
+          source_page_id?: string | null;
+          extraction_method: 'deterministic' | 'ai_inferred';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          context_version_id?: string;
+          field_name?: string;
+          field_value?: string;
+          confidence_score?: number;
+          source_page_id?: string | null;
+          extraction_method?: 'deterministic' | 'ai_inferred';
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "business_context_fields_context_version_id_fkey";
+            columns: ["context_version_id"];
+            isOneToOne: false;
+            referencedRelation: "business_context_versions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "business_context_fields_source_page_id_fkey";
+            columns: ["source_page_id"];
+            isOneToOne: false;
+            referencedRelation: "pages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
