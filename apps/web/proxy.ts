@@ -3,8 +3,24 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseEnv, hasSupabaseEnv } from '@ai-visibility-os/database';
 
 /**
- * Refreshes the Supabase auth session cookie on incoming network requests.
- * Runs on the Node.js runtime as a network boundary proxy in Next.js 16.
+ * Validates a redirect target URL to prevent open-redirect vulnerabilities.
+ * Ensures the target is an absolute path starting with a single '/' and no external protocol.
+ */
+export function sanitizeRedirectUrl(url: string | null, fallback = '/dashboard'): string {
+  if (!url) return fallback;
+  // Allow relative paths starting with '/', excluding protocol-relative '//' and scheme URIs
+  if (url.startsWith('/') && !url.startsWith('//') && !url.includes(':')) {
+    return url;
+  }
+  return fallback;
+}
+
+const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/settings', '/billing'];
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
+
+/**
+ * Refreshes the Supabase auth session cookie on incoming network requests
+ * and enforces route protection and redirects.
  */
 export async function updateSession(request: NextRequest): Promise<NextResponse> {
   let response = NextResponse.next({
@@ -13,7 +29,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   });
 
-  // Bypass session refresh if Supabase environment variables are not configured
+  // Bypass session handling if Supabase environment variables are missing
   if (!hasSupabaseEnv()) {
     return response;
   }
@@ -39,8 +55,32 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   });
 
-  // Refresh auth session cookie if needed (stubbed session check)
-  await supabase.auth.getUser();
+  // Get user session (handles expired session gracefully)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const pathname = request.nextUrl.pathname;
+
+  // 1. Route protection: Unauthenticated user accessing protected route
+  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix)
+  );
+
+  if (isProtectedRoute && !user) {
+    const rawPath = pathname + request.nextUrl.search;
+    const redirectPath = encodeURIComponent(rawPath);
+    const loginUrl = new URL(`/login?redirect=${redirectPath}`, request.url);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // 2. Auth page bypass: Authenticated user accessing auth routes
+  const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
+  if (isAuthRoute && user) {
+    const rawRedirect = request.nextUrl.searchParams.get('redirect');
+    const targetUrl = new URL(sanitizeRedirectUrl(rawRedirect), request.url);
+    return NextResponse.redirect(targetUrl);
+  }
 
   return response;
 }
