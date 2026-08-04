@@ -35,6 +35,9 @@ importers:
       '@ai-visibility-os/jobs':
         specifier: workspace:*
         version: link:../../packages/jobs
+      '@ai-visibility-os/scanner':
+        specifier: workspace:*
+        version: link:../../packages/scanner
       '@ai-visibility-os/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -228,9 +231,37 @@ importers:
       '@ai-visibility-os/database':
         specifier: workspace:*
         version: link:../database
+      '@ai-visibility-os/scanner':
+        specifier: workspace:*
+        version: link:../scanner
       '@trigger.dev/sdk':
         specifier: ^3.3.17
         version: 3.3.17(zod@3.25.76)
+    devDependencies:
+      '@ai-visibility-os/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^22.13.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.21.0
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/scanner:
+    dependencies:
+      '@ai-visibility-os/database':
+        specifier: workspace:*
+        version: link:../database
+      '@ai-visibility-os/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@google/genai':
+        specifier: latest
+        version: 2.15.0
     devDependencies:
       '@ai-visibility-os/config':
         specifier: workspace:*

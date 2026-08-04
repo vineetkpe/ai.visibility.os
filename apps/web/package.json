@@ -14,6 +14,7 @@
     "@ai-visibility-os/crawler": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
     "@ai-visibility-os/jobs": "workspace:*",
+    "@ai-visibility-os/scanner": "workspace:*",
     "@ai-visibility-os/shared": "workspace:*",
     "@ai-visibility-os/ui": "workspace:*",
     "@radix-ui/react-avatar": "^1.2.6",
