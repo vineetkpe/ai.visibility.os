@@ -56,7 +56,7 @@ export function Hero() {
           </div>
         </div>
 
-        {/* Visual Preview Graphic */}
+        {/* Visual Preview Graphic Placeholder */}
         <div className="mt-14 mx-auto max-w-4xl rounded-2xl border border-slate-200/80 bg-white p-4 sm:p-6 shadow-xl shadow-slate-200/50">
           <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
             <div className="flex items-center space-x-2">
@@ -64,26 +64,26 @@ export function Hero() {
               <div className="h-3 w-3 rounded-full bg-slate-200" />
               <div className="h-3 w-3 rounded-full bg-slate-200" />
             </div>
-            <div className="text-xs font-mono text-slate-400">ai-visibility-scanner // live preview</div>
+            <div className="text-xs font-mono text-slate-400">ai-visibility-scanner // audit workspace</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-1">
-              <div className="text-xs font-medium text-slate-500">Overall Visibility Score</div>
-              <div className="text-2xl font-bold text-slate-900">84.2<span className="text-xs text-slate-400 font-normal"> / 100</span></div>
-              <div className="text-[11px] text-slate-500">+12% vs previous scan</div>
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3">
+              <div className="text-xs font-medium text-slate-500">Visibility Score</div>
+              <div className="h-5 w-28 rounded-md bg-slate-200/80 animate-pulse" />
+              <div className="h-3 w-36 rounded-md bg-slate-100" />
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-1">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3">
               <div className="text-xs font-medium text-slate-500">Citation Presence</div>
-              <div className="text-2xl font-bold text-slate-900">68.5%</div>
-              <div className="text-[11px] text-slate-500">Verified in AI source lists</div>
+              <div className="h-5 w-24 rounded-md bg-slate-200/80 animate-pulse" />
+              <div className="h-3 w-32 rounded-md bg-slate-100" />
             </div>
 
-            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-1">
+            <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4 space-y-3">
               <div className="text-xs font-medium text-slate-500">Competitor Share of Voice</div>
-              <div className="text-2xl font-bold text-slate-900">Rank #2</div>
-              <div className="text-[11px] text-slate-500">Top 3 across model queries</div>
+              <div className="h-5 w-20 rounded-md bg-slate-200/80 animate-pulse" />
+              <div className="h-3 w-36 rounded-md bg-slate-100" />
             </div>
           </div>
         </div>
