@@ -15,7 +15,7 @@ export function sanitizeRedirectUrl(url: string | null, fallback = '/dashboard')
   return fallback;
 }
 
-const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/settings', '/billing'];
+const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/settings', '/billing', '/onboarding'];
 const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
 
 /**

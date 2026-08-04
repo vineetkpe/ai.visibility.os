@@ -1,0 +1,117 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { createProjectSchema, extractDomainName, type CreateProjectInput } from '@ai-visibility-os/shared';
+
+export interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+/**
+ * Server action to create a new project and link its primary domain.
+ */
+export async function createProjectAction(
+  input: CreateProjectInput
+): Promise<ActionResult<{ projectId: string }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate User
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Authentication required. Please sign in.' };
+    }
+
+    // 2. Validate input schema with Zod
+    const parseResult = createProjectSchema.safeParse(input);
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Invalid input data.';
+      return { success: false, error: firstError };
+    }
+
+    const { name, websiteUrl } = parseResult.data;
+
+    // 3. Extract and normalize hostname
+    const domainName = extractDomainName(websiteUrl);
+
+    // 4. Duplicate Domain Check across user's active projects
+    const { data: userProjects, error: fetchProjectsError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('user_id', user.id)
+      .is('deleted_at', null);
+
+    if (fetchProjectsError) {
+      return { success: false, error: fetchProjectsError.message };
+    }
+
+    if (userProjects && userProjects.length > 0) {
+      const projectIds = userProjects.map((p) => p.id);
+      const { data: existingDomains, error: domainCheckError } = await supabase
+        .from('domains')
+        .select('id')
+        .in('project_id', projectIds)
+        .eq('domain_name', domainName)
+        .is('deleted_at', null);
+
+      if (domainCheckError) {
+        return { success: false, error: domainCheckError.message };
+      }
+
+      if (existingDomains && existingDomains.length > 0) {
+        return {
+          success: false,
+          error: `You have already added the domain "${domainName}" to one of your projects.`,
+        };
+      }
+    }
+
+    // 5. Create project row
+    const { data: project, error: projectInsertError } = await supabase
+      .from('projects')
+      .insert({
+        user_id: user.id,
+        name: name.trim(),
+      })
+      .select('id')
+      .single();
+
+    if (projectInsertError || !project) {
+      return {
+        success: false,
+        error: projectInsertError?.message || 'Failed to create project record.',
+      };
+    }
+
+    // 6. Create primary domain row
+    const { error: domainInsertError } = await supabase.from('domains').insert({
+      project_id: project.id,
+      domain_name: domainName,
+      is_primary: true,
+      status: 'active',
+    });
+
+    if (domainInsertError) {
+      // Rollback project insertion on domain creation failure
+      await supabase.from('projects').delete().eq('id', project.id);
+      return {
+        success: false,
+        error: domainInsertError.message || 'Failed to save primary domain.',
+      };
+    }
+
+    return {
+      success: true,
+      data: { projectId: project.id },
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}

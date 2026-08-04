@@ -8,16 +8,16 @@
 import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { getSupabaseEnv } from '@ai-visibility-os/database';
+import { getSupabaseEnv, type Database } from '@ai-visibility-os/database';
 
 /**
  * Creates a server-side Supabase client for Next.js Server Components, Actions, and Route Handlers.
  */
-export async function createClient<Database = Record<string, never>>(): Promise<SupabaseClient<Database>> {
+export async function createClient<T = Database>(): Promise<SupabaseClient<T>> {
   const cookieStore = await cookies();
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
-  return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createServerClient<T>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieStore.getAll();

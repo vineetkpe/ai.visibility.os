@@ -48,7 +48,7 @@ function SignupForm() {
 
       // If user session is established immediately (e.g. email confirmation disabled)
       if (data.session) {
-        const destination = sanitizeRedirectUrl(rawRedirect, '/dashboard');
+        const destination = sanitizeRedirectUrl(rawRedirect, '/onboarding');
         router.push(destination);
         router.refresh();
       } else {

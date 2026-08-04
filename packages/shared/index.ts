@@ -1,2 +1,1 @@
-// Shared utilities & types exports placeholder
-export {};
+export * from './src/schemas/project';
