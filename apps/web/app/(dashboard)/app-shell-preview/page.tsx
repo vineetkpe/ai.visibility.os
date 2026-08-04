@@ -5,6 +5,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-card';
 import { SkeletonTable } from '@/components/ui/skeleton-table';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 export default function AppShellPreviewPage() {
   return (
@@ -12,10 +13,13 @@ export default function AppShellPreviewPage() {
       title="App Shell Preview"
       description="Production-ready UI foundation shell showcase for AI Visibility OS."
       action={
-        <Button size="sm">
-          <Plus className="mr-1.5 h-4 w-4" />
-          Add Resource
-        </Button>
+        <div className="flex items-center gap-2">
+          <LogoutButton size="sm" />
+          <Button size="sm">
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add Resource
+          </Button>
+        </div>
       }
     >
       <div className="space-y-8">
