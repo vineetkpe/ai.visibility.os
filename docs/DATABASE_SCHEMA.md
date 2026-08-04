@@ -350,8 +350,9 @@ erDiagram
 - **Description**: Occurrences of recognized entities within a specific scan output or page context.
 - **Ownership Path**: `scan_id` -> `scans.id` OR `page_id` -> `pages.id` -> `domains.id` -> `projects.id`.
 - **Soft Delete**: None. Cascades with scan or page.
+- **Table Constraints**: `CHECK (scan_id IS NOT NULL OR page_id IS NOT NULL)` — Prevents orphan mention rows with no traceable source.
 
-| Column | Type | Constraints | Description |
+| Column / Constraint | Type | Constraints | Description |
 | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | `PRIMARY KEY DEFAULT gen_random_uuid()` | Unique mention record ID. |
 | `entity_id` | `UUID` | `NOT NULL`, `REFERENCES entities(id) ON DELETE CASCADE` | Referenced entity ID. |
@@ -361,6 +362,7 @@ erDiagram
 | `sentiment` | `VARCHAR(20)` | `NULL` | Mention sentiment (`positive`, `neutral`, `negative`). |
 | `created_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT CURRENT_TIMESTAMP` | Record creation timestamp. |
 | `updated_at` | `TIMESTAMPTZ` | `NOT NULL DEFAULT CURRENT_TIMESTAMP` | Record update timestamp. |
+| `chk_entity_mentions_source` | `CHECK` | `CHECK (scan_id IS NOT NULL OR page_id IS NOT NULL)` | Table-level check constraint: prevents orphan mention rows with no traceable source. |
 
 - **Indexes**:
   - `idx_entity_mentions_entity_id` ON `entity_mentions(entity_id)` — Entity occurrence history.
