@@ -121,6 +121,183 @@ export interface Database {
           },
         ];
       };
+      pages: {
+        Row: {
+          id: string;
+          domain_id: string;
+          url: string;
+          title: string | null;
+          http_status: number | null;
+          meta_description: string | null;
+          canonical_url: string | null;
+          language: string | null;
+          favicon_url: string | null;
+          logo_url: string | null;
+          headings: Json | null;
+          open_graph: Json | null;
+          twitter_card: Json | null;
+          json_ld: Json | null;
+          schema_org_types: string[] | null;
+          social_links: Json | null;
+          organization_details: Json | null;
+          images: Json | null;
+          robots_meta: string | null;
+          word_count: number | null;
+          crawl_status: string;
+          crawl_error: string | null;
+          last_scanned_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          domain_id: string;
+          url: string;
+          title?: string | null;
+          http_status?: number | null;
+          meta_description?: string | null;
+          canonical_url?: string | null;
+          language?: string | null;
+          favicon_url?: string | null;
+          logo_url?: string | null;
+          headings?: Json | null;
+          open_graph?: Json | null;
+          twitter_card?: Json | null;
+          json_ld?: Json | null;
+          schema_org_types?: string[] | null;
+          social_links?: Json | null;
+          organization_details?: Json | null;
+          images?: Json | null;
+          robots_meta?: string | null;
+          word_count?: number | null;
+          crawl_status?: string;
+          crawl_error?: string | null;
+          last_scanned_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          domain_id?: string;
+          url?: string;
+          title?: string | null;
+          http_status?: number | null;
+          meta_description?: string | null;
+          canonical_url?: string | null;
+          language?: string | null;
+          favicon_url?: string | null;
+          logo_url?: string | null;
+          headings?: Json | null;
+          open_graph?: Json | null;
+          twitter_card?: Json | null;
+          json_ld?: Json | null;
+          schema_org_types?: string[] | null;
+          social_links?: Json | null;
+          organization_details?: Json | null;
+          images?: Json | null;
+          robots_meta?: string | null;
+          word_count?: number | null;
+          crawl_status?: string;
+          crawl_error?: string | null;
+          last_scanned_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pages_domain_id_fkey";
+            columns: ["domain_id"];
+            isOneToOne: false;
+            referencedRelation: "domains";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      page_links: {
+        Row: {
+          id: string;
+          source_page_id: string;
+          target_url: string;
+          link_type: 'internal' | 'external';
+          anchor_text: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          source_page_id: string;
+          target_url: string;
+          link_type: 'internal' | 'external';
+          anchor_text?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          source_page_id?: string;
+          target_url?: string;
+          link_type?: 'internal' | 'external';
+          anchor_text?: string | null;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "page_links_source_page_id_fkey";
+            columns: ["source_page_id"];
+            isOneToOne: false;
+            referencedRelation: "pages";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      jobs: {
+        Row: {
+          id: string;
+          project_id: string;
+          job_type: string;
+          status: string;
+          payload: Json | null;
+          result: Json | null;
+          error_message: string | null;
+          started_at: string | null;
+          completed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          job_type: string;
+          status?: string;
+          payload?: Json | null;
+          result?: Json | null;
+          error_message?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          job_type?: string;
+          status?: string;
+          payload?: Json | null;
+          result?: Json | null;
+          error_message?: string | null;
+          started_at?: string | null;
+          completed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "jobs_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

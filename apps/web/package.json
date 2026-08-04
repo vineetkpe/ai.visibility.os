@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-visibility-os/crawler": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
     "@ai-visibility-os/shared": "workspace:*",
     "@ai-visibility-os/ui": "workspace:*",
