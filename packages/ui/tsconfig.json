@@ -1,0 +1,7 @@
+{
+  "extends": "@ai-visibility-os/config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "."
+  },
+  "include": ["**/*.ts", "**/*.tsx"]
+}
