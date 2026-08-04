@@ -1,6 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { getWebSupabaseEnv } from '@/lib/supabase/env';
+import { getSupabaseEnv } from '@ai-visibility-os/database';
 
 /**
  * Refreshes the Supabase auth session cookie on incoming network requests.
@@ -13,7 +13,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     },
   });
 
-  const { supabaseUrl, supabaseAnonKey } = getWebSupabaseEnv();
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
   const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
