@@ -3,9 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "tsconfig": "./tsconfig.json",
   "exports": {
     "./tsconfig.json": "./tsconfig.json",
-    "./eslint.config.mjs": "./eslint.config.mjs"
+    "./eslint.config.mjs": "./eslint.config.mjs",
+    "./*": "./*"
   },
   "files": [
     "tsconfig.json",
