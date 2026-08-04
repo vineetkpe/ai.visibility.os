@@ -8,6 +8,7 @@
 import { createServerClient as createSsrServerClient, type CookieOptions } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseEnv } from './env';
+import type { Database } from './types';
 
 export interface CookieMethods {
   getAll: () => { name: string; value: string }[] | Promise<{ name: string; value: string }[]>;
@@ -23,12 +24,12 @@ export interface CookieMethods {
 /**
  * Creates a server-side Supabase client for Server Components, Actions, and Route Handlers.
  */
-export function createServerClient<Database = Record<string, never>>(
+export function createServerClient<T = Database>(
   cookieMethods: CookieMethods
-): SupabaseClient<Database> {
+): SupabaseClient<T> {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
-  return createSsrServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  return createSsrServerClient<T>(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
         return cookieMethods.getAll();

@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { runDiscoveryPipeline } from '@ai-visibility-os/crawler';
+import { siteCrawlTask } from '@ai-visibility-os/jobs';
 
 export interface CrawlActionResult {
   success: boolean;
@@ -67,20 +67,16 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
       return { success: false, error: jobInsertError?.message || 'Failed to create crawl job.' };
     }
 
-    // 4. Enqueue and execute discovery pipeline background task
-    // (Asynchronously run discovery pipeline in background)
-    void (async () => {
-      try {
-        const bgSupabase = await createClient();
-        await runDiscoveryPipeline(bgSupabase, {
-          domainId: domain.id,
-          domainName: domain.domain_name,
-          jobId: job.id,
-        });
-      } catch (err: unknown) {
-        console.error('Background crawl pipeline error:', err);
-      }
-    })();
+    // 4. Trigger Trigger.dev task on background infrastructure
+    try {
+      await siteCrawlTask.trigger({
+        domainId: domain.id,
+        domainName: domain.domain_name,
+        jobId: job.id,
+      });
+    } catch (triggerErr: unknown) {
+      console.warn('Trigger.dev dispatch warning:', triggerErr);
+    }
 
     return {
       success: true,

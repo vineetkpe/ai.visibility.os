@@ -1,0 +1,23 @@
+{
+  "name": "@ai-visibility-os/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.ts",
+  "types": "./index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ai-visibility-os/crawler": "workspace:*",
+    "@ai-visibility-os/database": "workspace:*",
+    "@trigger.dev/sdk": "^3.3.17"
+  },
+  "devDependencies": {
+    "@ai-visibility-os/config": "workspace:*",
+    "@types/node": "^22.13.5",
+    "eslint": "^9.21.0",
+    "typescript": "^5.7.3"
+  }
+}
