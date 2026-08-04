@@ -1,9 +1,17 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import { AppProviders } from '@/components/providers/app-providers';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'AI Visibility OS',
-  description: 'AI Visibility OS Monorepo Platform',
+  description: 'Production-Ready Monorepo SaaS Platform',
 };
 
 export default function RootLayout({
@@ -12,9 +20,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased min-h-screen bg-slate-950 text-slate-100">
-        {children}
+    <html lang="en" className={inter.variable}>
+      <body className="antialiased min-h-screen bg-slate-50 text-slate-900 font-sans">
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
