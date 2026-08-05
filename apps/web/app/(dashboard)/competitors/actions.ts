@@ -6,6 +6,7 @@ import {
   addCompetitor,
   confirmCompetitorSuggestion,
   triggerCompetitorCrawl,
+  syncCompetitorTier1Data,
   getCompetitorProfile,
   getCompetitorSuggestions,
   computeTier2Comparison,
@@ -143,10 +144,11 @@ export async function getCompetitorsOverviewAction(
     const profiles: CompetitorProfile[] = [];
     for (const c of comps) {
       try {
+        await syncCompetitorTier1Data(supabase, c.id);
         const p = await getCompetitorProfile(supabase, c.id);
         profiles.push(p);
       } catch (err) {
-        console.warn(`Error fetching profile for competitor ${c.id}:`, err);
+        console.warn(`Error syncing/fetching profile for competitor ${c.id}:`, err);
       }
     }
 
@@ -168,6 +170,7 @@ export async function getCompetitorDetailsAction(input: {
     const supabase = await createClient();
     await verifyProjectOwnership(supabase, input.projectId);
 
+    await syncCompetitorTier1Data(supabase, input.competitorId);
     const profile = await getCompetitorProfile(supabase, input.competitorId);
     const tier2Metrics = await computeTier2Comparison(supabase, input.projectId, input.competitorId);
 

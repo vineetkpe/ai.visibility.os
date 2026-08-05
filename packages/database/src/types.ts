@@ -771,6 +771,179 @@ export interface Database {
           },
         ];
       };
+      recommendations: {
+        Row: {
+          id: string;
+          project_id: string;
+          scan_id: string | null;
+          title: string;
+          description: string;
+          category: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';
+          priority: 'critical' | 'high' | 'medium' | 'low';
+          estimated_impact: 'high' | 'medium' | 'low' | null;
+          estimated_effort: 'quick_win' | 'moderate' | 'significant' | null;
+          confidence_score: number | null;
+          implementation_steps: Json | null;
+          generation_method: 'deterministic' | 'ai_phrased';
+          status: 'open' | 'in_progress' | 'completed' | 'dismissed';
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          scan_id?: string | null;
+          title: string;
+          description: string;
+          category: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';
+          priority?: 'critical' | 'high' | 'medium' | 'low';
+          estimated_impact?: 'high' | 'medium' | 'low' | null;
+          estimated_effort?: 'quick_win' | 'moderate' | 'significant' | null;
+          confidence_score?: number | null;
+          implementation_steps?: Json | null;
+          generation_method?: 'deterministic' | 'ai_phrased';
+          status?: 'open' | 'in_progress' | 'completed' | 'dismissed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          scan_id?: string | null;
+          title?: string;
+          description?: string;
+          category?: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';
+          priority?: 'critical' | 'high' | 'medium' | 'low';
+          estimated_impact?: 'high' | 'medium' | 'low' | null;
+          estimated_effort?: 'quick_win' | 'moderate' | 'significant' | null;
+          confidence_score?: number | null;
+          implementation_steps?: Json | null;
+          generation_method?: 'deterministic' | 'ai_phrased';
+          status?: 'open' | 'in_progress' | 'completed' | 'dismissed';
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendations_scan_id_fkey";
+            columns: ["scan_id"];
+            isOneToOne: false;
+            referencedRelation: "scans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recommendation_evidence: {
+        Row: {
+          id: string;
+          recommendation_id: string;
+          page_id: string | null;
+          scan_id: string | null;
+          citation_id: string | null;
+          competitor_scan_id: string | null;
+          evidence_description: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          recommendation_id: string;
+          page_id?: string | null;
+          scan_id?: string | null;
+          citation_id?: string | null;
+          competitor_scan_id?: string | null;
+          evidence_description: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          recommendation_id?: string;
+          page_id?: string | null;
+          scan_id?: string | null;
+          citation_id?: string | null;
+          competitor_scan_id?: string | null;
+          evidence_description?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_evidence_recommendation_id_fkey";
+            columns: ["recommendation_id"];
+            isOneToOne: false;
+            referencedRelation: "recommendations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendation_evidence_page_id_fkey";
+            columns: ["page_id"];
+            isOneToOne: false;
+            referencedRelation: "pages";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendation_evidence_scan_id_fkey";
+            columns: ["scan_id"];
+            isOneToOne: false;
+            referencedRelation: "scans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendation_evidence_citation_id_fkey";
+            columns: ["citation_id"];
+            isOneToOne: false;
+            referencedRelation: "citations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "recommendation_evidence_competitor_scan_id_fkey";
+            columns: ["competitor_scan_id"];
+            isOneToOne: false;
+            referencedRelation: "competitor_scans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      recommendation_history: {
+        Row: {
+          id: string;
+          recommendation_id: string;
+          previous_status: string | null;
+          new_status: string;
+          reason: string;
+          evaluated_at: string;
+        };
+        Insert: {
+          id?: string;
+          recommendation_id: string;
+          previous_status?: string | null;
+          new_status: string;
+          reason: string;
+          evaluated_at?: string;
+        };
+        Update: {
+          id?: string;
+          recommendation_id?: string;
+          previous_status?: string | null;
+          new_status?: string;
+          reason?: string;
+          evaluated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_history_recommendation_id_fkey";
+            columns: ["recommendation_id"];
+            isOneToOne: false;
+            referencedRelation: "recommendations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

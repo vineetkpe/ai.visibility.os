@@ -15,6 +15,7 @@
     "@ai-visibility-os/crawler": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
     "@ai-visibility-os/jobs": "workspace:*",
+    "@ai-visibility-os/recommendations": "workspace:*",
     "@ai-visibility-os/scanner": "workspace:*",
     "@ai-visibility-os/shared": "workspace:*",
     "@ai-visibility-os/ui": "workspace:*",
