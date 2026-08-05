@@ -215,25 +215,6 @@ export async function runVisibilityScanPipeline(
       }
     }
 
-    // 6. Sync Tier 1 competitor citation matches and competitor_scans records
-    if (scansExecuted > 0) {
-      const { data: projectComps } = await supabase
-        .from('competitors')
-        .select('id')
-        .eq('project_id', projectId);
-
-      if (projectComps && projectComps.length > 0) {
-        const { syncCompetitorTier1Data } = await import('@ai-visibility-os/competitor');
-        for (const comp of projectComps) {
-          try {
-            await syncCompetitorTier1Data(supabase, comp.id);
-          } catch (compSyncErr) {
-            console.warn(`Competitor sync warning for competitor ${comp.id}:`, compSyncErr);
-          }
-        }
-      }
-    }
-
     return {
       projectId,
       scansExecuted,

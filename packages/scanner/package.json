@@ -10,7 +10,6 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ai-visibility-os/competitor": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
     "@ai-visibility-os/shared": "workspace:*",
     "@google/genai": "latest"
