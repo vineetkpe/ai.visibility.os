@@ -1,0 +1,10 @@
+{
+  "extends": "@ai-visibility-os/config/tsconfig.json",
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "module": "ESNext",
+    "lib": ["ES2022", "DOM"]
+  },
+  "include": ["src/**/*", "index.ts"]
+}

@@ -8,6 +8,7 @@ import {
   BarChart3,
   Activity,
   Scan,
+  Building,
   Settings,
   Shield,
   X,
@@ -22,6 +23,7 @@ export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Competitors', href: '/competitors', icon: Building },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Monitors', href: '/monitors', icon: Activity },
   { label: 'Scanners', href: '/scanners', icon: Scan },

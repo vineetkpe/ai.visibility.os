@@ -85,6 +85,7 @@ export interface Database {
           id: string;
           project_id: string;
           domain_name: string;
+          domain_type: 'own' | 'competitor';
           is_primary: boolean;
           status: string;
           created_at: string;
@@ -95,6 +96,7 @@ export interface Database {
           id?: string;
           project_id: string;
           domain_name: string;
+          domain_type?: 'own' | 'competitor';
           is_primary?: boolean;
           status?: string;
           created_at?: string;
@@ -105,6 +107,7 @@ export interface Database {
           id?: string;
           project_id?: string;
           domain_name?: string;
+          domain_type?: 'own' | 'competitor';
           is_primary?: boolean;
           status?: string;
           created_at?: string;
@@ -539,10 +542,104 @@ export interface Database {
           },
         ];
       };
+      competitors: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          domain_name: string;
+          domain_id: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          name: string;
+          domain_name: string;
+          domain_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          name?: string;
+          domain_name?: string;
+          domain_id?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "competitors_project_id_fkey";
+            columns: ["project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "competitors_domain_id_fkey";
+            columns: ["domain_id"];
+            isOneToOne: false;
+            referencedRelation: "domains";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      competitor_scans: {
+        Row: {
+          id: string;
+          competitor_id: string;
+          scan_id: string;
+          visibility_score: number | null;
+          mention_count: number;
+          rank_position: number | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          competitor_id: string;
+          scan_id: string;
+          visibility_score?: number | null;
+          mention_count?: number;
+          rank_position?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          competitor_id?: string;
+          scan_id?: string;
+          visibility_score?: number | null;
+          mention_count?: number;
+          rank_position?: number | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "competitor_scans_competitor_id_fkey";
+            columns: ["competitor_id"];
+            isOneToOne: false;
+            referencedRelation: "competitors";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "competitor_scans_scan_id_fkey";
+            columns: ["scan_id"];
+            isOneToOne: false;
+            referencedRelation: "scans";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       citations: {
         Row: {
           id: string;
           scan_id: string;
+          competitor_id: string | null;
           source_url: string;
           source_domain: string;
           anchor_text: string | null;
@@ -554,6 +651,7 @@ export interface Database {
         Insert: {
           id?: string;
           scan_id: string;
+          competitor_id?: string | null;
           source_url: string;
           source_domain: string;
           anchor_text?: string | null;
@@ -565,6 +663,7 @@ export interface Database {
         Update: {
           id?: string;
           scan_id?: string;
+          competitor_id?: string | null;
           source_url?: string;
           source_domain?: string;
           anchor_text?: string | null;
@@ -579,6 +678,13 @@ export interface Database {
             columns: ["scan_id"];
             isOneToOne: false;
             referencedRelation: "scans";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "citations_competitor_id_fkey";
+            columns: ["competitor_id"];
+            isOneToOne: false;
+            referencedRelation: "competitors";
             referencedColumns: ["id"];
           },
         ];

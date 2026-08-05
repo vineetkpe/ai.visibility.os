@@ -1,5 +1,5 @@
 {
-  "name": "@ai-visibility-os/scanner",
+  "name": "@ai-visibility-os/competitor",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,10 +10,8 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "@ai-visibility-os/competitor": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
-    "@ai-visibility-os/shared": "workspace:*",
-    "@google/genai": "latest"
+    "@ai-visibility-os/shared": "workspace:*"
   },
   "devDependencies": {
     "@ai-visibility-os/config": "workspace:*",

@@ -23,6 +23,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@ai-visibility-os/competitor':
+        specifier: workspace:*
+        version: link:../../packages/competitor
       '@ai-visibility-os/context':
         specifier: workspace:*
         version: link:../../packages/context
@@ -126,6 +129,31 @@ importers:
       tailwindcss:
         specifier: ^4.0.9
         version: 4.3.3
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/competitor:
+    dependencies:
+      '@ai-visibility-os/database':
+        specifier: workspace:*
+        version: link:../database
+      '@ai-visibility-os/jobs':
+        specifier: workspace:*
+        version: link:../jobs
+      '@ai-visibility-os/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      '@ai-visibility-os/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^22.13.5
+        version: 22.20.1
+      eslint:
+        specifier: ^9.21.0
+        version: 9.39.5(jiti@2.7.0)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3
@@ -253,6 +281,9 @@ importers:
 
   packages/scanner:
     dependencies:
+      '@ai-visibility-os/competitor':
+        specifier: workspace:*
+        version: link:../competitor
       '@ai-visibility-os/database':
         specifier: workspace:*
         version: link:../database
