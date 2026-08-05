@@ -776,6 +776,7 @@ export interface Database {
           id: string;
           project_id: string;
           scan_id: string | null;
+          scope_key: string;
           title: string;
           description: string;
           category: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';
@@ -793,6 +794,7 @@ export interface Database {
           id?: string;
           project_id: string;
           scan_id?: string | null;
+          scope_key: string;
           title: string;
           description: string;
           category: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';
@@ -810,6 +812,7 @@ export interface Database {
           id?: string;
           project_id?: string;
           scan_id?: string | null;
+          scope_key?: string;
           title?: string;
           description?: string;
           category?: 'content' | 'technical_seo' | 'schema' | 'entity_optimization' | 'citation_opportunity' | 'internal_linking' | 'metadata' | 'ai_visibility';

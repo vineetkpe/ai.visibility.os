@@ -38,15 +38,15 @@ export async function runRecommendationEngine(
   // Fetch existing open / in_progress recommendations for project
   const { data: existingRecs } = await supabase
     .from('recommendations')
-    .select('id, category, title, status')
+    .select('id, category, scope_key, status')
     .eq('project_id', projectId)
     .in('status', ['open', 'in_progress']);
 
-  const existingMap = new Map((existingRecs || []).map((r) => [`${r.category}:${r.title}`, r]));
+  const existingMap = new Map((existingRecs || []).map((r) => [r.scope_key, r]));
 
   // 2. Process Detected Issues
   for (const issue of detectedIssues) {
-    processedScopeKeys.add(`${issue.category}:${issue.title}`);
+    processedScopeKeys.add(issue.scopeKey);
 
     const impactBand = determineImpactBand(issue.rawImpactScore);
     const priorityBand = determinePriorityBand(impactBand, issue.effort);
@@ -55,8 +55,7 @@ export async function runRecommendationEngine(
     // Phrase Title & Summary
     const phrased = await phraseRecommendationWithGemini(issue);
 
-    const key = `${issue.category}:${issue.title}`;
-    const existing = existingMap.get(key);
+    const existing = existingMap.get(issue.scopeKey);
 
     let recId: string;
 
@@ -110,6 +109,7 @@ export async function runRecommendationEngine(
         .insert({
           project_id: projectId,
           scan_id: firstScanId,
+          scope_key: issue.scopeKey,
           title: phrased.title,
           description: phrased.summary,
           category: issue.category,
@@ -157,8 +157,7 @@ export async function runRecommendationEngine(
 
   // 3. Re-evaluation Pass (Auto-Resolve fixed recommendations)
   for (const existing of existingRecs || []) {
-    const key = `${existing.category}:${existing.title}`;
-    if (!processedScopeKeys.has(key)) {
+    if (!processedScopeKeys.has(existing.scope_key)) {
       // Issue no longer fires against current evidence -> Auto-Resolve
       await supabase
         .from('recommendations')
@@ -206,6 +205,7 @@ export async function getProjectRecommendations(
       id,
       project_id,
       scan_id,
+      scope_key,
       title,
       description,
       category,
@@ -288,6 +288,7 @@ export async function getProjectRecommendations(
       id: r.id,
       projectId: r.project_id,
       scanId: r.scan_id,
+      scopeKey: r.scope_key,
       title: r.title,
       summary: r.description,
       category: r.category as RecommendationCategory,

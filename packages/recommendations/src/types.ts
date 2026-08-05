@@ -38,6 +38,7 @@ export interface Recommendation {
   id: string;
   projectId: string;
   scanId: string | null;
+  scopeKey: string;
   title: string;
   summary: string;
   category: RecommendationCategory;
