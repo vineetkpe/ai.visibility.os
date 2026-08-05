@@ -15,6 +15,8 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
+import { toast } from 'sonner';
+import { cancelJobAction } from '@/app/(dashboard)/dashboard/actions';
 import {
   Globe,
   Sparkles,
@@ -26,6 +28,9 @@ import {
   ArrowRight,
   ShieldCheck,
   HelpCircle,
+  Pencil,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 
 // Custom Tooltip for Visibility Trend Chart
@@ -68,7 +73,14 @@ export function ProjectOverviewWidget({
         </div>
         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
           <span>{project.name}</span>
-          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-2.5 py-0.5 rounded-full">
+          <Link
+            href="/settings"
+            className="text-slate-400 hover:text-white transition-colors p-1 rounded-md hover:bg-slate-800"
+            title="Edit Project Name"
+          >
+            <Pencil className="w-4 h-4" />
+          </Link>
+          <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-medium px-2.5 py-0.5 rounded-full ml-1">
             Active
           </span>
         </h2>
@@ -150,6 +162,29 @@ export function VisibilityTrendChart({
             Historical visibility scores across completed AI engine scans
           </p>
         </div>
+      </div>
+
+      <div className="sr-only">
+        <h4>AI Visibility Score Trend Data Table</h4>
+        <table>
+          <caption>Historical AI Visibility scores across completed scans</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Visibility Score</th>
+              <th scope="col">Query Prompt</th>
+            </tr>
+          </thead>
+          <tbody>
+            {mentionHistory.map((item, idx) => (
+              <tr key={idx}>
+                <td>{item.date}</td>
+                <td>{item.score}/100</td>
+                <td>{item.prompt}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="h-64 w-full">
@@ -289,6 +324,27 @@ export function CompetitorBenchmarkingWidget({
             <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
               Visibility Score Comparison
             </h4>
+            <div className="sr-only">
+              <h4>Competitor Visibility Score Table</h4>
+              <table>
+                <caption>Visibility Score comparison between your brand and competitors</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Company</th>
+                    <th scope="col">Visibility Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {competitors.visibilityComparison.map((item, idx) => (
+                    <tr key={idx}>
+                      <td>{item.name}</td>
+                      <td>{item.score}/100</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
             <div className="h-56 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={competitors.visibilityComparison} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
@@ -493,6 +549,24 @@ export function RecentActivityWidget({
 }: {
   recentActivity: DashboardOverviewData['recentActivity'];
 }) {
+  const [cancellingJobId, setCancellingJobId] = React.useState<string | null>(null);
+
+  const handleCancelJob = async (jobId: string) => {
+    try {
+      setCancellingJobId(jobId);
+      const res = await cancelJobAction(jobId);
+      if (res.success) {
+        toast.success(res.data?.alreadyFinished ? 'Job already finished.' : 'Job cancellation requested.');
+      } else {
+        toast.error(res.error || 'Failed to cancel job.');
+      }
+    } catch {
+      toast.error('An unexpected error occurred while cancelling job.');
+    } finally {
+      setCancellingJobId(null);
+    }
+  };
+
   return (
     <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-4">
       <div className="space-y-0.5">
@@ -526,17 +600,43 @@ export function RecentActivityWidget({
                       {new Date(j.createdAt).toLocaleTimeString()}
                     </div>
                   </div>
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
-                      j.status === 'completed'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : j.status === 'failed'
-                        ? 'bg-red-100 text-red-800'
-                        : 'bg-amber-100 text-amber-800'
-                    }`}
-                  >
-                    {j.status}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {j.progress && (
+                      <span className="text-[11px] font-mono text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">
+                        {j.progress.completed} / {j.progress.total} pages
+                      </span>
+                    )}
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold ${
+                        j.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : j.status === 'failed'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {j.status}
+                    </span>
+                    {(j.status === 'pending' || j.status === 'running') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={cancellingJobId === j.id}
+                        onClick={() => handleCancelJob(j.id)}
+                        className="h-6 px-2 text-[10px] text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 shrink-0"
+                        title="Cancel Job"
+                      >
+                        {cancellingJobId === j.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Cancel
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (

@@ -12,6 +12,9 @@ export interface VisibilityScanTaskPayload {
  */
 export const visibilityScanTask = task({
   id: 'ai-visibility-scan',
+  retry: {
+    maxAttempts: 1,
+  },
   run: async (payload: VisibilityScanTaskPayload) => {
     const supabase = createServerClient({
       getAll: () => [],

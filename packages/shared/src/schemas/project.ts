@@ -36,3 +36,17 @@ export const createProjectSchema = z.object({
 });
 
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
+
+/**
+ * Shared Zod validation schema for updating project name.
+ */
+export const updateProjectSchema = z.object({
+  projectId: z.string().uuid('Invalid project ID'),
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Project name is required')
+    .max(255, 'Project name cannot exceed 255 characters'),
+});
+
+export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;

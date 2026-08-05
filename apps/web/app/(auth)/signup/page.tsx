@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Separator } from '@/components/ui/separator';
 import { OAuthButton } from '@/components/auth/oauth-button';
 import { UserPlus, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 function SignupForm() {
   const router = useRouter();
@@ -42,9 +43,12 @@ function SignupForm() {
 
       if (signUpError) {
         setError(signUpError.message);
+        toast.error(signUpError.message);
         setLoading(false);
         return;
       }
+
+      toast.success('Account registered successfully!');
 
       // If user session is established immediately (e.g. email confirmation disabled)
       if (data.session) {
@@ -57,6 +61,7 @@ function SignupForm() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An error occurred during registration';
       setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -104,39 +109,42 @@ function SignupForm() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Full Name</label>
+            <label htmlFor="signup-fullname" className="text-xs font-medium text-slate-700">Full Name</label>
             <input
+              id="signup-fullname"
               type="text"
               required
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Jane Doe"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="signup-email" className="text-xs font-medium text-slate-700">Email address</label>
             <input
+              id="signup-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Password</label>
+            <label htmlFor="signup-password" className="text-xs font-medium text-slate-700">Password</label>
             <input
+              id="signup-password"
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 

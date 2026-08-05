@@ -208,12 +208,14 @@ export function RecommendationsClientView({
       {/* Filter Controls Bar */}
       <div className="bg-neutral-900/60 p-4 rounded-xl border border-neutral-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs">
+        <div className="flex items-center gap-1 overflow-x-auto bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs" role="tablist" aria-label="Recommendation status filter">
           {['open', 'in_progress', 'completed', 'dismissed', 'all'].map((st) => (
             <button
               key={st}
+              role="tab"
+              aria-selected={selectedStatus === st}
               onClick={() => setSelectedStatus(st)}
-              className={`px-3 py-1.5 rounded-md transition-colors capitalize whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-md transition-colors capitalize whitespace-nowrap focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-amber-400 ${
                 selectedStatus === st
                   ? 'bg-neutral-800 text-neutral-100 font-semibold shadow-sm'
                   : 'text-neutral-400 hover:text-neutral-200'
@@ -228,11 +230,12 @@ export function RecommendationsClientView({
         <div className="flex items-center gap-3 flex-wrap text-xs">
           <div className="flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-lg border border-neutral-800">
             <Filter className="w-3.5 h-3.5 text-neutral-400" />
-            <span className="text-neutral-400">Category:</span>
+            <label htmlFor="rec-cat-select" className="text-neutral-400">Category:</label>
             <select
+              id="rec-cat-select"
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-transparent text-neutral-200 focus:outline-none capitalize"
+              className="bg-transparent text-neutral-200 focus:outline-hidden capitalize"
             >
               <option value="all" className="bg-neutral-900 text-neutral-200">
                 All Categories
@@ -265,9 +268,9 @@ export function RecommendationsClientView({
           </div>
 
           <div className="flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-lg border border-neutral-800">
-            <span className="text-neutral-400">Priority:</span>
+            <label htmlFor="rec-prio-select" className="text-neutral-400">Priority:</label>
             <select
-              value={selectedPriority}
+              id="rec-prio-select"
               onChange={(e) => setSelectedPriority(e.target.value)}
               className="bg-transparent text-neutral-200 focus:outline-none capitalize"
             >

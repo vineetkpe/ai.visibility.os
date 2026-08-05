@@ -11,6 +11,9 @@ export interface BusinessContextTaskPayload {
  */
 export const businessContextTask = task({
   id: 'business-context-synthesis',
+  retry: {
+    maxAttempts: 1,
+  },
   run: async (payload: BusinessContextTaskPayload) => {
     const supabase = createServerClient({
       getAll: () => [],

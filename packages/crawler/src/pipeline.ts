@@ -122,6 +122,18 @@ export async function runDiscoveryPipeline(
       } else {
         pagesFailed++;
       }
+
+      // Update granular progress indicator on jobs table for live UI tracking
+      if (jobId) {
+        const completedCount = pagesCrawled + pagesFailed;
+        await supabase
+          .from('jobs')
+          .update({
+            progress: { completed: completedCount, total: targetUrls.length },
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', jobId);
+      }
     }
 
     const finalStatus = pagesCrawled > 0 ? 'completed' : 'failed';

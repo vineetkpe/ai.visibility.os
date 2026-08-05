@@ -95,8 +95,16 @@ export async function generateRecommendationsAction(
     // 3. Dispatch Trigger.dev task in background
     try {
       await recommendationsTask.trigger({ projectId });
-    } catch (triggerErr) {
+    } catch (triggerErr: unknown) {
+      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
+      const errorMessage = `Failed to start background job: ${message}`;
       console.warn('Trigger.dev task dispatch warning:', triggerErr);
+      await supabase
+        .from('jobs')
+        .update({ status: 'failed', error_message: errorMessage })
+        .eq('project_id', projectId)
+        .eq('status', 'pending');
+      return { success: false, error: errorMessage };
     }
 
     // 4. Run engine synchronously for immediate UI feedback

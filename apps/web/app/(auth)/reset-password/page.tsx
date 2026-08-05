@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Lock } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -32,15 +33,19 @@ export default function ResetPasswordPage() {
 
       if (updateError) {
         setError(updateError.message);
+        toast.error(updateError.message);
         setLoading(false);
         return;
       }
+
+      toast.success('Password updated successfully.');
 
       router.push('/dashboard');
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to update password';
       setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -62,28 +67,30 @@ export default function ResetPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">New Password</label>
+            <label htmlFor="reset-password" className="text-xs font-medium text-slate-700">New Password</label>
             <input
+              id="reset-password"
               type="password"
               required
               minLength={6}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Confirm Password</label>
+            <label htmlFor="reset-confirm-password" className="text-xs font-medium text-slate-700">Confirm Password</label>
             <input
+              id="reset-confirm-password"
               type="password"
               required
               minLength={6}
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 

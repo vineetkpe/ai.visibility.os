@@ -73,7 +73,8 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
 
   if (isLoading && !overviewData) {
     return (
-      <div className="p-8 space-y-6">
+      <div className="p-8 space-y-6" role="status" aria-live="polite">
+        <span className="sr-only">Loading dashboard metrics...</span>
         <div className="h-32 bg-slate-200 animate-pulse rounded-xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="h-64 bg-slate-200 animate-pulse rounded-xl" />

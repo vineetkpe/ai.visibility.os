@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
+import { runs } from '@ai-visibility-os/jobs';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -79,6 +80,8 @@ export interface DashboardOverviewData {
       status: string;
       createdAt: string;
       errorMessage: string | null;
+      triggerRunId: string | null;
+      progress: { completed: number; total: number } | null;
     }>;
     recentChanges: Array<{
       id: string;
@@ -370,7 +373,7 @@ export async function getDashboardOverviewData(
     // 6. Recent Jobs & Activity
     const { data: jobsList } = await supabase
       .from('jobs')
-      .select('id, job_type, status, error_message, created_at')
+      .select('id, job_type, status, error_message, trigger_run_id, progress, created_at')
       .eq('project_id', currentProjectId)
       .order('created_at', { ascending: false })
       .limit(5);
@@ -381,6 +384,8 @@ export async function getDashboardOverviewData(
       status: j.status,
       createdAt: j.created_at,
       errorMessage: j.error_message,
+      triggerRunId: j.trigger_run_id,
+      progress: (j.progress as unknown as { completed: number; total: number } | null) || null,
     }));
 
     const { data: recentHistory } = await supabase
@@ -499,6 +504,88 @@ export async function getScanHistoryData(
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch scan history.';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server action to cancel a pending or running background job.
+ * Verification requirement: Scoped via auth.uid() project ownership.
+ * Uses @trigger.dev/sdk/v3 runs.cancel(runId) API.
+ */
+export async function cancelJobAction(
+  jobId: string
+): Promise<ActionResult<{ jobId: string; alreadyFinished?: boolean }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate User
+    const {
+      data: { user },
+      error: authErr,
+    } = await supabase.auth.getUser();
+
+    if (authErr || !user) {
+      return { success: false, error: 'Authentication required.' };
+    }
+
+    // 2. Fetch Job & verify project ownership via RLS/query
+    const { data: job, error: jobErr } = await supabase
+      .from('jobs')
+      .select('id, project_id, status, trigger_run_id')
+      .eq('id', jobId)
+      .maybeSingle();
+
+    if (jobErr || !job) {
+      return { success: false, error: 'Job record not found.' };
+    }
+
+    // Verify project ownership
+    const { data: project } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', job.project_id)
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (!project) {
+      return { success: false, error: 'Project access denied.' };
+    }
+
+    // Handle already completed/failed jobs gracefully
+    if (job.status === 'completed' || job.status === 'failed') {
+      return { success: true, data: { jobId, alreadyFinished: true } };
+    }
+
+    // 3. Invoke Trigger.dev runs.cancel API if run ID exists
+    if (job.trigger_run_id) {
+      try {
+        await runs.cancel(job.trigger_run_id);
+      } catch (triggerCancelErr) {
+        // Fail gracefully if run is already finished or not found on Trigger.dev
+        console.warn(`Trigger.dev runs.cancel warning for run ${job.trigger_run_id}:`, triggerCancelErr);
+      }
+    }
+
+    // 4. Update jobs row status to 'failed' with clear error_message
+    const { error: updateErr } = await supabase
+      .from('jobs')
+      .update({
+        status: 'failed',
+        error_message: 'Cancelled by user',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', jobId);
+
+    if (updateErr) {
+      return { success: false, error: updateErr.message || 'Failed to update job cancellation status.' };
+    }
+
+    return { success: true, data: { jobId } };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to cancel background job.';
     return { success: false, error: message };
   }
 }

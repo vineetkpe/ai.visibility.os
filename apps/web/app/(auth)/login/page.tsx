@@ -10,6 +10,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Separator } from '@/components/ui/separator';
 import { OAuthButton } from '@/components/auth/oauth-button';
 import { LogIn } from 'lucide-react';
+import { toast } from 'sonner';
 
 function LoginForm() {
   const router = useRouter();
@@ -36,9 +37,12 @@ function LoginForm() {
 
       if (signInError) {
         setError(signInError.message);
+        toast.error(signInError.message);
         setLoading(false);
         return;
       }
+
+      toast.success('Signed in successfully!');
 
       const destination = sanitizeRedirectUrl(rawRedirect, '/dashboard');
       router.push(destination);
@@ -46,6 +50,7 @@ function LoginForm() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An error occurred during login';
       setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -76,20 +81,21 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="login-email" className="text-xs font-medium text-slate-700">Email address</label>
             <input
+              id="login-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-medium text-slate-700">Password</label>
+              <label htmlFor="login-password" className="text-xs font-medium text-slate-700">Password</label>
               <Link
                 href="/forgot-password"
                 className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
@@ -98,12 +104,13 @@ function LoginForm() {
               </Link>
             </div>
             <input
+              id="login-password"
               type="password"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 

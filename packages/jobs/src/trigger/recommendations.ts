@@ -12,6 +12,9 @@ export interface RecommendationsTaskPayload {
  */
 export const recommendationsTask = task({
   id: 'ai-recommendations-engine',
+  retry: {
+    maxAttempts: 1,
+  },
   run: async (payload: RecommendationsTaskPayload) => {
     const supabase = createServerClient({
       getAll: () => [],

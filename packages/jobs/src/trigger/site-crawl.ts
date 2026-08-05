@@ -13,6 +13,13 @@ export interface SiteCrawlTaskPayload {
  */
 export const siteCrawlTask = task({
   id: 'site-crawl',
+  retry: {
+    maxAttempts: 2,
+    factor: 2,
+    minTimeoutInMs: 1000,
+    maxTimeoutInMs: 10000,
+    randomize: true,
+  },
   run: async (payload: SiteCrawlTaskPayload) => {
     // Instantiate server Supabase client with empty cookie context for background task
     const supabase = createServerClient({

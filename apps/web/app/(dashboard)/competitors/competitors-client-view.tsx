@@ -86,8 +86,9 @@ export function CompetitorsClientView({
         <div className="flex items-center space-x-3">
           <FolderKanban className="h-5 w-5 text-slate-500" />
           <div className="flex items-center space-x-2">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Project:</span>
+            <label htmlFor="comp-project-select" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Project:</label>
             <select
+              id="comp-project-select"
               value={currentProjectId}
               onChange={handleProjectChange}
               className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"

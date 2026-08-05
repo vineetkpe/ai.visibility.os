@@ -141,13 +141,15 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
       {/* Filter Bar */}
       <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div className="relative flex-1 max-w-md">
+          <label htmlFor="scan-search-input" className="sr-only">Search Scans</label>
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
+            id="scan-search-input"
             type="text"
             placeholder="Search scans by query prompt or AI model..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-500"
+            className="w-full pl-9 pr-4 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-1 focus:ring-amber-500"
           />
         </div>
 
@@ -165,12 +167,12 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
       {/* Scan History Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         {isLoading && !scansData ? (
-          <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+          <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2" role="status" aria-live="polite">
             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
             <span>Loading scan history...</span>
           </div>
         ) : isError ? (
-          <div className="p-8 text-center text-xs text-red-600 bg-red-50">
+          <div className="p-8 text-center text-xs text-red-600 bg-red-50" role="alert">
             {error instanceof Error ? error.message : 'Error loading scan history.'}
           </div>
         ) : filteredScans.length > 0 ? (

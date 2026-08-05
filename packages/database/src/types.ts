@@ -260,6 +260,8 @@ export interface Database {
           payload: Json | null;
           result: Json | null;
           error_message: string | null;
+          trigger_run_id: string | null;
+          progress: Json | null;
           started_at: string | null;
           completed_at: string | null;
           created_at: string;
@@ -273,6 +275,8 @@ export interface Database {
           payload?: Json | null;
           result?: Json | null;
           error_message?: string | null;
+          trigger_run_id?: string | null;
+          progress?: Json | null;
           started_at?: string | null;
           completed_at?: string | null;
           created_at?: string;
@@ -286,6 +290,8 @@ export interface Database {
           payload?: Json | null;
           result?: Json | null;
           error_message?: string | null;
+          trigger_run_id?: string | null;
+          progress?: Json | null;
           started_at?: string | null;
           completed_at?: string | null;
           created_at?: string;

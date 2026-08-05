@@ -1,7 +1,12 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { createProjectSchema, extractDomainName, type CreateProjectInput } from '@ai-visibility-os/shared';
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  extractDomainName,
+  type CreateProjectInput,
+} from '@ai-visibility-os/shared';
 
 export interface ActionResult<T = unknown> {
   success: boolean;
@@ -109,6 +114,128 @@ export async function createProjectAction(
     return {
       success: true,
       data: { projectId: project.id },
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server action to soft-delete a project by setting deleted_at timestamp.
+ * Verification requirement: Scoped via auth.uid() and project user_id.
+ */
+export async function deleteProjectAction(
+  projectId: string
+): Promise<ActionResult<{ projectId: string }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate User
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Authentication required. Please sign in.' };
+    }
+
+    // 2. Verify project ownership scoped via auth.uid()
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !project) {
+      return { success: false, error: 'Project not found or access denied.' };
+    }
+
+    // 3. Soft-delete project by setting deleted_at timestamp
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', projectId)
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      return { success: false, error: updateError.message || 'Failed to delete project.' };
+    }
+
+    return {
+      success: true,
+      data: { projectId },
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
+    return { success: false, error: message };
+  }
+}
+
+/**
+ * Server action to update project name.
+ * Verification requirement: Scoped via auth.uid() and project user_id.
+ * Validates name using Zod schema updateProjectSchema.
+ */
+export async function updateProjectAction(
+  projectId: string,
+  name: string
+): Promise<ActionResult<{ projectId: string; name: string }>> {
+  try {
+    const supabase = await createClient();
+
+    // 1. Authenticate User
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, error: 'Authentication required. Please sign in.' };
+    }
+
+    // 2. Validate input schema with Zod
+    const parseResult = updateProjectSchema.safeParse({ projectId, name });
+    if (!parseResult.success) {
+      const firstError = parseResult.error.issues[0]?.message || 'Invalid project data.';
+      return { success: false, error: firstError };
+    }
+
+    const cleanName = parseResult.data.name;
+
+    // 3. Verify project ownership scoped via auth.uid()
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !project) {
+      return { success: false, error: 'Project not found or access denied.' };
+    }
+
+    // 4. Update project name and updated_at timestamp
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({
+        name: cleanName,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', projectId)
+      .eq('user_id', user.id);
+
+    if (updateError) {
+      return { success: false, error: updateError.message || 'Failed to update project name.' };
+    }
+
+    return {
+      success: true,
+      data: { projectId, name: cleanName },
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred.';

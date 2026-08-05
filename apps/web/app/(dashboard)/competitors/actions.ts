@@ -115,7 +115,11 @@ export async function triggerCompetitorCrawlAction(input: {
       competitorId: input.competitorId,
     });
 
-    return { success: true, data: { jobId: res.jobId } };
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to trigger competitor crawl.' };
+    }
+
+    return { success: true, data: { jobId: res.jobId! } };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to trigger competitor crawl.';
     return { success: false, error: message };

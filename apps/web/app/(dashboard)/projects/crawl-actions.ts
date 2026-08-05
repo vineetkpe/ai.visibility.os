@@ -69,13 +69,24 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
 
     // 4. Trigger Trigger.dev task on background infrastructure
     try {
-      await siteCrawlTask.trigger({
+      const handle = await siteCrawlTask.trigger({
         domainId: domain.id,
         domainName: domain.domain_name,
         jobId: job.id,
       });
+      await supabase
+        .from('jobs')
+        .update({ trigger_run_id: handle.id })
+        .eq('id', job.id);
     } catch (triggerErr: unknown) {
+      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
+      const errorMessage = `Failed to start background job: ${message}`;
       console.warn('Trigger.dev dispatch warning:', triggerErr);
+      await supabase
+        .from('jobs')
+        .update({ status: 'failed', error_message: errorMessage })
+        .eq('id', job.id);
+      return { success: false, error: errorMessage };
     }
 
     return {

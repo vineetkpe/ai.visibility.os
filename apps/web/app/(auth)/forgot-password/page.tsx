@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
@@ -27,14 +28,18 @@ export default function ForgotPasswordPage() {
 
       if (resetError) {
         setError(resetError.message);
+        toast.error(resetError.message);
         setLoading(false);
         return;
       }
+
+      toast.success('Password reset link sent to your email.');
 
       setSubmitted(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to send reset email';
       setError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };
@@ -73,14 +78,15 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="forgot-email" className="text-xs font-medium text-slate-700">Email address</label>
             <input
+              id="forgot-email"
               type="email"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
-              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-950"
+              className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
 

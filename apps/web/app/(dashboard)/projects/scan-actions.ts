@@ -58,13 +58,40 @@ export async function startVisibilityScanAction(projectId: string): Promise<Visi
       };
     }
 
-    // 4. Dispatch Trigger.dev task on background infrastructure
+    // 4. Create pending job record
+    const { data: job, error: jobInsertError } = await supabase
+      .from('jobs')
+      .insert({
+        project_id: project.id,
+        job_type: 'visibility_scan',
+        status: 'pending',
+        payload: { project_id: project.id },
+      })
+      .select('id')
+      .single();
+
+    if (jobInsertError || !job) {
+      return { success: false, error: jobInsertError?.message || 'Failed to create scan job record.' };
+    }
+
+    // 5. Dispatch Trigger.dev task on background infrastructure
     try {
-      await visibilityScanTask.trigger({
+      const handle = await visibilityScanTask.trigger({
         projectId: project.id,
       });
+      await supabase
+        .from('jobs')
+        .update({ trigger_run_id: handle.id })
+        .eq('id', job.id);
     } catch (triggerErr: unknown) {
+      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
+      const errorMessage = `Failed to start background job: ${message}`;
       console.warn('Trigger.dev visibility scan task dispatch warning:', triggerErr);
+      await supabase
+        .from('jobs')
+        .update({ status: 'failed', error_message: errorMessage })
+        .eq('id', job.id);
+      return { success: false, error: errorMessage };
     }
 
     return { success: true };

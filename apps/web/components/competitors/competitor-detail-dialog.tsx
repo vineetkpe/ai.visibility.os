@@ -79,10 +79,10 @@ export function CompetitorDetailDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="comp-detail-title">
       <div className="w-full max-w-3xl rounded-xl bg-white p-6 shadow-2xl border border-slate-200 space-y-6 my-8">
         {isLoading || !profile ? (
-          <div className="flex flex-col items-center justify-center py-16 space-y-3">
+          <div className="flex flex-col items-center justify-center py-16 space-y-3" role="status" aria-live="polite">
             <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
             <p className="text-sm font-medium text-slate-500">Loading competitor evidence & metrics...</p>
           </div>
@@ -96,7 +96,7 @@ export function CompetitorDetailDialog({
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <h2 className="text-xl font-bold text-slate-900">{profile.companyName}</h2>
+                    <h2 id="comp-detail-title" className="text-xl font-bold text-slate-900">{profile.companyName}</h2>
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono font-medium text-slate-700">
                       {profile.domain}
                     </span>

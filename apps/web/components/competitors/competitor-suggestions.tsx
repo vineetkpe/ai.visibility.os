@@ -121,7 +121,9 @@ export function CompetitorSuggestions({
                 <div>
                   <button
                     onClick={() => toggleExpand(sug.domain)}
-                    className="flex items-center space-x-1 text-[11px] font-medium text-slate-500 hover:text-slate-700 transition-colors"
+                    aria-expanded={isExpanded}
+                    aria-controls={`sug-evidence-${sug.domain.replace(/[^a-z0-9]/gi, '-')}`}
+                    className="flex items-center space-x-1 text-[11px] font-medium text-slate-600 hover:text-slate-900 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900 rounded px-1"
                   >
                     <FileText className="h-3 w-3 text-indigo-500" />
                     <span>{isExpanded ? 'Hide Evidence' : 'View Scan Evidence'}</span>
@@ -129,7 +131,7 @@ export function CompetitorSuggestions({
                   </button>
 
                   {isExpanded && (
-                    <div className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 border border-slate-100">
+                    <div id={`sug-evidence-${sug.domain.replace(/[^a-z0-9]/gi, '-')}`} className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 border border-slate-100">
                       {sug.evidence.map((ev, idx) => (
                         <div key={idx} className="border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0">
                           <span className="font-semibold text-indigo-700 uppercase tracking-wider text-[9px] mr-1.5">

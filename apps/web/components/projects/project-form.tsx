@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { createProjectAction } from '@/app/(dashboard)/projects/actions';
 import { createProjectSchema, extractDomainName } from '@ai-visibility-os/shared';
 import { Globe, FolderPlus, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export interface ProjectFormProps {
   redirectOnSuccess?: string;
@@ -46,9 +47,12 @@ export function ProjectForm({ redirectOnSuccess = '/dashboard', onSuccess }: Pro
       const res = await createProjectAction({ name, websiteUrl });
       if (!res.success) {
         setGeneralError(res.error || 'Failed to create project.');
+        toast.error(res.error || 'Failed to create project.');
         setLoading(false);
         return;
       }
+
+      toast.success(`Project '${name}' created successfully!`);
 
       if (onSuccess) {
         onSuccess();
@@ -59,6 +63,7 @@ export function ProjectForm({ redirectOnSuccess = '/dashboard', onSuccess }: Pro
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setGeneralError(msg);
+      toast.error(msg);
       setLoading(false);
     }
   };

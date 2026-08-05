@@ -8,6 +8,7 @@ import { RecommendationCard } from '@/components/recommendations/recommendation-
 import { RecommendationDetailDialog } from '@/components/recommendations/recommendation-detail-dialog';
 import { updateRecommendationStatusAction } from '@/app/(dashboard)/recommendations/actions';
 import { Button } from '@/components/ui/button';
+import { cancelJobAction } from '@/app/(dashboard)/dashboard/actions';
 import {
   Scan,
   Clock,
@@ -23,6 +24,8 @@ import {
   Code,
   Globe,
   Tag,
+  XCircle,
+  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -49,6 +52,24 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
   const [isRawResponseExpanded, setIsRawResponseExpanded] = useState(false);
   const [isCitationsExpanded, setIsCitationsExpanded] = useState(false);
   const [isSourcePagesExpanded, setIsSourcePagesExpanded] = useState(false);
+  const [isCancellingScan, setIsCancellingScan] = useState(false);
+
+  const handleCancelScan = async () => {
+    try {
+      setIsCancellingScan(true);
+      const res = await cancelJobAction(scan.id);
+      if (res.success) {
+        toast.success(res.data?.alreadyFinished ? 'Scan already finished.' : 'Scan cancellation requested.');
+        window.location.reload();
+      } else {
+        toast.error(res.error || 'Failed to cancel scan.');
+      }
+    } catch {
+      toast.error('An error occurred while cancelling scan.');
+    } finally {
+      setIsCancellingScan(false);
+    }
+  };
 
   // Recommendation status update handler
   const handleUpdateStatus = async (recId: string, newStatus: RecommendationStatus) => {
@@ -136,11 +157,30 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
               className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
                 scan.status === 'completed'
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : scan.status === 'failed'
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                   : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
               }`}
             >
               {scan.status}
             </span>
+
+            {(scan.status === 'pending' || scan.status === 'running') && (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={isCancellingScan}
+                onClick={handleCancelScan}
+                className="bg-red-950/40 text-red-400 border-red-800 hover:bg-red-900/60 hover:text-red-300 text-xs shrink-0"
+              >
+                {isCancellingScan ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                ) : (
+                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                )}
+                Cancel Scan
+              </Button>
+            )}
           </div>
         </div>
       </div>
@@ -489,7 +529,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
         <div className="border border-slate-200 rounded-xl overflow-hidden">
           <button
             onClick={() => setIsSourcePagesExpanded((prev) => !prev)}
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors"
+            aria-expanded={isSourcePagesExpanded}
+            aria-controls="source-pages-sec"
+            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
           >
             <span className="flex items-center gap-2">
               <Globe className="w-4 h-4 text-slate-600" />
@@ -498,7 +540,7 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             {isSourcePagesExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {isSourcePagesExpanded && (
-            <div className="p-4 space-y-2 bg-white text-xs">
+            <div id="source-pages-sec" className="p-4 space-y-2 bg-white text-xs">
               {evidence.sourcePages.length > 0 ? (
                 evidence.sourcePages.map((sp) => (
                   <div key={sp.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
@@ -524,7 +566,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
         <div className="border border-slate-200 rounded-xl overflow-hidden">
           <button
             onClick={() => setIsCitationsExpanded((prev) => !prev)}
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors"
+            aria-expanded={isCitationsExpanded}
+            aria-controls="citations-sec"
+            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
           >
             <span className="flex items-center gap-2">
               <ExternalLink className="w-4 h-4 text-blue-600" />
@@ -533,7 +577,7 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             {isCitationsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {isCitationsExpanded && (
-            <div className="p-4 bg-white text-xs overflow-x-auto">
+            <div id="citations-sec" className="p-4 bg-white text-xs overflow-x-auto">
               {evidence.citations.length > 0 ? (
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
@@ -576,7 +620,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
         <div className="border border-slate-200 rounded-xl overflow-hidden">
           <button
             onClick={() => setIsRawResponseExpanded((prev) => !prev)}
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors"
+            aria-expanded={isRawResponseExpanded}
+            aria-controls="raw-response-sec"
+            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
           >
             <span className="flex items-center gap-2">
               <Code className="w-4 h-4 text-amber-600" />
@@ -585,7 +631,7 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             {isRawResponseExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </button>
           {isRawResponseExpanded && (
-            <div className="p-4 bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed border-t border-slate-800">
+            <div id="raw-response-sec" className="p-4 bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed border-t border-slate-800">
               {evidence.rawResponse && evidence.rawResponse.trim().length > 0
                 ? evidence.rawResponse
                 : 'Not available for this scan'}
