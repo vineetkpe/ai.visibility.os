@@ -28,7 +28,7 @@ const navItems = [
   { label: 'Recommendations', href: '/recommendations', icon: Lightbulb },
   { label: 'Analytics', href: '/analytics', icon: BarChart3 },
   { label: 'Monitors', href: '/monitors', icon: Activity },
-  { label: 'Scanners', href: '/scanners', icon: Scan },
+  { label: 'AI Scans', href: '/dashboard/scans', icon: Scan },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
