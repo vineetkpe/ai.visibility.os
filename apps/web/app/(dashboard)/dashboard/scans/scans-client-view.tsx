@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { getScanHistoryData, type ScanHistoryItem } from '../actions';
 import { startVisibilityScanAction } from '@/app/(dashboard)/projects/scan-actions';
@@ -189,7 +190,9 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
                 {filteredScans.map((scan) => (
                   <tr key={scan.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-4 font-medium text-slate-900 max-w-xs truncate">
-                      {scan.queryPrompt}
+                      <Link href={`/dashboard/scans/${scan.id}`} className="hover:text-amber-600 hover:underline">
+                        {scan.queryPrompt}
+                      </Link>
                     </td>
                     <td className="p-4">
                       <span className="font-mono text-[11px] bg-slate-100 px-2 py-0.5 rounded text-slate-700">

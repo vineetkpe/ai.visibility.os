@@ -55,16 +55,21 @@ export async function runDiscoveryPipeline(
     const robots = await fetchRobotsTxt(canonicalBaseUrl);
     const sitemapResult = await discoverSitemap(canonicalBaseUrl, robots.sitemaps);
 
-    // 4. Assemble candidate URLs queue
+    // 4. Assemble candidate URLs queue & track robots skipped count
+    let pagesSkippedRobots = 0;
     const queueSet = new Set<string>();
     if (robots.isAllowed(canonicalBaseUrl)) {
       queueSet.add(canonicalBaseUrl);
+    } else {
+      pagesSkippedRobots++;
     }
 
     for (const url of sitemapResult.pageUrls) {
       if (queueSet.size >= maxPages) break;
       if (robots.isAllowed(url)) {
         queueSet.add(url);
+      } else {
+        pagesSkippedRobots++;
       }
     }
 
@@ -73,6 +78,7 @@ export async function runDiscoveryPipeline(
     // 5. Process pages in queue
     for (const pageUrl of targetUrls) {
       if (!robots.isAllowed(pageUrl)) {
+        pagesSkippedRobots++;
         continue;
       }
 
@@ -125,7 +131,13 @@ export async function runDiscoveryPipeline(
       supabase,
       jobId,
       finalStatus,
-      { pages_crawled: pagesCrawled, pages_failed: pagesFailed },
+      {
+        pages_crawled: pagesCrawled,
+        pages_failed: pagesFailed,
+        sitemap_url: sitemapResult.sitemapUrls[0] || null,
+        sitemap_urls_found: sitemapResult.pageUrls.length,
+        pages_skipped_robots: pagesSkippedRobots,
+      },
       finalError
     );
 

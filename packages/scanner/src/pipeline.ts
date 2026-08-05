@@ -195,6 +195,7 @@ export async function runVisibilityScanPipeline(
             status: 'completed',
             visibility_score: visScore,
             summary: analysis.summary,
+            raw_response: groundedResult.rawText,
             completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })

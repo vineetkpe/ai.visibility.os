@@ -438,6 +438,7 @@ export interface Database {
           status: string;
           visibility_score: number | null;
           summary: string | null;
+          raw_response: string | null;
           error_message: string | null;
           started_at: string | null;
           completed_at: string | null;
@@ -454,6 +455,7 @@ export interface Database {
           status?: string;
           visibility_score?: number | null;
           summary?: string | null;
+          raw_response?: string | null;
           error_message?: string | null;
           started_at?: string | null;
           completed_at?: string | null;
@@ -470,6 +472,7 @@ export interface Database {
           status?: string;
           visibility_score?: number | null;
           summary?: string | null;
+          raw_response?: string | null;
           error_message?: string | null;
           started_at?: string | null;
           completed_at?: string | null;
