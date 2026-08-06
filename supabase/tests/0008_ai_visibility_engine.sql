@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(20);
+SELECT plan(19);
 
 -- 1. Provider Seed Verification
 SELECT is(
