@@ -147,7 +147,11 @@ All 6 discovery tables have Row Level Security enabled (`ALTER TABLE ... ENABLE 
 | `page_metadata` | Transitively joins `pages.project_id` to `public.projects` |
 | `robots_files` | Transitively joins `domains.project_id` to `public.projects` |
 | `sitemaps` | Transitively joins `domains.project_id` to `public.projects` |
-| `crawl_errors` | Transitively joins `crawl_sessions.project_id` to `public.projects` |
+| `crawl_errors` | Transitively joins `crawl_sessions.project_id` to `public.projects` (SELECT and INSERT only) |
+
+> [!NOTE]
+> **Append-Only Policy Enforced on `crawl_errors`**:
+> `public.crawl_errors` intentionally has no `UPDATE` RLS policy (`crawl_errors_update_own` dropped in migration `0006_fix_crawl_errors_append_only.sql`). It supports only `SELECT` and `INSERT` operations to strictly enforce append-only audit logging.
 
 > [!CAUTION]
 > **No-Delete Policy Enforced**:

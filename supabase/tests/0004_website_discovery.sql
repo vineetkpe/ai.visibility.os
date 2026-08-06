@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(19);
+SELECT plan(28);
 
 -- 1. Table & Constraint Verifications
 SELECT has_table('crawl_sessions', 'public.crawl_sessions table must exist');
