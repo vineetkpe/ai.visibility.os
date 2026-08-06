@@ -24,10 +24,12 @@ CREATE TABLE public.business_context_versions (
     extraction_method public.extraction_method NOT NULL DEFAULT 'deterministic',
     confidence_score NUMERIC(3,2) NULL,
     generated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    generation_duration_ms INTEGER NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT pk_business_context_versions PRIMARY KEY (id),
     CONSTRAINT fk_business_context_versions_project FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
-    CONSTRAINT chk_business_context_versions_confidence CHECK (confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1)
+    CONSTRAINT chk_business_context_versions_confidence CHECK (confidence_score IS NULL OR confidence_score BETWEEN 0 AND 1),
+    CONSTRAINT chk_business_context_versions_duration CHECK (generation_duration_ms IS NULL OR generation_duration_ms >= 0)
 );
 
 -- Table: entities

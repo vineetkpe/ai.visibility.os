@@ -63,6 +63,7 @@ CREATE TYPE public.entity_type AS ENUM ('organization', 'person', 'brand', 'loca
 | `extraction_method` | `extraction_method` | **NO** | `'deterministic'` | Extraction pipeline method |
 | `confidence_score` | `NUMERIC(3,2)` | YES | `NULL` | Extraction confidence (0.00 - 1.00) |
 | `generated_at` | `TIMESTAMPTZ` | **NO** | `now()` | Context generation timestamp |
+| `generation_duration_ms` | `INTEGER` | YES | `NULL` | Generation duration in ms (populated by Trigger.dev job for performance monitoring) |
 | `created_at` | `TIMESTAMPTZ` | **NO** | `now()` | Record creation timestamp (UTC) |
 
 ### B. `public.entities`
