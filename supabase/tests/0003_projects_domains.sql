@@ -12,8 +12,8 @@ SELECT has_table('projects', 'public.projects table must exist');
 SELECT has_table('domains', 'public.domains table must exist');
 SELECT has_pk('projects', 'pk_projects primary key constraint must exist');
 SELECT has_pk('domains', 'pk_domains primary key constraint must exist');
-SELECT fk_ok('projects', 'user_id', 'public', 'users', 'id', 'fk_projects_user foreign key must reference public.users(id)');
-SELECT fk_ok('domains', 'project_id', 'public', 'projects', 'id', 'fk_domains_project foreign key must reference public.projects(id)');
+SELECT fk_ok('public', 'projects', 'user_id', 'public', 'users', 'id', 'fk_projects_user foreign key must reference public.users(id)');
+SELECT fk_ok('public', 'domains', 'project_id', 'public', 'projects', 'id', 'fk_domains_project foreign key must reference public.projects(id)');
 
 -- 2. RLS Verification
 SELECT is(

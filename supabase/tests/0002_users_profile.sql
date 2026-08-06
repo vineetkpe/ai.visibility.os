@@ -10,7 +10,7 @@ SELECT plan(11);
 -- 1. Table & Constraint Verification
 SELECT has_table('users', 'public.users table must exist');
 SELECT has_pk('users', 'pk_users primary key constraint must exist');
-SELECT fk_ok('users', 'id', 'auth', 'users', 'id', 'fk_users_auth_user foreign key must reference auth.users(id)');
+SELECT fk_ok('public', 'users', 'id', 'auth', 'users', 'id', 'fk_users_auth_user foreign key must reference auth.users(id)');
 
 -- 2. RLS Verification
 SELECT is(
