@@ -5,7 +5,7 @@ BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(21);
+SELECT plan(22);
 
 -- Setup test users, provider, project, domains, and scan record
 DO $$
@@ -206,6 +206,12 @@ SET LOCAL "request.jwt.claim.sub" = '99999999-9999-9999-9999-999999999999';
 DELETE FROM public.competitors WHERE id = 'c1111111-1111-1111-1111-111111111111';
 
 SELECT is(
+    (SELECT count(*)::integer FROM public.recommendation_evidence WHERE id = 'e1111111-1111-1111-1111-111111111111'),
+    0,
+    'recommendation_evidence with competitor as sole source is CASCADE-deleted when the competitor is deleted'
+);
+
+SELECT is(
     (SELECT count(*)::integer FROM public.competitors WHERE id = 'c1111111-1111-1111-1111-111111111111'),
     0,
     'Authenticated owner CAN hard-DELETE their own competitors row'
@@ -225,7 +231,7 @@ DELETE FROM public.recommendations WHERE id = 'r1111111-1111-1111-1111-111111111
 
 SELECT is(
     (SELECT count(*)::integer FROM public.recommendations WHERE id = 'r1111111-1111-1111-1111-111111111111'),
-    2,
+    1,
     'Hard DELETE on recommendations by authenticated user has no effect (no DELETE policy)'
 );
 
