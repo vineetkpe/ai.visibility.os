@@ -1,11 +1,11 @@
 -- Test Suite: 0009_competitors_recommendations.sql
--- Description: Tests Competitors & Recommendations schema (domain_type checks, competitor trigger enforcement, dedup via scope_key, score constraints, evidence sources, RLS, and hard-DELETE permissions).
+-- Description: Tests Competitors & Recommendations schema (domain_type checks, competitor trigger enforcement, scope_key partial unique index dedup & versioning, score/enum constraints, evidence sources & CASCADE, RLS, and hard-DELETE permissions).
 
 BEGIN;
 
 CREATE EXTENSION IF NOT EXISTS pgtap;
 
-SELECT plan(18);
+SELECT plan(21);
 
 -- Setup test users, provider, project, domains, and scan record
 DO $$
@@ -97,7 +97,7 @@ SELECT is(
     'Inserting citation referencing competitor_id with is_own_domain=false succeeds'
 );
 
--- 7. Recommendation Scope Key Dedup: Duplicate (project_id, scope_key) is rejected
+-- 7. Recommendation Scope Key Dedup: Duplicate active (project_id, scope_key) is rejected
 DO $$
 BEGIN
     INSERT INTO public.recommendations (id, project_id, category, title, impact_score, effort_score, priority, scope_key)
@@ -109,7 +109,7 @@ SELECT throws_ok(
        VALUES ('p9999999-9999-9999-9999-999999999999', 'schema', 'Add Duplicate FAQ Schema', 3, 1, 'medium', 'rec_faq_schema') $$,
     23505,
     NULL,
-    'Duplicate (project_id, scope_key) on recommendations is rejected by uq_recommendations_project_scope_key'
+    'Duplicate active (project_id, scope_key) on recommendations is rejected by partial unique index'
 );
 
 -- 8. Impact Score Check Constraint: impact_score=6 is rejected
@@ -121,13 +121,13 @@ SELECT throws_ok(
     'impact_score=6 is rejected by chk_recommendations_impact'
 );
 
--- 9. Priority Check Constraint: priority='urgent' is rejected
+-- 9. Priority Enum Constraint: invalid enum string rejected
 SELECT throws_ok(
     $$ INSERT INTO public.recommendations (project_id, category, title, impact_score, effort_score, priority, scope_key)
-       VALUES ('p9999999-9999-9999-9999-999999999999', 'schema', 'Invalid Priority', 4, 2, 'urgent', 'rec_invalid_priority') $$,
-    23514,
+       VALUES ('p9999999-9999-9999-9999-999999999999', 'schema', 'Invalid Priority', 4, 2, 'urgent'::public.recommendation_priority, 'rec_invalid_priority') $$,
+    22P02,
     NULL,
-    'priority=urgent is rejected by chk_recommendations_priority'
+    'Invalid recommendation_priority enum value is rejected'
 );
 
 -- 10. Evidence Source Check Constraint: all 4 source FKs NULL is rejected
@@ -139,7 +139,7 @@ SELECT throws_ok(
     'Recommendation evidence with all four source FKs NULL is rejected by chk_recommendation_evidence_has_source'
 );
 
--- 11. Evidence Insertion: with competitor_id set succeeds
+-- 11. Evidence Insertion with competitor_id source succeeds
 DO $$
 BEGIN
     INSERT INTO public.recommendation_evidence (id, recommendation_id, competitor_id, notes)
@@ -152,7 +152,46 @@ SELECT is(
     'Inserting recommendation_evidence with competitor_id source succeeds'
 );
 
--- 12. Cross-User RLS Isolation: Other user gets 0 rows
+-- 12. Evidence Insertion with ai_scan_id source succeeds (separate row for RLS delete testing)
+DO $$
+BEGIN
+    INSERT INTO public.recommendation_evidence (id, recommendation_id, ai_scan_id, notes)
+    VALUES ('e2222222-2222-2222-2222-222222222222', 'r1111111-1111-1111-1111-111111111111', 's9999999-9999-9999-9999-999999999999', 'Scan source evidence');
+END $$;
+
+SELECT is(
+    (SELECT count(*)::integer FROM public.recommendation_evidence WHERE id = 'e2222222-2222-2222-2222-222222222222'),
+    1,
+    'Inserting recommendation_evidence with ai_scan_id source succeeds'
+);
+
+-- 13. Recommendation Versioning Test: Insert second recommendation with SAME scope_key after setting first row superseded_by
+DO $$
+BEGIN
+    INSERT INTO public.recommendations (id, project_id, category, title, impact_score, effort_score, priority, scope_key)
+    VALUES ('r2222222-2222-2222-2222-222222222222', 'p9999999-9999-9999-9999-999999999999', 'schema', 'Updated FAQ Schema v2', 5, 2, 'critical', 'rec_faq_schema');
+
+    UPDATE public.recommendations
+    SET superseded_by = 'r2222222-2222-2222-2222-222222222222'
+    WHERE id = 'r1111111-1111-1111-1111-111111111111';
+END $$;
+
+SELECT is(
+    (SELECT count(*)::integer FROM public.recommendations WHERE id = 'r2222222-2222-2222-2222-222222222222'),
+    1,
+    'Inserting second recommendation with same scope_key succeeds after superseded_by is set on first row'
+);
+
+-- 14. Versioning Conflict Test: Attempt inserting THIRD recommendation with same scope_key while second row superseded_by IS NULL
+SELECT throws_ok(
+    $$ INSERT INTO public.recommendations (id, project_id, category, title, impact_score, effort_score, priority, scope_key)
+       VALUES ('r3333333-3333-3333-3333-333333333333', 'p9999999-9999-9999-9999-999999999999', 'schema', 'Conflicting FAQ Schema v3', 4, 1, 'high', 'rec_faq_schema') $$,
+    23505,
+    NULL,
+    'Inserting third recommendation with same scope_key while active version exists is rejected by partial unique index'
+);
+
+-- 15. Cross-User RLS Isolation: Other user gets 0 rows
 SET LOCAL ROLE authenticated;
 SET LOCAL "request.jwt.claim.sub" = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
 
@@ -160,10 +199,10 @@ SELECT is((SELECT count(*)::integer FROM public.competitors), 0, 'Cross-user SEL
 SELECT is((SELECT count(*)::integer FROM public.recommendations), 0, 'Cross-user SELECT on recommendations returns 0 rows');
 SELECT is((SELECT count(*)::integer FROM public.recommendation_evidence), 0, 'Cross-user SELECT on recommendation_evidence returns 0 rows');
 
--- 13. Hard-DELETE permissions verification
+-- 16. Hard-DELETE permissions verification
 SET LOCAL "request.jwt.claim.sub" = '99999999-9999-9999-9999-999999999999';
 
--- Authenticated user CAN hard-DELETE their own competitors row
+-- Authenticated user CAN hard-DELETE their own competitors row (e1111111 will CASCADE delete with competitor)
 DELETE FROM public.competitors WHERE id = 'c1111111-1111-1111-1111-111111111111';
 
 SELECT is(
@@ -172,21 +211,21 @@ SELECT is(
     'Authenticated owner CAN hard-DELETE their own competitors row'
 );
 
--- Hard DELETE on recommendation_evidence has no effect (no DELETE policy)
-DELETE FROM public.recommendation_evidence WHERE id = 'e1111111-1111-1111-1111-111111111111';
+-- Hard DELETE on recommendation_evidence e2222222 by authenticated user has no effect (no DELETE policy)
+DELETE FROM public.recommendation_evidence WHERE id = 'e2222222-2222-2222-2222-222222222222';
 
 SELECT is(
-    (SELECT count(*)::integer FROM public.recommendation_evidence WHERE id = 'e1111111-1111-1111-1111-111111111111'),
+    (SELECT count(*)::integer FROM public.recommendation_evidence WHERE id = 'e2222222-2222-2222-2222-222222222222'),
     1,
     'Hard DELETE on recommendation_evidence by authenticated user has no effect (no DELETE policy)'
 );
 
--- Hard DELETE on recommendations has no effect (no DELETE policy)
+-- Hard DELETE on recommendations by authenticated user has no effect (no DELETE policy)
 DELETE FROM public.recommendations WHERE id = 'r1111111-1111-1111-1111-111111111111';
 
 SELECT is(
     (SELECT count(*)::integer FROM public.recommendations WHERE id = 'r1111111-1111-1111-1111-111111111111'),
-    1,
+    2,
     'Hard DELETE on recommendations by authenticated user has no effect (no DELETE policy)'
 );
 

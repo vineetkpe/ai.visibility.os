@@ -3,7 +3,7 @@
 ## Overview
 This document establishes the database architecture, schema, constraints, RLS policies, and design decisions for **Competitor Tracking** and the **Deterministic Recommendation Engine** in AI Visibility OS.
 
-It details how competitor tracking reuses the existing `domains` and `citations` infrastructure via `domain_type` and optional `competitor_id` references, how recommendation deduplication is strictly enforced at the database layer using `scope_key`, and the specific authorization lifecycle rules for competitors versus recommendations.
+It details how competitor tracking reuses the existing `domains` and `citations` infrastructure via `domain_type` and optional `competitor_id` references, how recommendation versioning and deduplication are strictly enforced at the database layer using a partial unique index on `scope_key`, and the specific authorization lifecycle rules for competitors versus recommendations.
 
 ---
 
@@ -24,16 +24,24 @@ It details how competitor tracking reuses the existing `domains` and `citations`
 
 ### D. Hard-DELETE Authorization on Competitors vs. Append-Only System
 - **Competitors Table Exception**: Unlike other core tables in this sprint which enforce soft deletes (`deleted_at`) or omit `DELETE` RLS policies, `public.competitors` explicitly permits `DELETE` operations for authenticated owners.
-- **Rationale**: Removing/untracking a competitor is a standard project setup action rather than historical domain analysis. Historical LLM scan data remains intact via `citations.competitor_id ON DELETE SET NULL` and `recommendation_evidence.competitor_id ON DELETE SET NULL`.
-- **Recommendations Immutability**: `recommendations` and `recommendation_evidence` omit `DELETE` policies; resolved or dismissed recommendations persist historically to support auditability and prevent repeated auto-generation.
+- **Rationale**: Removing/untracking a competitor is a standard project setup action rather than historical domain analysis. Historical LLM scan data remains intact via `citations.competitor_id ON DELETE SET NULL`.
+- **Recommendations & Evidence Lifecycle**: `recommendations` and `recommendation_evidence` omit `DELETE` policies; resolved or dismissed recommendations persist historically to support auditability and prevent repeated auto-generation. Evidence source FKs (`page_id`, `ai_scan_id`, `citation_id`, `competitor_id`) use `ON DELETE CASCADE` so that if an underlying source entity is deleted, linked evidence rows are cleaned up atomically, avoiding violation of `chk_recommendation_evidence_has_source`.
 
-### E. DB-Enforced Recommendation Deduplication (`scope_key`)
-- **Dedup Mechanism**: `public.recommendations` enforces `CONSTRAINT uq_recommendations_project_scope_key UNIQUE (project_id, scope_key)`.
-- **Scope Key Rationale**: `scope_key` is a deterministic string constructed by the recommendation engine (e.g. `missing_schema_org_faq`, `competitor_citation_gap_acme`). Database-level unique constraint prevents duplicate recommendation insertion across recurring scans regardless of application concurrency or retries.
-- **Priority Calculation**: Recommendation priority (`low`, `medium`, `high`, `critical`) is computed in application logic from `impact_score` (1-5) and `effort_score` (1-5) matrices and stored in `priority` for query transparency.
+### E. Partial Unique Index & Versioning Model (`scope_key` & `superseded_by`)
+- **Versioned Dedup Key**: Recommendation deduplication is enforced via a partial unique index:
+  ```sql
+  CREATE UNIQUE INDEX uq_recommendations_project_scope_key
+  ON public.recommendations(project_id, scope_key)
+  WHERE superseded_by IS NULL;
+  ```
+- **Why Partial Unique Index Replaced Full Constraint**: A plain full-table `UNIQUE(project_id, scope_key)` constraint prevents storing historical/superseded versions of a recommendation with the same scope key. The partial unique index enforces that **only one active (un-superseded) recommendation per scope key can exist at a time**, while allowing unlimited superseded historical versions.
+- **`superseded_by` Versioning Model**: When a recommendation is updated or re-evaluated in a new engine run, a new `recommendations` row is created and the old recommendation's `superseded_by` column is updated to reference the new recommendation's `id`. The old row becomes historical/inactive (excluded by `WHERE superseded_by IS NULL`), allowing the new active recommendation to use the same `scope_key`.
+- **Scan Traceability Columns (`scan_id` & `resolved_by_scan_id`)**:
+  - `scan_id` (`UUID NULL`): Identifies the scan execution that generated the recommendation. It is nullable because deterministic recommendations can be generated during non-scan analysis (e.g. initial crawl or sitemap parsing).
+  - `resolved_by_scan_id` (`UUID NULL`): Identifies the scan execution during which the recommendation issue was verified as fixed/resolved.
 
 ### F. Omission of `recommendation_history`
-- **Scope Boundary**: A separate `recommendation_history` tracking table was deliberately omitted from this schema iteration to match the explicit core table specification. Recommendation state transitions (`open` -> `in_progress` -> `resolved` / `dismissed`) are maintained directly on `public.recommendations.status` and `resolved_at`.
+- **Scope Boundary**: A separate `recommendation_history` tracking table was deliberately omitted from this schema iteration to match the explicit core table specification. Recommendation state transitions (`open` -> `in_progress` -> `resolved` / `dismissed`) and versioning are maintained directly via `status`, `superseded_by`, and `resolved_at`.
 
 ---
 
@@ -57,6 +65,11 @@ CREATE TYPE public.competitor_status AS ENUM ('suggested', 'confirmed', 'dismiss
 ### `public.recommendation_status`
 ```sql
 CREATE TYPE public.recommendation_status AS ENUM ('open', 'in_progress', 'resolved', 'dismissed');
+```
+
+### `public.recommendation_priority`
+```sql
+CREATE TYPE public.recommendation_priority AS ENUM ('low', 'medium', 'high', 'critical');
 ```
 
 ---
@@ -97,15 +110,18 @@ Added column and constraint to link scan citations to competitor records:
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | **NO** | `gen_random_uuid()` | Primary Key |
 | `project_id` | `UUID` | **NO** | *None* | Foreign Key to `public.projects(id)` (`CASCADE`) |
+| `scan_id` | `UUID` | YES | `NULL` | Foreign Key to `public.ai_scans(id)` (`SET NULL`) |
 | `category` | `VARCHAR(100)` | **NO** | *None* | Action category (e.g., content, schema) |
 | `title` | `TEXT` | **NO** | *None* | Concise action title |
 | `description` | `TEXT` | YES | `NULL` | Detailed context and instructions |
 | `impact_score` | `SMALLINT` | **NO** | *None* | Estimated business impact (1..5) |
 | `effort_score` | `SMALLINT` | **NO** | *None* | Estimated effort required (1..5) |
-| `priority` | `VARCHAR(20)` | **NO** | *None* | Priority level (`low`,`medium`,`high`,`critical`) |
+| `priority` | `recommendation_priority` | **NO** | *None* | Typed priority enum |
 | `status` | `recommendation_status` | **NO** | `'open'` | Lifecycle state |
 | `scope_key` | `VARCHAR(255)` | **NO** | *None* | Deterministic DB dedup key per project |
 | `generation_method` | `extraction_method` | **NO** | `'deterministic'` | Reused enum from DB-05 |
+| `superseded_by` | `UUID` | YES | `NULL` | Foreign Key to self `recommendations(id)` (`SET NULL`) |
+| `resolved_by_scan_id` | `UUID` | YES | `NULL` | Foreign Key to `public.ai_scans(id)` (`SET NULL`) |
 | `resolved_at` | `TIMESTAMPTZ` | YES | `NULL` | Resolution completion timestamp |
 | `created_at` | `TIMESTAMPTZ` | **NO** | `now()` | Record creation timestamp (UTC) |
 | `updated_at` | `TIMESTAMPTZ` | **NO** | `now()` | Record modification timestamp (UTC) |
@@ -116,10 +132,10 @@ Added column and constraint to link scan citations to competitor records:
 | :--- | :--- | :--- | :--- | :--- |
 | `id` | `UUID` | **NO** | `gen_random_uuid()` | Primary Key |
 | `recommendation_id` | `UUID` | **NO** | *None* | Foreign Key to `recommendations(id)` (`CASCADE`) |
-| `page_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `pages(id)` (`SET NULL`) |
-| `ai_scan_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `ai_scans(id)` (`SET NULL`) |
-| `citation_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `citations(id)` (`SET NULL`) |
-| `competitor_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `competitors(id)` (`SET NULL`) |
+| `page_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `pages(id)` (`CASCADE`) |
+| `ai_scan_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `ai_scans(id)` (`CASCADE`) |
+| `citation_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `citations(id)` (`CASCADE`) |
+| `competitor_id` | `UUID` | YES | `NULL` | Optional Foreign Key to `competitors(id)` (`CASCADE`) |
 | `notes` | `TEXT` | YES | `NULL` | Supporting evidence context notes |
 | `created_at` | `TIMESTAMPTZ` | **NO** | `now()` | Record creation timestamp (UTC) |
 
@@ -127,9 +143,9 @@ Added column and constraint to link scan citations to competitor records:
 
 ## 5. Constraints & Indexes
 
-### Unique Constraints
+### Unique Constraints & Partial Unique Indexes
 - `public.competitors`: `CONSTRAINT uq_competitors_project_domain UNIQUE (project_id, domain_id)`
-- `public.recommendations`: `CONSTRAINT uq_recommendations_project_scope_key UNIQUE (project_id, scope_key)`
+- `public.recommendations`: `CREATE UNIQUE INDEX uq_recommendations_project_scope_key ON public.recommendations(project_id, scope_key) WHERE superseded_by IS NULL`
 
 ### Check Constraints
 - `public.domains`: `chk_domains_competitor_not_primary` (`NOT (domain_type = 'competitor' AND is_primary = TRUE)`)
@@ -137,7 +153,6 @@ Added column and constraint to link scan citations to competitor records:
 - `public.recommendations`:
   - `chk_recommendations_impact` (`impact_score BETWEEN 1 AND 5`)
   - `chk_recommendations_effort` (`effort_score BETWEEN 1 AND 5`)
-  - `chk_recommendations_priority` (`priority IN ('low', 'medium', 'high', 'critical')`)
 - `public.recommendation_evidence`:
   - `chk_recommendation_evidence_has_source` (`page_id IS NOT NULL OR ai_scan_id IS NOT NULL OR citation_id IS NOT NULL OR competitor_id IS NOT NULL`)
 
@@ -146,7 +161,11 @@ Added column and constraint to link scan citations to competitor records:
 - `idx_competitors_domain_id ON public.competitors(domain_id)`
 - `idx_competitors_status ON public.competitors(status)`
 - `idx_citations_competitor_id ON public.citations(competitor_id)`
+- `uq_recommendations_project_scope_key ON public.recommendations(project_id, scope_key) WHERE superseded_by IS NULL`
 - `idx_recommendations_project_id ON public.recommendations(project_id)`
+- `idx_recommendations_scan_id ON public.recommendations(scan_id)`
+- `idx_recommendations_superseded_by ON public.recommendations(superseded_by)`
+- `idx_recommendations_resolved_by_scan_id ON public.recommendations(resolved_by_scan_id)`
 - `idx_recommendations_status ON public.recommendations(status)`
 - `idx_recommendation_evidence_recommendation_id ON public.recommendation_evidence(recommendation_id)`
 
@@ -163,4 +182,4 @@ Row Level Security is enabled on `competitors`, `recommendations`, and `recommen
 | `recommendation_evidence` | `SELECT`, `INSERT` | `recommendations` -> `projects.user_id = auth.uid()` (Immutable) |
 
 > [!NOTE]
-> `competitors` is explicitly hard-DELETE-able by project owners. Untracking a competitor cascade-deletes the `competitors` row while `citations.competitor_id` and `recommendation_evidence.competitor_id` are set to `NULL`, retaining analytical scan records.
+> `competitors` is explicitly hard-DELETE-able by project owners. Untracking a competitor cascade-deletes the `competitors` row, while `citations.competitor_id` is set to `NULL` (retaining scan analytical records) and linked `recommendation_evidence` rows are cleaned up via `CASCADE`.

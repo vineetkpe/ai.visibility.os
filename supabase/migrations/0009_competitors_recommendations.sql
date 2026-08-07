@@ -1,5 +1,5 @@
 -- Migration: 0009_competitors_recommendations.sql
--- Description: Creates Competitors & Recommendations schema (domain_type, competitor_source, competitor_status, recommendation_status enums, competitors, recommendations, recommendation_evidence tables, citations competitor reference, domain_type trigger enforcement, indexes, and RLS policies).
+-- Description: Creates Competitors & Recommendations schema (domain_type, competitor_source, competitor_status, recommendation_status, recommendation_priority enums, competitors, recommendations with versioning & scan references, recommendation_evidence with CASCADE sources, citations competitor reference, partial unique index for scope_key versioning, indexes, and RLS policies).
 -- Idempotent: Safe to execute on fresh schema following 0008_ai_visibility_engine.sql.
 
 -- -----------------------------------------------------------------------------
@@ -10,6 +10,7 @@ CREATE TYPE public.domain_type AS ENUM ('own', 'competitor');
 CREATE TYPE public.competitor_source AS ENUM ('user_added', 'ai_suggested');
 CREATE TYPE public.competitor_status AS ENUM ('suggested', 'confirmed', 'dismissed');
 CREATE TYPE public.recommendation_status AS ENUM ('open', 'in_progress', 'resolved', 'dismissed');
+CREATE TYPE public.recommendation_priority AS ENUM ('low', 'medium', 'high', 'critical');
 
 -- -----------------------------------------------------------------------------
 -- 2. ALTER DOMAINS TABLE
@@ -86,24 +87,28 @@ ALTER TABLE public.citations
 CREATE TABLE public.recommendations (
     id UUID NOT NULL DEFAULT gen_random_uuid(),
     project_id UUID NOT NULL,
+    scan_id UUID NULL,
     category VARCHAR(100) NOT NULL,
     title TEXT NOT NULL,
     description TEXT NULL,
     impact_score SMALLINT NOT NULL,
     effort_score SMALLINT NOT NULL,
-    priority VARCHAR(20) NOT NULL,
+    priority public.recommendation_priority NOT NULL,
     status public.recommendation_status NOT NULL DEFAULT 'open',
     scope_key VARCHAR(255) NOT NULL,
     generation_method public.extraction_method NOT NULL DEFAULT 'deterministic',
+    superseded_by UUID NULL,
+    resolved_by_scan_id UUID NULL,
     resolved_at TIMESTAMPTZ NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT pk_recommendations PRIMARY KEY (id),
     CONSTRAINT fk_recommendations_project FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE,
-    CONSTRAINT uq_recommendations_project_scope_key UNIQUE (project_id, scope_key),
+    CONSTRAINT fk_recommendations_scan FOREIGN KEY (scan_id) REFERENCES public.ai_scans(id) ON DELETE SET NULL,
+    CONSTRAINT fk_recommendations_superseded_by FOREIGN KEY (superseded_by) REFERENCES public.recommendations(id) ON DELETE SET NULL,
+    CONSTRAINT fk_recommendations_resolved_by_scan FOREIGN KEY (resolved_by_scan_id) REFERENCES public.ai_scans(id) ON DELETE SET NULL,
     CONSTRAINT chk_recommendations_impact CHECK (impact_score BETWEEN 1 AND 5),
-    CONSTRAINT chk_recommendations_effort CHECK (effort_score BETWEEN 1 AND 5),
-    CONSTRAINT chk_recommendations_priority CHECK (priority IN ('low', 'medium', 'high', 'critical'))
+    CONSTRAINT chk_recommendations_effort CHECK (effort_score BETWEEN 1 AND 5)
 );
 
 CREATE TRIGGER trg_recommendations_set_updated_at
@@ -126,10 +131,10 @@ CREATE TABLE public.recommendation_evidence (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     CONSTRAINT pk_recommendation_evidence PRIMARY KEY (id),
     CONSTRAINT fk_recommendation_evidence_recommendation FOREIGN KEY (recommendation_id) REFERENCES public.recommendations(id) ON DELETE CASCADE,
-    CONSTRAINT fk_recommendation_evidence_page FOREIGN KEY (page_id) REFERENCES public.pages(id) ON DELETE SET NULL,
-    CONSTRAINT fk_recommendation_evidence_scan FOREIGN KEY (ai_scan_id) REFERENCES public.ai_scans(id) ON DELETE SET NULL,
-    CONSTRAINT fk_recommendation_evidence_citation FOREIGN KEY (citation_id) REFERENCES public.citations(id) ON DELETE SET NULL,
-    CONSTRAINT fk_recommendation_evidence_competitor FOREIGN KEY (competitor_id) REFERENCES public.competitors(id) ON DELETE SET NULL,
+    CONSTRAINT fk_recommendation_evidence_page FOREIGN KEY (page_id) REFERENCES public.pages(id) ON DELETE CASCADE,
+    CONSTRAINT fk_recommendation_evidence_scan FOREIGN KEY (ai_scan_id) REFERENCES public.ai_scans(id) ON DELETE CASCADE,
+    CONSTRAINT fk_recommendation_evidence_citation FOREIGN KEY (citation_id) REFERENCES public.citations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_recommendation_evidence_competitor FOREIGN KEY (competitor_id) REFERENCES public.competitors(id) ON DELETE CASCADE,
     CONSTRAINT chk_recommendation_evidence_has_source CHECK (page_id IS NOT NULL OR ai_scan_id IS NOT NULL OR citation_id IS NOT NULL OR competitor_id IS NOT NULL)
 );
 
@@ -140,9 +145,16 @@ CREATE TABLE public.recommendation_evidence (
 CREATE INDEX idx_competitors_project_id ON public.competitors(project_id);
 CREATE INDEX idx_competitors_domain_id ON public.competitors(domain_id);
 CREATE INDEX idx_competitors_status ON public.competitors(status);
+
 CREATE INDEX idx_citations_competitor_id ON public.citations(competitor_id);
+
+CREATE UNIQUE INDEX uq_recommendations_project_scope_key ON public.recommendations(project_id, scope_key) WHERE superseded_by IS NULL;
 CREATE INDEX idx_recommendations_project_id ON public.recommendations(project_id);
+CREATE INDEX idx_recommendations_scan_id ON public.recommendations(scan_id);
+CREATE INDEX idx_recommendations_superseded_by ON public.recommendations(superseded_by);
+CREATE INDEX idx_recommendations_resolved_by_scan_id ON public.recommendations(resolved_by_scan_id);
 CREATE INDEX idx_recommendations_status ON public.recommendations(status);
+
 CREATE INDEX idx_recommendation_evidence_recommendation_id ON public.recommendation_evidence(recommendation_id);
 
 -- -----------------------------------------------------------------------------
