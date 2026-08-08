@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { LogoutButton } from '@/components/auth/logout-button';
 
 export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   isOpen?: boolean;
@@ -118,12 +119,9 @@ export function Sidebar({ isOpen = false, onClose, className, ...props }: Sideba
           </nav>
         </div>
 
-        {/* Footer info placeholder */}
+        {/* Footer Logout Button */}
         <div className="p-4 border-t border-slate-200/80">
-          <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500 border border-slate-200/60">
-            <div className="font-medium text-slate-900">System Ready</div>
-            <div className="text-[11px] text-slate-400 mt-0.5">Light Theme v1.0</div>
-          </div>
+          <LogoutButton className="w-full justify-center" />
         </div>
       </aside>
     </>
