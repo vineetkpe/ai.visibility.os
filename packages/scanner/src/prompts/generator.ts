@@ -10,10 +10,13 @@ export interface GeneratedPrompt {
 /**
  * Generates natural user search prompts grouped by search intent from project business context fields.
  */
-export function generatePromptsFromContext(fields: BusinessContextFieldRecord[]): GeneratedPrompt[] {
+export function generatePromptsFromContext(
+  fields: BusinessContextFieldRecord[]
+): GeneratedPrompt[] {
   const prompts: GeneratedPrompt[] = [];
 
-  const getValues = (name: string) => fields.filter((f) => f.field_name === name).map((f) => f.field_value);
+  const getValues = (name: string) =>
+    fields.filter((f) => f.field_name === name).map((f) => f.field_value);
 
   const companyNames = getValues('companyName');
   const industries = getValues('industry');

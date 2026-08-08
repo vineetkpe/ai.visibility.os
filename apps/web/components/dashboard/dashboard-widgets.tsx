@@ -34,15 +34,19 @@ import {
 } from 'lucide-react';
 
 // Custom Tooltip for Visibility Trend Chart
-function VisibilityTrendTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: { date: string; score: number; prompt: string } }> }) {
+function VisibilityTrendTooltip({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{ payload: { date: string; score: number; prompt: string } }>;
+}) {
   if (active && payload && payload.length > 0 && payload[0]?.payload) {
     const data = payload[0].payload;
     return (
       <div className="bg-slate-900 text-white p-3 rounded-lg border border-slate-800 text-xs shadow-xl space-y-1">
         <div className="font-semibold text-slate-300">{data.date}</div>
-        <div className="text-amber-400 font-bold text-sm">
-          Visibility Score: {data.score}/100
-        </div>
+        <div className="text-amber-400 font-bold text-sm">Visibility Score: {data.score}/100</div>
         <div className="text-slate-400 italic truncate max-w-xs">
           Prompt: &quot;{data.prompt}&quot;
         </div>
@@ -257,9 +261,7 @@ export function AIPlatformBreakdownWidget({
                   <div className="text-2xl font-bold text-slate-900">
                     {p.score !== null ? `${p.score}/100` : 'N/A'}
                   </div>
-                  <div className="text-[11px] text-slate-500">
-                    {p.scansCount} completed scan(s)
-                  </div>
+                  <div className="text-[11px] text-slate-500">{p.scansCount} completed scan(s)</div>
                 </div>
               ) : (
                 <div className="space-y-1 py-1">
@@ -311,7 +313,8 @@ export function CompetitorBenchmarkingWidget({
         <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-8 text-center space-y-2">
           <p className="text-xs text-slate-600 font-medium">No competitors tracked yet</p>
           <p className="text-xs text-slate-400 max-w-sm mx-auto">
-            Add competitor domains to compare AI search visibility scores and citation co-occurrence.
+            Add competitor domains to compare AI search visibility scores and citation
+            co-occurrence.
           </p>
           <Button asChild size="sm" variant="outline" className="text-xs">
             <Link href="/competitors">Add First Competitor</Link>
@@ -347,11 +350,16 @@ export function CompetitorBenchmarkingWidget({
 
             <div className="h-56 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={competitors.visibilityComparison} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart
+                  data={competitors.visibilityComparison}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} domain={[0, 100]} tickLine={false} />
-                  <Tooltip formatter={(val: number | string) => [`${val}/100`, 'Visibility Score']} />
+                  <Tooltip
+                    formatter={(val: number | string) => [`${val}/100`, 'Visibility Score']}
+                  />
                   <Bar dataKey="score" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -365,11 +373,16 @@ export function CompetitorBenchmarkingWidget({
             </h4>
             <div className="h-56 w-full pt-2">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={competitors.citationComparison} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <BarChart
+                  data={competitors.citationComparison}
+                  margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                   <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} tickLine={false} />
                   <YAxis stroke="#94a3b8" fontSize={11} tickLine={false} />
-                  <Tooltip formatter={(val: number | string) => [`${val} citation(s)`, 'Citations']} />
+                  <Tooltip
+                    formatter={(val: number | string) => [`${val} citation(s)`, 'Citations']}
+                  />
                   <Bar dataKey="citationCount" fill="#0284c7" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
@@ -423,7 +436,10 @@ export function RecommendationsSummaryWidget({
           <div className="space-y-2">
             {recommendations.criticalList.length > 0 ? (
               recommendations.criticalList.map((rec) => (
-                <div key={rec.id} className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-red-500/10 pb-1">
+                <div
+                  key={rec.id}
+                  className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-red-500/10 pb-1"
+                >
                   • {rec.title}
                 </div>
               ))
@@ -447,7 +463,10 @@ export function RecommendationsSummaryWidget({
           <div className="space-y-2">
             {recommendations.highPriorityList.length > 0 ? (
               recommendations.highPriorityList.map((rec) => (
-                <div key={rec.id} className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-amber-500/10 pb-1">
+                <div
+                  key={rec.id}
+                  className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-amber-500/10 pb-1"
+                >
                   • {rec.title}
                 </div>
               ))
@@ -471,7 +490,10 @@ export function RecommendationsSummaryWidget({
           <div className="space-y-2">
             {recommendations.recentlyResolvedList.length > 0 ? (
               recommendations.recentlyResolvedList.map((rec) => (
-                <div key={rec.id} className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-emerald-500/10 pb-1">
+                <div
+                  key={rec.id}
+                  className="text-xs text-slate-800 font-medium line-clamp-1 border-b border-emerald-500/10 pb-1"
+                >
                   ✓ {rec.title}
                 </div>
               ))
@@ -556,7 +578,9 @@ export function RecentActivityWidget({
       setCancellingJobId(jobId);
       const res = await cancelJobAction(jobId);
       if (res.success) {
-        toast.success(res.data?.alreadyFinished ? 'Job already finished.' : 'Job cancellation requested.');
+        toast.success(
+          res.data?.alreadyFinished ? 'Job already finished.' : 'Job cancellation requested.'
+        );
       } else {
         toast.error(res.error || 'Failed to cancel job.');
       }
@@ -611,8 +635,8 @@ export function RecentActivityWidget({
                         j.status === 'completed'
                           ? 'bg-emerald-100 text-emerald-800'
                           : j.status === 'failed'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-amber-100 text-amber-800'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-amber-100 text-amber-800'
                       }`}
                     >
                       {j.status}

@@ -14,9 +14,7 @@ export default function AuthLayout({ children }: AuthLayoutProps) {
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-slate-900 text-white shadow-xs">
           <Shield className="h-4 w-4" />
         </div>
-        <span className="font-bold text-slate-900 text-lg tracking-tight">
-          AI Visibility OS
-        </span>
+        <span className="font-bold text-slate-900 text-lg tracking-tight">AI Visibility OS</span>
       </Link>
 
       {/* Form Container */}

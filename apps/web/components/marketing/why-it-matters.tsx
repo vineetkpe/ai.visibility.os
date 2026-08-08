@@ -13,7 +13,8 @@ export function WhyItMatters() {
             AI is becoming the first touchpoint for customer research.
           </p>
           <p className="text-base text-slate-600">
-            When buyers ask AI assistants for software comparisons or vendor recommendations, your brand’s inclusion determines whether you enter the consideration set.
+            When buyers ask AI assistants for software comparisons or vendor recommendations, your
+            brand’s inclusion determines whether you enter the consideration set.
           </p>
         </div>
 
@@ -22,11 +23,10 @@ export function WhyItMatters() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
               <Compass className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">
-              Zero-Click Discovery
-            </h3>
+            <h3 className="text-base font-semibold text-slate-900">Zero-Click Discovery</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Users get complete answers inside AI interfaces without clicking through multiple search results. Citation placement is key.
+              Users get complete answers inside AI interfaces without clicking through multiple
+              search results. Citation placement is key.
             </p>
           </div>
 
@@ -34,11 +34,10 @@ export function WhyItMatters() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
               <ShieldCheck className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">
-              Brand Narrative Control
-            </h3>
+            <h3 className="text-base font-semibold text-slate-900">Brand Narrative Control</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Audit how AI systems summarize your key features, pricing model, and competitive advantages to ensure accurate representation.
+              Audit how AI systems summarize your key features, pricing model, and competitive
+              advantages to ensure accurate representation.
             </p>
           </div>
 
@@ -46,11 +45,10 @@ export function WhyItMatters() {
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
               <TrendingUp className="h-5 w-5" />
             </div>
-            <h3 className="text-base font-semibold text-slate-900">
-              Competitive Displacement
-            </h3>
+            <h3 className="text-base font-semibold text-slate-900">Competitive Displacement</h3>
             <p className="text-sm text-slate-600 leading-relaxed">
-              Identify where competitors are recommended ahead of you and implement targeted content optimizations to claim rank position.
+              Identify where competitors are recommended ahead of you and implement targeted content
+              optimizations to claim rank position.
             </p>
           </div>
         </div>

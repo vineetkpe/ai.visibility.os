@@ -128,15 +128,30 @@ export function RecommendationCard({
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-orange-400" />
-            <span>Impact: <strong className="text-neutral-200 capitalize">{recommendation.estimatedImpact}</strong></span>
+            <span>
+              Impact:{' '}
+              <strong className="text-neutral-200 capitalize">
+                {recommendation.estimatedImpact}
+              </strong>
+            </span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-blue-400" />
-            <span>Effort: <strong className="text-neutral-200 capitalize">{recommendation.estimatedEffort.replace('_', ' ')}</strong></span>
+            <span>
+              Effort:{' '}
+              <strong className="text-neutral-200 capitalize">
+                {recommendation.estimatedEffort.replace('_', ' ')}
+              </strong>
+            </span>
           </div>
           <div className="flex items-center gap-1" title="Evidence confidence score">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Conf: <strong className="text-neutral-200">{Math.round(recommendation.confidenceScore * 100)}%</strong></span>
+            <span>
+              Conf:{' '}
+              <strong className="text-neutral-200">
+                {Math.round(recommendation.confidenceScore * 100)}%
+              </strong>
+            </span>
           </div>
         </div>
 

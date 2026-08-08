@@ -1,5 +1,9 @@
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
-import type { VisibilityScanPipelineOptions, VisibilityScanPipelineResult, BusinessContextFieldRecord } from './types';
+import type {
+  VisibilityScanPipelineOptions,
+  VisibilityScanPipelineResult,
+  BusinessContextFieldRecord,
+} from './types';
 import { GeminiProvider } from './providers/gemini';
 import { generatePromptsFromContext, syncPromptLibrary } from './prompts/generator';
 
@@ -16,9 +20,9 @@ export async function runVisibilityScanPipeline(
     // 1. Verify project has a current business context version
     const { data: currentVersions, error: versionError } = await supabase
       .from('business_context_versions')
-      .select('id')
+      .select('id, industry, description, value_proposition, target_audience')
       .eq('project_id', projectId)
-      .eq('is_current', true)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (versionError || !currentVersions || currentVersions.length === 0) {
@@ -26,35 +30,25 @@ export async function runVisibilityScanPipeline(
         projectId,
         scansExecuted: 0,
         status: 'failed',
-        error: 'Scan generation requires a current business context. Please generate business context first.',
+        error:
+          'Scan generation requires a current business context. Please generate business context first.',
       };
     }
 
-    const currentVersionId = currentVersions[0]?.id as string;
+    const currentVersion = currentVersions[0];
 
-    // 2. Load current business context fields
-    const { data: rawFields, error: fieldsError } = await supabase
-      .from('business_context_fields')
-      .select('field_name, field_value')
-      .eq('context_version_id', currentVersionId);
-
-    if (fieldsError || !rawFields || rawFields.length === 0) {
-      return {
-        projectId,
-        scansExecuted: 0,
-        status: 'failed',
-        error: 'No business context fields found for current version.',
-      };
-    }
-
-    const fields = rawFields as BusinessContextFieldRecord[];
+    // 2. Build context text from business_context_versions
+    const fields: BusinessContextFieldRecord[] = [
+      { field_name: 'industry', field_value: currentVersion?.industry || '' },
+      { field_name: 'description', field_value: currentVersion?.description || '' },
+      { field_name: 'value_proposition', field_value: currentVersion?.value_proposition || '' },
+    ];
 
     // 3. Fetch primary domain for project
     const { data: domains } = await supabase
       .from('domains')
       .select('id, host')
       .eq('project_id', projectId)
-      .is('deleted_at', null)
       .limit(1);
 
     const targetDomainName = options.targetDomainName || domains?.[0]?.host || 'example.com';
@@ -69,6 +63,15 @@ export async function runVisibilityScanPipeline(
         .eq('domain_id', domainId);
       if (pData) crawledPages = pData;
     }
+
+    // Fetch active provider id for Gemini
+    const { data: providerRow } = await supabase
+      .from('providers')
+      .select('id')
+      .eq('slug', 'gemini')
+      .maybeSingle();
+
+    const providerId = providerRow?.id || '00000000-0000-0000-0000-000000000000';
 
     // 4. Generate & Sync Prompts to prompt_library
     const generatedPrompts = generatePromptsFromContext(fields);
@@ -94,12 +97,13 @@ export async function runVisibilityScanPipeline(
 
       // Insert pending/running scan row
       const { data: scan, error: scanInsertError } = await supabase
-        .from('scans')
+        .from('ai_scans')
         .insert({
           project_id: projectId,
-          prompt_id: promptObj.id,
-          query_prompt: promptText,
-          ai_model: provider.modelName,
+          provider_id: providerId,
+          prompt_library_id: promptObj.id,
+          prompt_text: promptText,
+          model_name: provider.modelName,
           status: 'running',
           started_at: now,
         })
@@ -122,25 +126,17 @@ export async function runVisibilityScanPipeline(
           targetDomainName
         );
 
-        // Calculate Visibility Score (0-100)
-        let visScore = 0;
-        if (analysis.mentioned) visScore += 50;
-        if (analysis.rankPosition === 1) visScore += 50;
-        else if (analysis.rankPosition === 2) visScore += 35;
-        else if (analysis.rankPosition === 3) visScore += 20;
-        else if (analysis.rankPosition && analysis.rankPosition <= 5) visScore += 10;
-
         // Persist Citations
         if (groundedResult.citations.length > 0) {
           const citationRows = groundedResult.citations.map((c) => {
-            const isOwn = c.sourceDomain.toLowerCase().replace(/^www\./, '') === normalizedTargetDomain ||
-                          c.sourceDomain.toLowerCase().endsWith(`.${normalizedTargetDomain}`);
+            const isOwn =
+              c.sourceDomain.toLowerCase().replace(/^www\./, '') === normalizedTargetDomain ||
+              c.sourceDomain.toLowerCase().endsWith(`.${normalizedTargetDomain}`);
             return {
-              scan_id: scan.id,
-              source_url: c.sourceUrl,
-              source_domain: c.sourceDomain,
-              anchor_text: c.anchorText || null,
-              citation_order: c.order,
+              ai_scan_id: scan.id,
+              url: c.sourceUrl,
+              title: c.anchorText || null,
+              position: c.order,
               is_own_domain: isOwn,
             };
           });
@@ -156,7 +152,12 @@ export async function runVisibilityScanPipeline(
               await supabase.from('page_scans').insert({
                 scan_id: scan.id,
                 page_id: matchedPage.id,
-                sentiment_score: analysis.sentiment === 'positive' ? 1.0 : analysis.sentiment === 'negative' ? -1.0 : 0.0,
+                sentiment_score:
+                  analysis.sentiment === 'positive'
+                    ? 1.0
+                    : analysis.sentiment === 'negative'
+                      ? -1.0
+                      : 0.0,
                 rank_position: c.order,
                 snippet_extracted: c.anchorText || null,
               });
@@ -190,11 +191,13 @@ export async function runVisibilityScanPipeline(
 
         // Update scan status to completed
         await supabase
-          .from('scans')
+          .from('ai_scans')
           .update({
             status: 'completed',
-            visibility_score: visScore,
-            summary: analysis.summary,
+            is_mentioned: analysis.mentioned,
+            mention_position: analysis.rankPosition || null,
+            sentiment: analysis.sentiment || null,
+            summary_markdown: analysis.summary,
             raw_response: groundedResult.rawText,
             completed_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
@@ -205,7 +208,7 @@ export async function runVisibilityScanPipeline(
       } catch (scanErr: unknown) {
         const errMsg = scanErr instanceof Error ? scanErr.message : 'Scan execution error.';
         await supabase
-          .from('scans')
+          .from('ai_scans')
           .update({
             status: 'failed',
             error_message: errMsg,

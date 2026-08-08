@@ -17,11 +17,16 @@ export function CTA() {
           </h2>
 
           <p className="text-base text-slate-300 max-w-xl mx-auto leading-relaxed">
-            Audit your domain citations, discover competitor rankings, and start optimizing for conversational AI platforms today.
+            Audit your domain citations, discover competitor rankings, and start optimizing for
+            conversational AI platforms today.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button asChild size="lg" className="bg-white text-slate-900 hover:bg-slate-100 text-sm px-6 w-full sm:w-auto">
+            <Button
+              asChild
+              size="lg"
+              className="bg-white text-slate-900 hover:bg-slate-100 text-sm px-6 w-full sm:w-auto"
+            >
               <Link href="/contact">
                 Start Free Trial
                 <ArrowRight className="ml-2 h-4 w-4" />

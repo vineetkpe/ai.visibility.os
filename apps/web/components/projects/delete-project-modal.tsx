@@ -52,27 +52,41 @@ export function DeleteProjectModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4" role="dialog" aria-modal="true" aria-labelledby="del-proj-title">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="del-proj-title"
+    >
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center space-x-3 text-red-600 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div>
-            <h3 id="del-proj-title" className="text-lg font-semibold text-slate-900">Delete Project</h3>
+            <h3 id="del-proj-title" className="text-lg font-semibold text-slate-900">
+              Delete Project
+            </h3>
             <p className="text-xs text-slate-500">This action cannot be undone.</p>
           </div>
         </div>
 
         <p className="text-sm text-slate-600 mb-4">
-          Are you sure you want to delete <span className="font-semibold text-slate-900">&quot;{projectName}&quot;</span>?
-          This will hide the project from your dashboard. Historical data remains securely preserved in the database audit log.
+          Are you sure you want to delete{' '}
+          <span className="font-semibold text-slate-900">&quot;{projectName}&quot;</span>? This will
+          hide the project from your dashboard. Historical data remains securely preserved in the
+          database audit log.
         </p>
 
         <form onSubmit={handleDelete} className="space-y-4">
           <div>
-            <label htmlFor="delete-confirm-input" className="block text-xs font-medium text-slate-700 mb-1.5">
-              Type <span className="font-mono font-bold text-slate-900 select-all">{projectName}</span> to confirm:
+            <label
+              htmlFor="delete-confirm-input"
+              className="block text-xs font-medium text-slate-700 mb-1.5"
+            >
+              Type{' '}
+              <span className="font-mono font-bold text-slate-900 select-all">{projectName}</span>{' '}
+              to confirm:
             </label>
             <input
               id="delete-confirm-input"
@@ -86,12 +100,7 @@ export function DeleteProjectModal({
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isDeleting}
-            >
+            <Button type="button" variant="outline" onClick={onClose} disabled={isDeleting}>
               Cancel
             </Button>
             <Button

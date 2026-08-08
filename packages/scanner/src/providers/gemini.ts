@@ -7,7 +7,8 @@ const analysisResponseSchema: Schema = {
   properties: {
     mentioned: {
       type: Type.BOOLEAN,
-      description: 'Whether the target domain or brand is explicitly mentioned or cited in the response text or citations.',
+      description:
+        'Whether the target domain or brand is explicitly mentioned or cited in the response text or citations.',
     },
     mentionFrequency: {
       type: Type.INTEGER,
@@ -15,7 +16,8 @@ const analysisResponseSchema: Schema = {
     },
     sentiment: {
       type: Type.STRING,
-      description: 'Sentiment towards the target brand: positive, neutral, negative, mixed, or null if not mentioned.',
+      description:
+        'Sentiment towards the target brand: positive, neutral, negative, mixed, or null if not mentioned.',
     },
     summary: {
       type: Type.STRING,
@@ -27,8 +29,14 @@ const analysisResponseSchema: Schema = {
         type: Type.OBJECT,
         properties: {
           name: { type: Type.STRING, description: 'Brand or company or product name detected.' },
-          entityType: { type: Type.STRING, description: 'Type: brand, product, technology, or company.' },
-          snippet: { type: Type.STRING, description: 'Context snippet surrounding the entity mention.' },
+          entityType: {
+            type: Type.STRING,
+            description: 'Type: brand, product, technology, or company.',
+          },
+          snippet: {
+            type: Type.STRING,
+            description: 'Context snippet surrounding the entity mention.',
+          },
           sentiment: { type: Type.STRING, description: 'Mention sentiment.' },
         },
         required: ['name', 'entityType'],
@@ -178,10 +186,16 @@ ${citationSummary || 'None'}`,
     }
 
     const mentioned = Boolean(parsed.mentioned) || rankPosition !== null;
-    const mentionFrequency = typeof parsed.mentionFrequency === 'number' ? parsed.mentionFrequency : (mentioned ? 1 : 0);
+    const mentionFrequency =
+      typeof parsed.mentionFrequency === 'number' ? parsed.mentionFrequency : mentioned ? 1 : 0;
     const validSentiments = ['positive', 'neutral', 'negative', 'mixed'];
-    const rawSentiment = typeof parsed.sentiment === 'string' ? parsed.sentiment.toLowerCase() : null;
-    const sentiment = validSentiments.includes(rawSentiment || '') ? (rawSentiment as ScanAnalysisResult['sentiment']) : (mentioned ? 'neutral' : null);
+    const rawSentiment =
+      typeof parsed.sentiment === 'string' ? parsed.sentiment.toLowerCase() : null;
+    const sentiment = validSentiments.includes(rawSentiment || '')
+      ? (rawSentiment as ScanAnalysisResult['sentiment'])
+      : mentioned
+        ? 'neutral'
+        : null;
 
     const entitiesDetected = Array.isArray(parsed.entitiesDetected)
       ? (parsed.entitiesDetected as Array<Record<string, string>>).map((e) => ({

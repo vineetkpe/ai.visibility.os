@@ -4,7 +4,14 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -78,7 +85,9 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor="forgot-email" className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="forgot-email" className="text-xs font-medium text-slate-700">
+              Email address
+            </label>
             <input
               id="forgot-email"
               type="email"

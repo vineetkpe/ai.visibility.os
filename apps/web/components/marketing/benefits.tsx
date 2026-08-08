@@ -32,9 +32,7 @@ export function Benefits() {
               <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-900">
                 <Check className="h-3.5 w-3.5" />
               </div>
-              <span className="text-sm font-medium text-slate-800">
-                {benefit}
-              </span>
+              <span className="text-sm font-medium text-slate-800">{benefit}</span>
             </div>
           ))}
         </div>

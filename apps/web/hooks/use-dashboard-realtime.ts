@@ -12,7 +12,7 @@ export function useDashboardRealtime(projectId: string | null) {
 
     const supabase = createClient();
 
-    // Subscribe to Realtime postgres_changes on scans and jobs tables for current project
+    // Subscribe to Realtime postgres_changes on ai_scans and jobs tables for current project
     const channel = supabase
       .channel(`project-dashboard-${projectId}`)
       .on(
@@ -20,11 +20,11 @@ export function useDashboardRealtime(projectId: string | null) {
         {
           event: '*',
           schema: 'public',
-          table: 'scans',
+          table: 'ai_scans',
           filter: `project_id=eq.${projectId}`,
         },
         (payload) => {
-          console.log('[Realtime] Scans table update detected:', payload);
+          console.log('[Realtime] AI scans table update detected:', payload);
           queryClient.invalidateQueries({ queryKey: ['dashboardOverview', projectId] });
           queryClient.invalidateQueries({ queryKey: ['scanHistory', projectId] });
         }

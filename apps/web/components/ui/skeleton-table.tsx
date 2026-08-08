@@ -6,12 +6,7 @@ export interface SkeletonTableProps extends React.HTMLAttributes<HTMLDivElement>
   columns?: number;
 }
 
-export function SkeletonTable({
-  rows = 5,
-  columns = 4,
-  className,
-  ...props
-}: SkeletonTableProps) {
+export function SkeletonTable({ rows = 5, columns = 4, className, ...props }: SkeletonTableProps) {
   return (
     <div
       className={cn(
@@ -32,10 +27,7 @@ export function SkeletonTable({
       {/* Table Rows */}
       <div className="divide-y divide-slate-100">
         {Array.from({ length: rows }).map((_, rowIndex) => (
-          <div
-            key={`row-${rowIndex}`}
-            className="flex items-center px-6 py-4"
-          >
+          <div key={`row-${rowIndex}`} className="flex items-center px-6 py-4">
             {Array.from({ length: columns }).map((_, colIndex) => (
               <div key={`cell-${rowIndex}-${colIndex}`} className="flex-1 px-2">
                 <div

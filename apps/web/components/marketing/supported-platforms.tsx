@@ -80,14 +80,10 @@ export function SupportedPlatforms() {
                   </span>
                 </div>
                 <CardTitle className="text-lg">{platform.name}</CardTitle>
-                <div className="text-xs font-mono text-slate-400">
-                  {platform.provider}
-                </div>
+                <div className="text-xs font-mono text-slate-400">{platform.provider}</div>
               </CardHeader>
               <CardContent>
-                <p className="text-xs text-slate-600 leading-relaxed">
-                  {platform.description}
-                </p>
+                <p className="text-xs text-slate-600 leading-relaxed">{platform.description}</p>
               </CardContent>
             </Card>
           ))}

@@ -42,9 +42,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
         return request.cookies.getAll();
       },
       setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({
           request,
         });
@@ -71,9 +69,7 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
   }
 
   // 1. Route protection: Unauthenticated user accessing protected route
-  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix)
-  );
+  const isProtectedRoute = PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
   if (isProtectedRoute && !user) {
     const rawPath = pathname + request.nextUrl.search;

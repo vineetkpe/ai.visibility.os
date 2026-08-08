@@ -38,7 +38,6 @@ async function verifyProjectOwnership(supabase: SupabaseClient<Database>, projec
     .select('id')
     .eq('id', projectId)
     .eq('user_id', user.id)
-    .is('deleted_at', null)
     .single();
 
   if (projErr || !project) {
@@ -61,11 +60,10 @@ export async function generateRecommendationsAction(
 
     // 1. Verify Gating - Completed Scan
     const { data: completedScans, error: scanErr } = await supabase
-      .from('scans')
+      .from('ai_scans')
       .select('id')
       .eq('project_id', projectId)
       .eq('status', 'completed')
-      .is('deleted_at', null)
       .limit(1);
 
     if (scanErr || !completedScans || completedScans.length === 0) {
@@ -81,7 +79,7 @@ export async function generateRecommendationsAction(
       .from('business_context_versions')
       .select('id')
       .eq('project_id', projectId)
-      .eq('is_current', true)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (bcErr || !bcVersions || bcVersions.length === 0) {

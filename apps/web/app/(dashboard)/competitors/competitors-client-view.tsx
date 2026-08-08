@@ -76,7 +76,8 @@ export function CompetitorsClientView({
   const scores = initialCompetitors
     .map((c) => c.visibilityScore)
     .filter((s): s is number => s !== null);
-  const avgVisibility = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+  const avgVisibility =
+    scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
   const crawledCount = initialCompetitors.filter((c) => c.tier2Available).length;
 
   return (
@@ -86,7 +87,12 @@ export function CompetitorsClientView({
         <div className="flex items-center space-x-3">
           <FolderKanban className="h-5 w-5 text-slate-500" />
           <div className="flex items-center space-x-2">
-            <label htmlFor="comp-project-select" className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Project:</label>
+            <label
+              htmlFor="comp-project-select"
+              className="text-xs font-semibold uppercase tracking-wider text-slate-500"
+            >
+              Active Project:
+            </label>
             <select
               id="comp-project-select"
               value={currentProjectId}
@@ -109,7 +115,9 @@ export function CompetitorsClientView({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Tracked Competitors</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Tracked Competitors
+            </span>
             <Building className="h-4 w-4 text-slate-400" />
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2">{totalCompetitors}</div>
@@ -118,7 +126,9 @@ export function CompetitorsClientView({
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Avg Visibility Score</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Avg Visibility Score
+            </span>
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2">
@@ -129,11 +139,14 @@ export function CompetitorsClientView({
 
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Crawled Sites (Tier 2)</span>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+              Crawled Sites (Tier 2)
+            </span>
             <BarChart2 className="h-4 w-4 text-indigo-500" />
           </div>
           <div className="text-2xl font-bold text-slate-900 mt-2">
-            {crawledCount} <span className="text-xs font-normal text-slate-400">/ {totalCompetitors}</span>
+            {crawledCount}{' '}
+            <span className="text-xs font-normal text-slate-400">/ {totalCompetitors}</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-0.5">Real content comparison ready</p>
         </div>
@@ -161,7 +174,8 @@ export function CompetitorsClientView({
             <div>
               <h4 className="text-sm font-semibold text-slate-900">No competitors tracked yet</h4>
               <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                Add a competitor domain manually or confirm an AI scan co-occurrence suggestion to start benchmarking.
+                Add a competitor domain manually or confirm an AI scan co-occurrence suggestion to
+                start benchmarking.
               </p>
             </div>
             <AddCompetitorModal projectId={currentProjectId} onCompetitorAdded={refreshData} />

@@ -50,13 +50,22 @@ export function AddCompetitorModal({ projectId, onCompetitorAdded }: AddCompetit
 
   return (
     <>
-      <Button onClick={() => setIsOpen(true)} size="sm" className="gap-1.5 bg-slate-900 text-white hover:bg-slate-800">
+      <Button
+        onClick={() => setIsOpen(true)}
+        size="sm"
+        className="gap-1.5 bg-slate-900 text-white hover:bg-slate-800"
+      >
         <Plus className="h-4 w-4" />
         Add Competitor
       </Button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4" role="dialog" aria-modal="true" aria-labelledby="add-comp-title">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="add-comp-title"
+        >
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
@@ -64,7 +73,9 @@ export function AddCompetitorModal({ projectId, onCompetitorAdded }: AddCompetit
                   <Building className="h-4 w-4" />
                 </div>
                 <div>
-                  <h3 id="add-comp-title" className="font-semibold text-slate-900 text-base">Track New Competitor</h3>
+                  <h3 id="add-comp-title" className="font-semibold text-slate-900 text-base">
+                    Track New Competitor
+                  </h3>
                   <p className="text-xs text-slate-500">Explicitly confirm brand name & domain</p>
                 </div>
               </div>
@@ -85,7 +96,9 @@ export function AddCompetitorModal({ projectId, onCompetitorAdded }: AddCompetit
               )}
 
               <div className="space-y-1.5">
-                <label htmlFor="comp-name-input" className="text-xs font-medium text-slate-700">Company / Brand Name</label>
+                <label htmlFor="comp-name-input" className="text-xs font-medium text-slate-700">
+                  Company / Brand Name
+                </label>
                 <input
                   id="comp-name-input"
                   type="text"
@@ -98,7 +111,9 @@ export function AddCompetitorModal({ projectId, onCompetitorAdded }: AddCompetit
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="comp-url-input" className="text-xs font-medium text-slate-700">Competitor Domain / Website URL</label>
+                <label htmlFor="comp-url-input" className="text-xs font-medium text-slate-700">
+                  Competitor Domain / Website URL
+                </label>
                 <div className="relative">
                   <Globe className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
                   <input
@@ -126,7 +141,12 @@ export function AddCompetitorModal({ projectId, onCompetitorAdded }: AddCompetit
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" disabled={isLoading} className="bg-slate-900 text-white">
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={isLoading}
+                  className="bg-slate-900 text-white"
+                >
                   {isLoading ? (
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

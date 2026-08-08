@@ -131,7 +131,8 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
               No AI visibility scans executed yet
             </h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto">
-              Start your first visibility scan to evaluate AI search engine recommendations and prompt citation performance.
+              Start your first visibility scan to evaluate AI search engine recommendations and
+              prompt citation performance.
             </p>
           </div>
           <Button

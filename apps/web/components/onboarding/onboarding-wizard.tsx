@@ -17,15 +17,23 @@ export function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
     <div className="mx-auto max-w-2xl px-4 py-12 space-y-8">
       {/* Step Indicator */}
       <div className="flex items-center justify-center gap-4 text-xs font-medium">
-        <div className={`flex items-center gap-1.5 ${step === 1 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
-          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${step === 1 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'}`}>
+        <div
+          className={`flex items-center gap-1.5 ${step === 1 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}
+        >
+          <div
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${step === 1 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
             1
           </div>
           <span>Welcome & How It Works</span>
         </div>
         <div className="h-px w-8 bg-slate-200" />
-        <div className={`flex items-center gap-1.5 ${step === 2 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}>
-          <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${step === 2 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'}`}>
+        <div
+          className={`flex items-center gap-1.5 ${step === 2 ? 'text-slate-900 font-semibold' : 'text-slate-500'}`}
+        >
+          <div
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] ${step === 2 ? 'bg-slate-900 text-white' : 'bg-slate-200 text-slate-700'}`}
+          >
             2
           </div>
           <span>Add Website</span>
@@ -40,7 +48,8 @@ export function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
             </div>
             <CardTitle className="text-2xl">Welcome to AI Visibility OS</CardTitle>
             <CardDescription className="text-xs text-slate-500 max-w-md mx-auto">
-              You are signed in as <strong>{userEmail}</strong>. Let&apos;s get your brand monitored across AI models in just a few clicks.
+              You are signed in as <strong>{userEmail}</strong>. Let&apos;s get your brand monitored
+              across AI models in just a few clicks.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 pt-2">
@@ -77,11 +86,7 @@ export function OnboardingWizard({ userEmail }: OnboardingWizardProps) {
               </div>
             </div>
 
-            <Button
-              type="button"
-              className="w-full text-xs gap-2 py-5"
-              onClick={() => setStep(2)}
-            >
+            <Button type="button" className="w-full text-xs gap-2 py-5" onClick={() => setStep(2)}>
               Get Started — Add Your First Website
               <ArrowRight className="h-4 w-4" />
             </Button>

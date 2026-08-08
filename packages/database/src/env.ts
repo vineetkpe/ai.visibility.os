@@ -22,15 +22,11 @@ export function getSupabaseEnv(): SupabaseEnv {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl) {
-    throw new Error(
-      'Missing environment variable: NEXT_PUBLIC_SUPABASE_URL is required.'
-    );
+    throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_URL is required.');
   }
 
   if (!supabaseAnonKey) {
-    throw new Error(
-      'Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY is required.'
-    );
+    throw new Error('Missing environment variable: NEXT_PUBLIC_SUPABASE_ANON_KEY is required.');
   }
 
   return { supabaseUrl, supabaseAnonKey };

@@ -130,7 +130,8 @@ export function ProjectForm({ redirectOnSuccess = '/dashboard', onSuccess }: Pro
             Must be a valid HTTPS URL.{' '}
             {domainPreview && (
               <span className="text-slate-700 font-medium">
-                Domain extracted: <code className="rounded bg-slate-100 px-1 py-0.5">{domainPreview}</code>
+                Domain extracted:{' '}
+                <code className="rounded bg-slate-100 px-1 py-0.5">{domainPreview}</code>
               </span>
             )}
           </p>

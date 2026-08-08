@@ -25,7 +25,10 @@ export function deduplicateFields(fields: ExtractedField[]): ExtractedField[] {
       seen.set(key, { ...field, fieldValue: trimmedVal });
     } else {
       // If candidate is deterministic and existing is ai_inferred, upgrade to deterministic
-      if (field.extractionMethod === 'deterministic' && existing.extractionMethod === 'ai_inferred') {
+      if (
+        field.extractionMethod === 'deterministic' &&
+        existing.extractionMethod === 'ai_inferred'
+      ) {
         seen.set(key, { ...field, fieldValue: trimmedVal });
       }
     }
@@ -41,7 +44,7 @@ export async function runBusinessContextPipeline(
   supabase: SupabaseClient<Database>,
   options: BusinessContextPipelineOptions
 ): Promise<BusinessContextPipelineResult> {
-  const { projectId, generationMethod = 'hybrid_v1' } = options;
+  const { projectId } = options;
 
   try {
     // 1. Fetch active primary domain for the project
@@ -49,7 +52,6 @@ export async function runBusinessContextPipeline(
       .from('domains')
       .select('id')
       .eq('project_id', projectId)
-      .is('deleted_at', null)
       .limit(1);
 
     if (domainError || !domains || domains.length === 0) {
@@ -109,34 +111,21 @@ export async function runBusinessContextPipeline(
       };
     }
 
-    // 6. Version Resolution & Database Transaction
-    // Fetch latest version number for project
-    const { data: existingVersions } = await supabase
-      .from('business_context_versions')
-      .select('version_number')
-      .eq('project_id', projectId)
-      .order('version_number', { ascending: false })
-      .limit(1);
+    // Extract summary fields for version
+    const industryField = deduplicated.find((f) => f.fieldName === 'industry')?.fieldValue || null;
+    const descField = deduplicated.find((f) => f.fieldName === 'description')?.fieldValue || null;
+    const valuePropField =
+      deduplicated.find((f) => f.fieldName === 'value_proposition')?.fieldValue || null;
 
-    const nextVersionNumber = existingVersions && existingVersions.length > 0
-      ? (existingVersions[0]?.version_number ?? 0) + 1
-      : 1;
-
-    // Set all previous versions for project to is_current = false
-    await supabase
-      .from('business_context_versions')
-      .update({ is_current: false })
-      .eq('project_id', projectId)
-      .eq('is_current', true);
-
-    // Insert new version row
+    // Insert new version row into business_context_versions
     const { data: newVersion, error: versionInsertError } = await supabase
       .from('business_context_versions')
       .insert({
         project_id: projectId,
-        version_number: nextVersionNumber,
-        is_current: true,
-        generation_method: generationMethod,
+        industry: industryField,
+        description: descField,
+        value_proposition: valuePropField,
+        extraction_method: 'ai_assisted',
       })
       .select('id')
       .single();
@@ -145,7 +134,7 @@ export async function runBusinessContextPipeline(
       return {
         projectId,
         contextVersionId: '',
-        versionNumber: nextVersionNumber,
+        versionNumber: 1,
         fieldsExtracted: 0,
         status: 'failed',
         error: versionInsertError?.message || 'Failed to create business context version record.',
@@ -170,7 +159,7 @@ export async function runBusinessContextPipeline(
       return {
         projectId,
         contextVersionId: newVersion.id,
-        versionNumber: nextVersionNumber,
+        versionNumber: 1,
         fieldsExtracted: 0,
         status: 'failed',
         error: fieldsInsertError.message || 'Failed to persist business context fields.',
@@ -180,7 +169,7 @@ export async function runBusinessContextPipeline(
     return {
       projectId,
       contextVersionId: newVersion.id,
-      versionNumber: nextVersionNumber,
+      versionNumber: 1,
       fieldsExtracted: fieldRows.length,
       status: 'completed',
     };

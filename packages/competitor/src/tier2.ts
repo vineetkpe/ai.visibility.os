@@ -41,7 +41,6 @@ export async function computeTier2Comparison(
     .select('id, host')
     .eq('project_id', projectId)
     .eq('is_primary', true)
-    .is('deleted_at', null)
     .limit(1);
 
   const ownDomainId = ownDomains?.[0]?.id;
@@ -68,7 +67,7 @@ export async function computeTier2Comparison(
     .from('business_context_versions')
     .select('id')
     .eq('project_id', projectId)
-    .eq('is_current', true)
+    .order('created_at', { ascending: false })
     .limit(1);
 
   let ownContextTokens: string[] = [];
@@ -79,8 +78,7 @@ export async function computeTier2Comparison(
       .eq('context_version_id', currentVersion[0].id);
 
     if (fields) {
-      ownContextTokens = fields
-        .flatMap((f) => tokenizeText(f.field_value));
+      ownContextTokens = fields.flatMap((f) => tokenizeText(f.field_value));
     }
   }
 
@@ -103,9 +101,7 @@ export async function computeTier2Comparison(
   const missingTopics = competitorTokens.filter((token) => !allOwnTokens.includes(token));
 
   // B. Schema coverage
-  const userSchemas = Array.from(
-    new Set(ownPages.flatMap((p) => p.schema_org_types || []))
-  );
+  const userSchemas = Array.from(new Set(ownPages.flatMap((p) => p.schema_org_types || [])));
   const competitorSchemas = Array.from(
     new Set(competitorPages.flatMap((p) => p.schema_org_types || []))
   );
@@ -121,7 +117,9 @@ export async function computeTier2Comparison(
   const ownEntities = Array.from(
     new Set(
       (ownMentions || []).map((m) => {
-        const entObj = Array.isArray(m.entities) ? m.entities[0] : (m.entities as { name?: string } | null);
+        const entObj = Array.isArray(m.entities)
+          ? m.entities[0]
+          : (m.entities as { name?: string } | null);
         return (entObj?.name || '').toLowerCase();
       })
     )
@@ -182,7 +180,19 @@ export async function computeTier2Comparison(
 
 function tokenizeText(text: string): string[] {
   if (!text) return [];
-  const stopWords = new Set(['the', 'and', 'for', 'with', 'that', 'this', 'from', 'your', 'have', 'more', 'about']);
+  const stopWords = new Set([
+    'the',
+    'and',
+    'for',
+    'with',
+    'that',
+    'this',
+    'from',
+    'your',
+    'have',
+    'more',
+    'about',
+  ]);
   return text
     .toLowerCase()
     .split(/[\s|,\-:/.]+/)

@@ -35,8 +35,7 @@ export default async function SettingsPage() {
     redirect('/onboarding');
   }
 
-  const primaryDomainObj =
-    project.domains?.find((d) => d.is_primary) || project.domains?.[0];
+  const primaryDomainObj = project.domains?.find((d) => d.is_primary) || project.domains?.[0];
 
   const projectData = {
     id: project.id,

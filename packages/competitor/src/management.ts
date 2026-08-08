@@ -139,7 +139,9 @@ export async function triggerCompetitorCrawl(
         .single();
 
       if (domainInsertErr || !newDomain) {
-        throw new Error(domainInsertErr?.message || 'Failed to create domain record for competitor.');
+        throw new Error(
+          domainInsertErr?.message || 'Failed to create domain record for competitor.'
+        );
       }
       domainId = newDomain.id;
     }
@@ -179,10 +181,7 @@ export async function triggerCompetitorCrawl(
       domainName: competitor.domain_name,
       jobId: job.id,
     });
-    await supabase
-      .from('jobs')
-      .update({ trigger_run_id: handle.id })
-      .eq('id', job.id);
+    await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
   } catch (triggerErr: unknown) {
     const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
     const errorMessage = `Failed to start background job: ${message}`;

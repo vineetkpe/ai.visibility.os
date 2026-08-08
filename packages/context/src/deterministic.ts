@@ -38,7 +38,7 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
         fields.push({
           fieldName: 'companyName',
           fieldValue: rawTitle,
-          confidenceScore: 0.70,
+          confidenceScore: 0.7,
           sourcePageId: primaryPage.id,
           extractionMethod: 'deterministic',
         });
@@ -86,7 +86,7 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
         fields.push({
           fieldName: 'contactInformation',
           fieldValue: `Email: ${org.email.trim()}`,
-          confidenceScore: 0.90,
+          confidenceScore: 0.9,
           sourcePageId: page.id,
           extractionMethod: 'deterministic',
         });
@@ -95,7 +95,7 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
         fields.push({
           fieldName: 'contactInformation',
           fieldValue: `Phone: ${org.telephone.trim()}`,
-          confidenceScore: 0.90,
+          confidenceScore: 0.9,
           sourcePageId: page.id,
           extractionMethod: 'deterministic',
         });
@@ -108,7 +108,7 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
           fields.push({
             fieldName: 'locations',
             fieldValue: country.trim(),
-            confidenceScore: 0.90,
+            confidenceScore: 0.9,
             sourcePageId: page.id,
             extractionMethod: 'deterministic',
           });
@@ -128,7 +128,12 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
     // Structured FAQ Schema check
     if (page.json_ld && Array.isArray(page.json_ld)) {
       for (const block of page.json_ld) {
-        if (block && typeof block === 'object' && block['@type'] === 'FAQPage' && Array.isArray(block.mainEntity)) {
+        if (
+          block &&
+          typeof block === 'object' &&
+          block['@type'] === 'FAQPage' &&
+          Array.isArray(block.mainEntity)
+        ) {
           for (const item of block.mainEntity) {
             if (item && typeof item === 'object' && item.name && item.acceptedAnswer?.text) {
               const q = String(item.name).trim();
@@ -151,7 +156,7 @@ export function extractDeterministicFields(pages: PageRecord[]): ExtractedField[
     fields.push({
       fieldName: 'socialProfiles',
       fieldValue: item.value,
-      confidenceScore: 0.90,
+      confidenceScore: 0.9,
       sourcePageId: item.pageId,
       extractionMethod: 'deterministic',
     });

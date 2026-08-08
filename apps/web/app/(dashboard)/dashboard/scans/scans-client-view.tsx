@@ -7,16 +7,7 @@ import { getScanHistoryData, type ScanHistoryItem } from '../actions';
 import { startVisibilityScanAction } from '@/app/(dashboard)/projects/scan-actions';
 import { useDashboardRealtime } from '@/hooks/use-dashboard-realtime';
 import { Button } from '@/components/ui/button';
-import {
-  Scan,
-  Play,
-  Loader2,
-  RefreshCw,
-  Search,
-  CheckCircle2,
-  XCircle,
-  Clock,
-} from 'lucide-react';
+import { Scan, Play, Loader2, RefreshCw, Search, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ScansClientViewProps {
@@ -57,7 +48,9 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
       toast.info('Dispatching AI Visibility Engine scan task...');
       const res = await startVisibilityScanAction(projectId);
       if (res.success) {
-        toast.success('Visibility scan dispatched! Live status updates will reflect automatically.');
+        toast.success(
+          'Visibility scan dispatched! Live status updates will reflect automatically.'
+        );
         refetch();
       } else {
         toast.error(res.error || 'Failed to dispatch scan.');
@@ -141,7 +134,9 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
       {/* Filter Bar */}
       <div className="flex items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
         <div className="relative flex-1 max-w-md">
-          <label htmlFor="scan-search-input" className="sr-only">Search Scans</label>
+          <label htmlFor="scan-search-input" className="sr-only">
+            Search Scans
+          </label>
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
           <input
             id="scan-search-input"
@@ -167,7 +162,11 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
       {/* Scan History Table */}
       <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-xs">
         {isLoading && !scansData ? (
-          <div className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2" role="status" aria-live="polite">
+          <div
+            className="p-8 text-center text-xs text-slate-500 flex items-center justify-center gap-2"
+            role="status"
+            aria-live="polite"
+          >
             <Loader2 className="w-4 h-4 animate-spin text-amber-500" />
             <span>Loading scan history...</span>
           </div>
@@ -192,7 +191,10 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
                 {filteredScans.map((scan) => (
                   <tr key={scan.id} className="hover:bg-slate-50/80 transition-colors">
                     <td className="p-4 font-medium text-slate-900 max-w-xs truncate">
-                      <Link href={`/dashboard/scans/${scan.id}`} className="hover:text-amber-600 hover:underline">
+                      <Link
+                        href={`/dashboard/scans/${scan.id}`}
+                        className="hover:text-amber-600 hover:underline"
+                      >
                         {scan.queryPrompt}
                       </Link>
                     </td>
@@ -209,8 +211,8 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
                             scan.visibilityScore >= 70
                               ? 'text-emerald-600'
                               : scan.visibilityScore >= 40
-                              ? 'text-amber-600'
-                              : 'text-red-600'
+                                ? 'text-amber-600'
+                                : 'text-red-600'
                           }
                         >
                           {scan.visibilityScore}/100
@@ -236,7 +238,8 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
             <div className="space-y-1">
               <h3 className="text-base font-semibold text-slate-800">No scans found</h3>
               <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                No prompt evaluation scans match your current filter. Trigger a scan to start recording AI search engine responses.
+                No prompt evaluation scans match your current filter. Trigger a scan to start
+                recording AI search engine responses.
               </p>
             </div>
             <Button

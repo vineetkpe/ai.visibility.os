@@ -1,6 +1,6 @@
 /**
  * Web Application Supabase Server Client
- * 
+ *
  * Usage example:
  * const supabase = await createClient();
  */
@@ -22,7 +22,9 @@ export async function createClient<T = Database>(): Promise<SupabaseClient<T>> {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>) {
+      setAll(
+        cookiesToSet: Array<{ name: string; value: string; options?: Record<string, unknown> }>
+      ) {
         try {
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, options as Parameters<typeof cookieStore.set>[2])

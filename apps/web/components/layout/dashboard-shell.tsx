@@ -10,20 +10,13 @@ export interface DashboardShellProps {
   children: ReactNode;
 }
 
-export function DashboardShell({
-  displayName,
-  avatarUrl,
-  children,
-}: DashboardShellProps) {
+export function DashboardShell({ displayName, avatarUrl, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Responsive Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col min-w-0">

@@ -9,10 +9,7 @@ export function StructuredData() {
     logo: 'https://aivisibilityos.com/logo.png',
     description:
       'The operating system for measuring and improving how businesses appear across AI platforms.',
-    sameAs: [
-      'https://twitter.com/aivisibilityos',
-      'https://github.com/vineetkpe/ai.visibility.os',
-    ],
+    sameAs: ['https://twitter.com/aivisibilityos', 'https://github.com/vineetkpe/ai.visibility.os'],
   };
 
   return (

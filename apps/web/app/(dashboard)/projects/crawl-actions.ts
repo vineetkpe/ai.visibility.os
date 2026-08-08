@@ -74,10 +74,7 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
         domainName: domain.domain_name,
         jobId: job.id,
       });
-      await supabase
-        .from('jobs')
-        .update({ trigger_run_id: handle.id })
-        .eq('id', job.id);
+      await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
     } catch (triggerErr: unknown) {
       const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
       const errorMessage = `Failed to start background job: ${message}`;

@@ -1,5 +1,10 @@
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
-import type { CompetitorProfile, FrequentlyCitedPage, CoOccurringEntity, ImportantCompetitorPage } from './types';
+import type {
+  CompetitorProfile,
+  FrequentlyCitedPage,
+  CoOccurringEntity,
+  ImportantCompetitorPage,
+} from './types';
 
 /**
  * Synchronizes Tier 1 citation matches and entity mentions for a tracked competitor,
@@ -25,10 +30,9 @@ export async function syncCompetitorTier1Data(
 
   // 2. Fetch active project scans
   const { data: scans, error: scansErr } = await supabase
-    .from('scans')
+    .from('ai_scans')
     .select('id, created_at')
-    .eq('project_id', competitor.project_id)
-    .is('deleted_at', null);
+    .eq('project_id', competitor.project_id);
 
   if (scansErr || !scans || scans.length === 0) {
     return { updatedCitationsCount: 0, scansProcessedCount: 0 };
@@ -215,9 +219,7 @@ export async function getCompetitorProfile(
     .sort((a, b) => b.count - a.count);
 
   // 3. Fetch co-occurring entity mentions in scans where this competitor was cited
-  const scanIdsForComp = Array.from(
-    new Set((citations || []).map((c) => c.id))
-  );
+  const scanIdsForComp = Array.from(new Set((citations || []).map((c) => c.id)));
 
   let entities: CoOccurringEntity[] = [];
   if (scanIdsForComp.length > 0) {
@@ -229,8 +231,12 @@ export async function getCompetitorProfile(
     if (mentions) {
       const entCounts = new Map<string, { name: string; type: string; count: number }>();
       for (const m of mentions) {
-        const entName = Array.isArray(m.entities) ? m.entities[0]?.name : (m.entities as { name?: string })?.name;
-        const entType = Array.isArray(m.entities) ? m.entities[0]?.entity_type : (m.entities as { entity_type?: string })?.entity_type;
+        const entName = Array.isArray(m.entities)
+          ? m.entities[0]?.name
+          : (m.entities as { name?: string })?.name;
+        const entType = Array.isArray(m.entities)
+          ? m.entities[0]?.entity_type
+          : (m.entities as { entity_type?: string })?.entity_type;
 
         if (entName && entName.toLowerCase() !== comp.name.toLowerCase()) {
           const key = entName.toLowerCase();
@@ -258,7 +264,9 @@ export async function getCompetitorProfile(
       .eq('domain_id', comp.domain_id);
 
     if (pages && pages.length > 0) {
-      const completedPages = pages.filter((p) => p.crawl_status === 'completed' || p.crawl_status === 'scanned');
+      const completedPages = pages.filter(
+        (p) => p.crawl_status === 'completed' || p.crawl_status === 'scanned'
+      );
       if (completedPages.length > 0) {
         tier2Available = true;
         importantPages = completedPages.slice(0, 10).map((p) => ({

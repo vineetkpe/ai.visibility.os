@@ -6,7 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeRedirectUrl } from '@/proxy';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { OAuthButton } from '@/components/auth/oauth-button';
 import { UserPlus, CheckCircle2 } from 'lucide-react';
@@ -75,7 +82,8 @@ function SignupForm() {
         </div>
         <CardTitle className="text-xl">Registration Successful</CardTitle>
         <CardDescription className="text-xs text-slate-500 max-w-sm mx-auto">
-          Please check your email address <strong>{email}</strong> for a confirmation link to complete your account setup.
+          Please check your email address <strong>{email}</strong> for a confirmation link to
+          complete your account setup.
         </CardDescription>
         <Button asChild variant="outline" className="w-full text-xs mt-4">
           <Link href="/login">Return to Sign In</Link>
@@ -110,7 +118,9 @@ function SignupForm() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor="signup-fullname" className="text-xs font-medium text-slate-700">Full Name</label>
+            <label htmlFor="signup-fullname" className="text-xs font-medium text-slate-700">
+              Full Name
+            </label>
             <input
               id="signup-fullname"
               type="text"
@@ -123,7 +133,9 @@ function SignupForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="signup-email" className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="signup-email" className="text-xs font-medium text-slate-700">
+              Email address
+            </label>
             <input
               id="signup-email"
               type="email"
@@ -136,7 +148,9 @@ function SignupForm() {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="signup-password" className="text-xs font-medium text-slate-700">Password</label>
+            <label htmlFor="signup-password" className="text-xs font-medium text-slate-700">
+              Password
+            </label>
             <input
               id="signup-password"
               type="password"
@@ -172,7 +186,9 @@ function SignupForm() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="text-xs text-slate-500 text-center">Loading signup...</div>}>
+    <Suspense
+      fallback={<div className="text-xs text-slate-500 text-center">Loading signup...</div>}
+    >
       <SignupForm />
     </Suspense>
   );

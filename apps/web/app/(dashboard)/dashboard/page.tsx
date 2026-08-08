@@ -7,7 +7,8 @@ import { DashboardClientView } from './dashboard-client-view';
 
 export const metadata = {
   title: 'Dashboard | AI Visibility OS',
-  description: 'Real-time AI search engine visibility, competitor benchmarks, and optimization analytics.',
+  description:
+    'Real-time AI search engine visibility, competitor benchmarks, and optimization analytics.',
 };
 
 export default async function DashboardPage() {

@@ -128,7 +128,9 @@ export function RecommendationsClientView({
 
   // Stats calculation
   const totalCount = recommendations.length;
-  const criticalCount = recommendations.filter((r) => r.priority === 'critical' || r.priority === 'high').length;
+  const criticalCount = recommendations.filter(
+    (r) => r.priority === 'critical' || r.priority === 'high'
+  ).length;
   const quickWinCount = recommendations.filter((r) => r.estimatedEffort === 'quick_win').length;
   const resolvedCount = recommendations.filter((r) => r.status === 'completed').length;
 
@@ -147,7 +149,8 @@ export function RecommendationsClientView({
             </span>
           </div>
           <p className="text-sm text-neutral-400">
-            Deterministic optimization recommendations derived from crawl data, business context, scan results, and competitor benchmarks.
+            Deterministic optimization recommendations derived from crawl data, business context,
+            scan results, and competitor benchmarks.
           </p>
         </div>
 
@@ -208,7 +211,11 @@ export function RecommendationsClientView({
       {/* Filter Controls Bar */}
       <div className="bg-neutral-900/60 p-4 rounded-xl border border-neutral-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs" role="tablist" aria-label="Recommendation status filter">
+        <div
+          className="flex items-center gap-1 overflow-x-auto bg-neutral-950 p-1 rounded-lg border border-neutral-800 text-xs"
+          role="tablist"
+          aria-label="Recommendation status filter"
+        >
           {['open', 'in_progress', 'completed', 'dismissed', 'all'].map((st) => (
             <button
               key={st}
@@ -230,7 +237,9 @@ export function RecommendationsClientView({
         <div className="flex items-center gap-3 flex-wrap text-xs">
           <div className="flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-lg border border-neutral-800">
             <Filter className="w-3.5 h-3.5 text-neutral-400" />
-            <label htmlFor="rec-cat-select" className="text-neutral-400">Category:</label>
+            <label htmlFor="rec-cat-select" className="text-neutral-400">
+              Category:
+            </label>
             <select
               id="rec-cat-select"
               value={selectedCategory}
@@ -268,7 +277,9 @@ export function RecommendationsClientView({
           </div>
 
           <div className="flex items-center gap-1.5 bg-neutral-950 px-3 py-1.5 rounded-lg border border-neutral-800">
-            <label htmlFor="rec-prio-select" className="text-neutral-400">Priority:</label>
+            <label htmlFor="rec-prio-select" className="text-neutral-400">
+              Priority:
+            </label>
             <select
               id="rec-prio-select"
               onChange={(e) => setSelectedPriority(e.target.value)}
@@ -325,7 +336,8 @@ export function RecommendationsClientView({
               No recommendations match selected filters
             </h3>
             <p className="text-sm text-neutral-400 max-w-md mx-auto">
-              Run the AI Recommendation Engine to analyze project crawl data, business context, and scan evidence.
+              Run the AI Recommendation Engine to analyze project crawl data, business context, and
+              scan evidence.
             </p>
           </div>
           <Button

@@ -65,7 +65,12 @@ STRICT RULES:
     const text = response.text;
     if (text) {
       const parsed = JSON.parse(text);
-      if (parsed && typeof parsed.title === 'string' && typeof parsed.summary === 'string' && Array.isArray(parsed.implementationSteps)) {
+      if (
+        parsed &&
+        typeof parsed.title === 'string' &&
+        typeof parsed.summary === 'string' &&
+        Array.isArray(parsed.implementationSteps)
+      ) {
         return {
           title: parsed.title,
           summary: parsed.summary,

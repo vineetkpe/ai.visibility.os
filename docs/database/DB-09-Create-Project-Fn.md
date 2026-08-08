@@ -1,6 +1,7 @@
 # DB-09 - Atomic Project & Primary Domain Provisioning
 
 ## Overview
+
 This document details the architecture, transaction mechanics, security scope, and error handling for the atomic project creation PostgreSQL function `public.create_project_with_domain()`.
 
 ---
@@ -8,10 +9,12 @@ This document details the architecture, transaction mechanics, security scope, a
 ## 1. Architecture & Design Principles
 
 ### A. Atomicity & Orphan Prevention
+
 - **Problem**: Previously, project creation involved two separate client/server action DML calls (`INSERT INTO projects` followed by `INSERT INTO domains`). If domain creation failed (due to format constraints, unique violations, or network interruptions), the application attempted a manual compensation deletion (`DELETE FROM projects WHERE id = project.id`). If that cleanup failed or was interrupted, an orphaned project row was permanently left behind in the database without a primary domain.
 - **Solution**: `create_project_with_domain()` encapsulates project creation and primary domain assignment within a single PostgreSQL function body. Because PostgreSQL executes function bodies within a single implicit transaction, any constraint violation during domain insertion (such as `chk_domains_host_format` or `uq_domains_project_host`) causes an automatic database rollback of the entire operation, guaranteeing that no orphaned project record is ever created.
 
 ### B. Security Authorization Scope (`SECURITY INVOKER`)
+
 - **Security Pattern**: Declared as `SECURITY INVOKER SET search_path = ''`.
 - **Rationale**:
   - Running as `SECURITY INVOKER` ensures the function executes with the privileges and RLS context of the calling user (`authenticated` role).
@@ -69,6 +72,7 @@ $$;
 ## 3. Test Coverage Summary (`0011_create_project_with_domain_fn.sql`)
 
 The pgTAP test suite validates:
+
 1. Function existence in `public` schema.
 2. Successful execution under an `authenticated` user context.
 3. Verification that `domains.host` matches input and `is_primary` is `TRUE`.

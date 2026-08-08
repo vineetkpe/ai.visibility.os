@@ -21,7 +21,8 @@ export function Hero() {
 
           {/* Subheadline */}
           <p className="text-lg sm:text-xl text-slate-600 font-normal leading-relaxed max-w-2xl mx-auto">
-            Analyze your visibility across AI search engines, discover why competitors appear before you, and receive evidence-based recommendations to improve your presence.
+            Analyze your visibility across AI search engines, discover why competitors appear before
+            you, and receive evidence-based recommendations to improve your presence.
           </p>
 
           {/* CTAs */}
@@ -33,12 +34,7 @@ export function Hero() {
               </Link>
             </Button>
 
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto text-sm px-6"
-            >
+            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto text-sm px-6">
               <a href="#how-it-works">See How It Works</a>
             </Button>
           </div>
@@ -64,7 +60,9 @@ export function Hero() {
               <div className="h-3 w-3 rounded-full bg-slate-200" />
               <div className="h-3 w-3 rounded-full bg-slate-200" />
             </div>
-            <div className="text-xs font-mono text-slate-400">ai-visibility-scanner // audit workspace</div>
+            <div className="text-xs font-mono text-slate-400">
+              ai-visibility-scanner // audit workspace
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

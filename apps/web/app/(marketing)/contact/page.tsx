@@ -13,11 +13,10 @@ export default function ContactPage() {
     <div className="py-16">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center space-y-4 mb-12">
-          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">
-            Get in Touch
-          </h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-slate-900">Get in Touch</h1>
           <p className="text-base text-slate-600">
-            Have questions about AI search auditing or want early access? We’d love to hear from you.
+            Have questions about AI search auditing or want early access? We’d love to hear from
+            you.
           </p>
         </div>
 

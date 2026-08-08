@@ -1,6 +1,6 @@
 /**
  * Server Supabase Client Creator
- * 
+ *
  * Usage example:
  * const supabase = createServerClient(cookieStore);
  */
@@ -24,9 +24,7 @@ export interface CookieMethods {
 /**
  * Creates a server-side Supabase client for Server Components, Actions, and Route Handlers.
  */
-export function createServerClient<T = Database>(
-  cookieMethods: CookieMethods
-): SupabaseClient<T> {
+export function createServerClient<T = Database>(cookieMethods: CookieMethods): SupabaseClient<T> {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
   return createSsrServerClient<T>(supabaseUrl, supabaseAnonKey, {

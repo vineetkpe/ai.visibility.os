@@ -12,7 +12,9 @@ export interface BusinessContextActionResult {
  * Server Action to manually initiate Business Context Engine generation for a project.
  * Verification requirement: Scoped via auth.uid() and requires the project's most recent site_crawl job status to be 'completed'.
  */
-export async function generateBusinessContextAction(projectId: string): Promise<BusinessContextActionResult> {
+export async function generateBusinessContextAction(
+  projectId: string
+): Promise<BusinessContextActionResult> {
   try {
     const supabase = await createClient();
 
@@ -56,7 +58,8 @@ export async function generateBusinessContextAction(projectId: string): Promise<
     if (!latestJob || latestJob.status !== 'completed') {
       return {
         success: false,
-        error: 'Business Context generation is enabled only after a website discovery crawl job has completed successfully.',
+        error:
+          'Business Context generation is enabled only after a website discovery crawl job has completed successfully.',
       };
     }
 
@@ -73,7 +76,10 @@ export async function generateBusinessContextAction(projectId: string): Promise<
       .single();
 
     if (jobInsertError || !job) {
-      return { success: false, error: jobInsertError?.message || 'Failed to create business context job record.' };
+      return {
+        success: false,
+        error: jobInsertError?.message || 'Failed to create business context job record.',
+      };
     }
 
     // 5. Dispatch Trigger.dev task on background infrastructure
@@ -81,10 +87,7 @@ export async function generateBusinessContextAction(projectId: string): Promise<
       const handle = await businessContextTask.trigger({
         projectId: project.id,
       });
-      await supabase
-        .from('jobs')
-        .update({ trigger_run_id: handle.id })
-        .eq('id', job.id);
+      await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
     } catch (triggerErr: unknown) {
       const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
       const errorMessage = `Failed to start background job: ${message}`;

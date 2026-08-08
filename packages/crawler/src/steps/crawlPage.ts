@@ -64,7 +64,13 @@ export async function fetchWithSsrfProtection(
       if (res.status >= 300 && res.status < 400) {
         const location = res.headers.get('Location');
         if (!location) {
-          return { ok: false, status: res.status, html: '', finalUrl: currentUrl, error: 'Redirect missing Location header.' };
+          return {
+            ok: false,
+            status: res.status,
+            html: '',
+            finalUrl: currentUrl,
+            error: 'Redirect missing Location header.',
+          };
         }
 
         const nextUrlObj = new URL(location, currentUrl);
@@ -96,7 +102,13 @@ export async function fetchWithSsrfProtection(
     }
   }
 
-  return { ok: false, status: null, html: '', finalUrl: currentUrl, error: 'Exceeded maximum redirect count (5).' };
+  return {
+    ok: false,
+    status: null,
+    html: '',
+    finalUrl: currentUrl,
+    error: 'Exceeded maximum redirect count (5).',
+  };
 }
 
 /**
@@ -133,7 +145,10 @@ export async function crawlPage(
       const context = await browser.newContext({ userAgent: CRAWLER_USER_AGENT });
       const page = await context.newPage();
 
-      await page.goto(fetchRes.finalUrl, { waitUntil: 'domcontentloaded', timeout: FETCH_TIMEOUT_MS });
+      await page.goto(fetchRes.finalUrl, {
+        waitUntil: 'domcontentloaded',
+        timeout: FETCH_TIMEOUT_MS,
+      });
       const renderedHtml = await page.content();
       await browser.close();
 

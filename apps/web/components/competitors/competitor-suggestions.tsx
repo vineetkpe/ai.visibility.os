@@ -58,11 +58,10 @@ export function CompetitorSuggestions({
             <Sparkles className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">
-              Suggested Competitors to Track
-            </h3>
+            <h3 className="text-sm font-semibold text-slate-900">Suggested Competitors to Track</h3>
             <p className="text-xs text-slate-500">
-              Surfaced from co-occurring citations and entity mentions in your AI model scans. Explicit confirmation required.
+              Surfaced from co-occurring citations and entity mentions in your AI model scans.
+              Explicit confirmation required.
             </p>
           </div>
         </div>
@@ -89,7 +88,11 @@ export function CompetitorSuggestions({
                     <span className="font-mono text-[11px] text-slate-500">({sug.domain})</span>
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5">
-                    Surfaced in <strong className="text-indigo-600 font-semibold">{sug.coOccurrenceCount}</strong> scan co-occurrences
+                    Surfaced in{' '}
+                    <strong className="text-indigo-600 font-semibold">
+                      {sug.coOccurrenceCount}
+                    </strong>{' '}
+                    scan co-occurrences
                   </div>
                 </div>
 
@@ -127,13 +130,23 @@ export function CompetitorSuggestions({
                   >
                     <FileText className="h-3 w-3 text-indigo-500" />
                     <span>{isExpanded ? 'Hide Evidence' : 'View Scan Evidence'}</span>
-                    {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                    {isExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
                   </button>
 
                   {isExpanded && (
-                    <div id={`sug-evidence-${sug.domain.replace(/[^a-z0-9]/gi, '-')}`} className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 border border-slate-100">
+                    <div
+                      id={`sug-evidence-${sug.domain.replace(/[^a-z0-9]/gi, '-')}`}
+                      className="mt-2 space-y-1.5 rounded-md bg-slate-50 p-2.5 text-[11px] text-slate-600 border border-slate-100"
+                    >
                       {sug.evidence.map((ev, idx) => (
-                        <div key={idx} className="border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0">
+                        <div
+                          key={idx}
+                          className="border-b border-slate-200/60 pb-1.5 last:border-0 last:pb-0"
+                        >
                           <span className="font-semibold text-indigo-700 uppercase tracking-wider text-[9px] mr-1.5">
                             {ev.type}
                           </span>

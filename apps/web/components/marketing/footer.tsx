@@ -18,7 +18,8 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              The operating system for measuring and improving how businesses appear across AI platforms.
+              The operating system for measuring and improving how businesses appear across AI
+              platforms.
             </p>
           </div>
 

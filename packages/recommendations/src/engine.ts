@@ -10,11 +10,7 @@ import type {
   GenerationMethod,
 } from './types';
 import { detectProjectIssues } from './rules';
-import {
-  determineImpactBand,
-  determinePriorityBand,
-  computeConfidenceScore,
-} from './formula';
+import { determineImpactBand, determinePriorityBand, computeConfidenceScore } from './formula';
 import { phraseRecommendationWithGemini } from './phrasing';
 
 /**
@@ -197,11 +193,16 @@ export async function runRecommendationEngine(
 export async function getProjectRecommendations(
   supabase: SupabaseClient<Database>,
   projectId: string,
-  filter?: { status?: RecommendationStatus; category?: RecommendationCategory; priority?: PriorityBand }
+  filter?: {
+    status?: RecommendationStatus;
+    category?: RecommendationCategory;
+    priority?: PriorityBand;
+  }
 ): Promise<Recommendation[]> {
   let query = supabase
     .from('recommendations')
-    .select(`
+    .select(
+      `
       id,
       project_id,
       scan_id,
@@ -225,7 +226,8 @@ export async function getProjectRecommendations(
         competitor_scan_id,
         evidence_description
       )
-    `)
+    `
+    )
     .eq('project_id', projectId);
 
   if (filter?.status) {
@@ -280,9 +282,7 @@ export async function getProjectRecommendations(
       )
     );
 
-    const steps = Array.isArray(r.implementation_steps)
-      ? (r.implementation_steps as string[])
-      : [];
+    const steps = Array.isArray(r.implementation_steps) ? (r.implementation_steps as string[]) : [];
 
     return {
       id: r.id,

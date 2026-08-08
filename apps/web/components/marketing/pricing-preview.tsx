@@ -1,7 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Check } from 'lucide-react';
 
 const tiers = [
@@ -52,7 +59,8 @@ export function PricingPreview() {
             Flexible Plans for Every Stage
           </h2>
           <p className="text-base text-slate-600">
-            Select a plan tier tailored to your monitoring volume. Specific pricing details subject to final release.
+            Select a plan tier tailored to your monitoring volume. Specific pricing details subject
+            to final release.
           </p>
         </div>
 

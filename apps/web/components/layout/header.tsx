@@ -13,13 +13,7 @@ export interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   avatarUrl?: string | null;
 }
 
-export function Header({
-  onMenuToggle,
-  displayName,
-  avatarUrl,
-  className,
-  ...props
-}: HeaderProps) {
+export function Header({ onMenuToggle, displayName, avatarUrl, className, ...props }: HeaderProps) {
   return (
     <header
       className={cn(

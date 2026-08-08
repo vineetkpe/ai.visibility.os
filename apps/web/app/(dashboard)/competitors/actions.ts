@@ -176,7 +176,11 @@ export async function getCompetitorDetailsAction(input: {
 
     await syncCompetitorTier1Data(supabase, input.competitorId);
     const profile = await getCompetitorProfile(supabase, input.competitorId);
-    const tier2Metrics = await computeTier2Comparison(supabase, input.projectId, input.competitorId);
+    const tier2Metrics = await computeTier2Comparison(
+      supabase,
+      input.projectId,
+      input.competitorId
+    );
 
     return {
       success: true,

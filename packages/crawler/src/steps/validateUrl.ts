@@ -90,7 +90,11 @@ export async function validateUrl(urlStr: string): Promise<ValidateUrlResult> {
   try {
     const addresses = await dns.promises.lookup(parsedUrl.hostname, { all: true });
     if (!addresses || addresses.length === 0) {
-      return { valid: false, url: urlStr, error: `DNS lookup failed for host ${parsedUrl.hostname}` };
+      return {
+        valid: false,
+        url: urlStr,
+        error: `DNS lookup failed for host ${parsedUrl.hostname}`,
+      };
     }
 
     for (const record of addresses) {

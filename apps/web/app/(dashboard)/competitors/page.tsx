@@ -7,10 +7,7 @@ import { Button } from '@/components/ui/button';
 import { FolderPlus } from 'lucide-react';
 import Link from 'next/link';
 import { CompetitorsClientView } from './competitors-client-view';
-import {
-  getCompetitorsOverviewAction,
-  getSuggestionsAction,
-} from './actions';
+import { getCompetitorsOverviewAction, getSuggestionsAction } from './actions';
 
 interface PageProps {
   searchParams: Promise<{ projectId?: string }>;

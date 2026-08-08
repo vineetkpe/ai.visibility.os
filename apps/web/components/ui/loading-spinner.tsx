@@ -6,12 +6,7 @@ export interface LoadingSpinnerProps extends React.HTMLAttributes<HTMLDivElement
   label?: string;
 }
 
-export function LoadingSpinner({
-  size = 'md',
-  label,
-  className,
-  ...props
-}: LoadingSpinnerProps) {
+export function LoadingSpinner({ size = 'md', label, className, ...props }: LoadingSpinnerProps) {
   const sizeClasses = {
     sm: 'h-4 w-4 border-2',
     md: 'h-6 w-6 border-2',
@@ -30,9 +25,7 @@ export function LoadingSpinner({
           sizeClasses[size]
         )}
       />
-      {label && (
-        <span className="text-xs text-slate-500 font-medium">{label}</span>
-      )}
+      {label && <span className="text-xs text-slate-500 font-medium">{label}</span>}
       <span className="sr-only">{label || 'Loading...'}</span>
     </div>
   );

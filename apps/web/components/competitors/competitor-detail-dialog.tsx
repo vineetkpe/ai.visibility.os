@@ -2,7 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import type { CompetitorProfile, Tier2ComparisonMetrics } from '@ai-visibility-os/competitor';
-import { getCompetitorDetailsAction, triggerCompetitorCrawlAction } from '@/app/(dashboard)/competitors/actions';
+import {
+  getCompetitorDetailsAction,
+  triggerCompetitorCrawlAction,
+} from '@/app/(dashboard)/competitors/actions';
 import { Button } from '@/components/ui/button';
 import {
   Building,
@@ -79,12 +82,23 @@ export function CompetitorDetailDialog({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="comp-detail-title">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="comp-detail-title"
+    >
       <div className="w-full max-w-3xl rounded-xl bg-white p-6 shadow-2xl border border-slate-200 space-y-6 my-8">
         {isLoading || !profile ? (
-          <div className="flex flex-col items-center justify-center py-16 space-y-3" role="status" aria-live="polite">
+          <div
+            className="flex flex-col items-center justify-center py-16 space-y-3"
+            role="status"
+            aria-live="polite"
+          >
             <Loader2 className="h-8 w-8 animate-spin text-slate-500" />
-            <p className="text-sm font-medium text-slate-500">Loading competitor evidence & metrics...</p>
+            <p className="text-sm font-medium text-slate-500">
+              Loading competitor evidence & metrics...
+            </p>
           </div>
         ) : (
           <>
@@ -96,7 +110,9 @@ export function CompetitorDetailDialog({
                 </div>
                 <div>
                   <div className="flex items-center space-x-2">
-                    <h2 id="comp-detail-title" className="text-xl font-bold text-slate-900">{profile.companyName}</h2>
+                    <h2 id="comp-detail-title" className="text-xl font-bold text-slate-900">
+                      {profile.companyName}
+                    </h2>
                     <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-mono font-medium text-slate-700">
                       {profile.domain}
                     </span>
@@ -104,7 +120,10 @@ export function CompetitorDetailDialog({
                   <p className="text-xs text-slate-500 flex items-center space-x-3 mt-1">
                     <span className="flex items-center space-x-1">
                       <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                      <span>First Seen: {new Date(profile.firstSeen || profile.createdAt).toLocaleDateString()}</span>
+                      <span>
+                        First Seen:{' '}
+                        {new Date(profile.firstSeen || profile.createdAt).toLocaleDateString()}
+                      </span>
                     </span>
                     <span>•</span>
                     <span>Source: {profile.detectedFrom}</span>
@@ -132,12 +151,16 @@ export function CompetitorDetailDialog({
 
               <div className="rounded-lg bg-slate-50 p-4 border border-slate-200/80">
                 <div className="text-xs font-medium text-slate-500">Matching AI Citations</div>
-                <div className="text-2xl font-bold text-slate-900 mt-1">{profile.citationCount}</div>
+                <div className="text-2xl font-bold text-slate-900 mt-1">
+                  {profile.citationCount}
+                </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">Tracked domain citations</div>
               </div>
 
               <div className="rounded-lg bg-slate-50 p-4 border border-slate-200/80">
-                <div className="text-xs font-medium text-slate-500">Website Crawl Status (Tier 2)</div>
+                <div className="text-xs font-medium text-slate-500">
+                  Website Crawl Status (Tier 2)
+                </div>
                 <div className="flex items-center space-x-1.5 mt-1">
                   {profile.tier2Available ? (
                     <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -150,7 +173,9 @@ export function CompetitorDetailDialog({
                   )}
                 </div>
                 <div className="text-[11px] text-slate-400 mt-0.5">
-                  {profile.tier2Available ? `${profile.importantPages?.length || 0} pages indexed` : 'Tier 2 metrics locked'}
+                  {profile.tier2Available
+                    ? `${profile.importantPages?.length || 0} pages indexed`
+                    : 'Tier 2 metrics locked'}
                 </div>
               </div>
             </div>
@@ -198,7 +223,9 @@ export function CompetitorDetailDialog({
                           key={idx}
                           className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50/50 p-2.5 text-xs"
                         >
-                          <span className="font-mono text-slate-700 truncate max-w-md">{page.sourceUrl}</span>
+                          <span className="font-mono text-slate-700 truncate max-w-md">
+                            {page.sourceUrl}
+                          </span>
                           <span className="font-semibold text-slate-900 shrink-0">
                             {page.count} {page.count === 1 ? 'citation' : 'citations'}
                           </span>
@@ -220,7 +247,8 @@ export function CompetitorDetailDialog({
                           key={idx}
                           className="inline-flex items-center rounded-md bg-slate-100 px-2.5 py-1 text-xs text-slate-700 font-medium"
                         >
-                          {ent.name} <span className="ml-1 text-[10px] text-slate-400">({ent.type})</span>
+                          {ent.name}{' '}
+                          <span className="ml-1 text-[10px] text-slate-400">({ent.type})</span>
                         </span>
                       ))}
                     </div>
@@ -269,7 +297,9 @@ export function CompetitorDetailDialog({
                     {tier2Metrics.contentOverlap.available && (
                       <div className="rounded-lg bg-slate-900 p-4 text-white space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-300 font-medium">Content Overlap Score</span>
+                          <span className="text-xs text-slate-300 font-medium">
+                            Content Overlap Score
+                          </span>
                           <span className="text-lg font-bold text-emerald-400">
                             {tier2Metrics.contentOverlap.data.scorePercentage}%
                           </span>
@@ -277,7 +307,9 @@ export function CompetitorDetailDialog({
                         <div className="w-full bg-slate-700 h-2 rounded-full overflow-hidden">
                           <div
                             className="bg-emerald-400 h-full transition-all duration-300"
-                            style={{ width: `${tier2Metrics.contentOverlap.data.scorePercentage}%` }}
+                            style={{
+                              width: `${tier2Metrics.contentOverlap.data.scorePercentage}%`,
+                            }}
                           />
                         </div>
                       </div>
@@ -289,19 +321,27 @@ export function CompetitorDetailDialog({
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-900">
                           <span>Shared Topics</span>
                           <span className="text-emerald-600 font-bold">
-                            {tier2Metrics.sharedTopics.available ? tier2Metrics.sharedTopics.data.count : 0}
+                            {tier2Metrics.sharedTopics.available
+                              ? tier2Metrics.sharedTopics.data.count
+                              : 0}
                           </span>
                         </div>
-                        {tier2Metrics.sharedTopics.available && tier2Metrics.sharedTopics.data.topics.length > 0 ? (
+                        {tier2Metrics.sharedTopics.available &&
+                        tier2Metrics.sharedTopics.data.topics.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {tier2Metrics.sharedTopics.data.topics.map((t, idx) => (
-                              <span key={idx} className="rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] border border-emerald-200/60 font-medium">
+                              <span
+                                key={idx}
+                                className="rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] border border-emerald-200/60 font-medium"
+                              >
                                 {t}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">No shared topics detected.</p>
+                          <p className="text-xs text-slate-400 italic">
+                            No shared topics detected.
+                          </p>
                         )}
                       </div>
 
@@ -309,19 +349,27 @@ export function CompetitorDetailDialog({
                         <div className="flex items-center justify-between text-xs font-semibold text-slate-900">
                           <span>Missing Topics in Your Context</span>
                           <span className="text-amber-600 font-bold">
-                            {tier2Metrics.missingTopics.available ? tier2Metrics.missingTopics.data.count : 0}
+                            {tier2Metrics.missingTopics.available
+                              ? tier2Metrics.missingTopics.data.count
+                              : 0}
                           </span>
                         </div>
-                        {tier2Metrics.missingTopics.available && tier2Metrics.missingTopics.data.topics.length > 0 ? (
+                        {tier2Metrics.missingTopics.available &&
+                        tier2Metrics.missingTopics.data.topics.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
                             {tier2Metrics.missingTopics.data.topics.map((t, idx) => (
-                              <span key={idx} className="rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px] border border-amber-200/60 font-medium">
+                              <span
+                                key={idx}
+                                className="rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px] border border-amber-200/60 font-medium"
+                              >
                                 {t}
                               </span>
                             ))}
                           </div>
                         ) : (
-                          <p className="text-xs text-slate-400 italic">No missing topics detected.</p>
+                          <p className="text-xs text-slate-400 italic">
+                            No missing topics detected.
+                          </p>
                         )}
                       </div>
                     </div>
@@ -329,18 +377,22 @@ export function CompetitorDetailDialog({
                     {/* Schema Coverage */}
                     {tier2Metrics.schemaCoverage.available && (
                       <div className="rounded-lg border border-slate-200 p-3.5 space-y-2">
-                        <h5 className="text-xs font-semibold text-slate-900">Schema.org Types Comparison</h5>
+                        <h5 className="text-xs font-semibold text-slate-900">
+                          Schema.org Types Comparison
+                        </h5>
                         <div className="grid grid-cols-2 gap-3 text-xs">
                           <div>
                             <span className="text-slate-500 font-medium">User Domain Schemas:</span>
                             <p className="font-mono text-slate-800 mt-0.5">
-                              {tier2Metrics.schemaCoverage.data.userSchemas.join(', ') || 'None detected'}
+                              {tier2Metrics.schemaCoverage.data.userSchemas.join(', ') ||
+                                'None detected'}
                             </p>
                           </div>
                           <div>
                             <span className="text-slate-500 font-medium">Competitor Schemas:</span>
                             <p className="font-mono text-slate-800 mt-0.5">
-                              {tier2Metrics.schemaCoverage.data.competitorSchemas.join(', ') || 'None detected'}
+                              {tier2Metrics.schemaCoverage.data.competitorSchemas.join(', ') ||
+                                'None detected'}
                             </p>
                           </div>
                         </div>

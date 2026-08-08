@@ -1,8 +1,4 @@
-import type {
-  EstimatedImpact,
-  EstimatedEffort,
-  PriorityBand,
-} from './types';
+import type { EstimatedImpact, EstimatedEffort, PriorityBand } from './types';
 
 /**
  * Deterministic Priority Formula & Scoring Module.

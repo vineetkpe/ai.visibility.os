@@ -22,11 +22,10 @@ export const recommendationsTask = task({
 
     // 1. Verify project has at least 1 completed scan
     const { data: completedScans, error: scanErr } = await supabase
-      .from('scans')
+      .from('ai_scans')
       .select('id')
       .eq('project_id', payload.projectId)
       .eq('status', 'completed')
-      .is('deleted_at', null)
       .limit(1);
 
     if (scanErr || !completedScans || completedScans.length === 0) {
@@ -40,7 +39,7 @@ export const recommendationsTask = task({
       .from('business_context_versions')
       .select('id')
       .eq('project_id', payload.projectId)
-      .eq('is_current', true)
+      .order('created_at', { ascending: false })
       .limit(1);
 
     if (bcErr || !bcVersions || bcVersions.length === 0) {

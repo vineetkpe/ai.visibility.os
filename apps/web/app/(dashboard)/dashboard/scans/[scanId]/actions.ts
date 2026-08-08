@@ -1,10 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import {
-  getProjectRecommendations,
-  type Recommendation,
-} from '@ai-visibility-os/recommendations';
+import { getProjectRecommendations, type Recommendation } from '@ai-visibility-os/recommendations';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -99,9 +96,7 @@ export interface ScanDetailsData {
 /**
  * Server Action to fetch complete grounded scan details, evidence, and narrative sections.
  */
-export async function getScanDetailsData(
-  scanId: string
-): Promise<ActionResult<ScanDetailsData>> {
+export async function getScanDetailsData(scanId: string): Promise<ActionResult<ScanDetailsData>> {
   try {
     const supabase = await createClient();
 
@@ -117,10 +112,11 @@ export async function getScanDetailsData(
 
     // 2. Fetch Target Scan Record & Verify Ownership
     const { data: scanRow, error: scanErr } = await supabase
-      .from('scans')
-      .select('id, project_id, prompt_id, query_prompt, ai_model, status, visibility_score, summary, raw_response, error_message, started_at, completed_at, created_at')
+      .from('ai_scans')
+      .select(
+        'id, project_id, prompt_library_id, prompt_text, model_name, status, is_mentioned, summary_markdown, raw_response, error_message, started_at, completed_at, created_at'
+      )
       .eq('id', scanId)
-      .is('deleted_at', null)
       .maybeSingle();
 
     if (scanErr || !scanRow) {
@@ -133,7 +129,6 @@ export async function getScanDetailsData(
       .select('id, name')
       .eq('id', scanRow.project_id)
       .eq('user_id', user.id)
-      .is('deleted_at', null)
       .maybeSingle();
 
     if (!project) {
@@ -143,7 +138,9 @@ export async function getScanDetailsData(
     // Calculate runtime duration
     let durationSeconds: number | null = null;
     if (scanRow.completed_at) {
-      const startTime = scanRow.started_at ? new Date(scanRow.started_at).getTime() : new Date(scanRow.created_at).getTime();
+      const startTime = scanRow.started_at
+        ? new Date(scanRow.started_at).getTime()
+        : new Date(scanRow.created_at).getTime();
       const endTime = new Date(scanRow.completed_at).getTime();
       durationSeconds = Math.max(0, Math.round((endTime - startTime) / 1000));
     }
@@ -165,22 +162,26 @@ export async function getScanDetailsData(
     // 4. Fetch AI Visibility Data (Mentions & Citations for scan)
     const { data: mentionsData } = await supabase
       .from('entity_mentions')
-      .select('id, context_snippet, sentiment, entities(name, entity_type)')
-      .eq('scan_id', scanId);
+      .select('id, context_snippet, sentiment, tracked_entities(name, entity_type)')
+      .eq('ai_scan_id', scanId);
 
     const mentionSummary = (mentionsData || []).map((m) => ({
       id: m.id,
-      entityName: ((m.entities as unknown) as { name: string; entity_type: string } | null)?.name || 'Unknown Entity',
-      entityType: ((m.entities as unknown) as { name: string; entity_type: string } | null)?.entity_type || 'Brand',
+      entityName:
+        (m.tracked_entities as unknown as { name: string; entity_type: string } | null)?.name ||
+        'Unknown Entity',
+      entityType:
+        (m.tracked_entities as unknown as { name: string; entity_type: string } | null)
+          ?.entity_type || 'Brand',
       snippet: m.context_snippet,
       sentiment: m.sentiment || 'neutral',
     }));
 
     const { data: citationsData } = await supabase
       .from('citations')
-      .select('id, source_url, source_domain, anchor_text, citation_order, is_own_domain')
-      .eq('scan_id', scanId)
-      .order('citation_order', { ascending: true });
+      .select('id, url, title, position, is_own_domain')
+      .eq('ai_scan_id', scanId)
+      .order('position', { ascending: true });
 
     const citationList = citationsData || [];
     const ownCount = citationList.filter((c) => c.is_own_domain).length;
@@ -192,8 +193,8 @@ export async function getScanDetailsData(
         provider: 'google-gemini',
         displayName: 'Google Gemini 3.6 Flash',
         isAvailable: true,
-        score: scanRow.visibility_score,
-        summary: scanRow.summary,
+        score: scanRow.is_mentioned ? 100 : 0,
+        summary: scanRow.summary_markdown,
       },
       {
         provider: 'openai-chatgpt',
@@ -228,8 +229,12 @@ export async function getScanDetailsData(
     const tier1ScanCompetitors = (tier1Scans || []).map((cs) => ({
       id: cs.id,
       competitorId: cs.competitor_id,
-      name: ((cs.competitors as unknown) as { name: string; domain_name: string } | null)?.name || 'Competitor',
-      domainName: ((cs.competitors as unknown) as { name: string; domain_name: string } | null)?.domain_name || '',
+      name:
+        (cs.competitors as unknown as { name: string; domain_name: string } | null)?.name ||
+        'Competitor',
+      domainName:
+        (cs.competitors as unknown as { name: string; domain_name: string } | null)?.domain_name ||
+        '',
       visibilityScore: cs.visibility_score,
       mentionCount: cs.mention_count || 0,
     }));
@@ -240,13 +245,14 @@ export async function getScanDetailsData(
       .select('id, name, domain_name')
       .eq('project_id', scanRow.project_id);
 
-    const { data: compDomains } = (projectCompetitors || []).length > 0
-      ? await supabase
-          .from('domains')
-          .select('id, host')
-          .eq('project_id', scanRow.project_id)
-          .eq('is_primary', false)
-      : { data: [] };
+    const { data: compDomains } =
+      (projectCompetitors || []).length > 0
+        ? await supabase
+            .from('domains')
+            .select('id, host')
+            .eq('project_id', scanRow.project_id)
+            .eq('is_primary', false)
+        : { data: [] };
 
     const crawledCompDomainSet = new Set(
       (compDomains || []).map((d) => (d.host || '').toLowerCase())
@@ -266,12 +272,13 @@ export async function getScanDetailsData(
       .eq('project_id', scanRow.project_id);
 
     const domainIds = (projectDomains || []).map((d) => d.id);
-    const { data: pagesData } = domainIds.length > 0
-      ? await supabase
-          .from('pages')
-          .select('id, url, title, http_status, meta_description, schema_org_types')
-          .in('domain_id', domainIds)
-      : { data: [] };
+    const { data: pagesData } =
+      domainIds.length > 0
+        ? await supabase
+            .from('pages')
+            .select('id, url, title, http_status, meta_description, schema_org_types')
+            .in('domain_id', domainIds)
+        : { data: [] };
 
     const pageList = pagesData || [];
     const totalPages = pageList.length;
@@ -299,9 +306,14 @@ export async function getScanDetailsData(
       .maybeSingle();
 
     const jobResultObj = (latestCrawlJob?.result as Record<string, unknown> | null) || {};
-    const sitemapUrl = typeof jobResultObj.sitemap_url === 'string' ? jobResultObj.sitemap_url : null;
-    const sitemapUrlsFound = typeof jobResultObj.sitemap_urls_found === 'number' ? jobResultObj.sitemap_urls_found : null;
-    const pagesSkippedRobots = typeof jobResultObj.pages_skipped_robots === 'number' ? jobResultObj.pages_skipped_robots : null;
+    const sitemapUrl =
+      typeof jobResultObj.sitemap_url === 'string' ? jobResultObj.sitemap_url : null;
+    const sitemapUrlsFound =
+      typeof jobResultObj.sitemap_urls_found === 'number' ? jobResultObj.sitemap_urls_found : null;
+    const pagesSkippedRobots =
+      typeof jobResultObj.pages_skipped_robots === 'number'
+        ? jobResultObj.pages_skipped_robots
+        : null;
 
     // 7. Fetch Evidence (Source Pages, Citations, Raw Response)
     const { data: pageScansData } = await supabase
@@ -311,9 +323,15 @@ export async function getScanDetailsData(
 
     const sourcePages = (pageScansData || []).map((ps) => ({
       id: ps.id,
-      url: ((ps.pages as unknown) as { url: string; title: string | null; http_status: number } | null)?.url || '',
-      title: ((ps.pages as unknown) as { url: string; title: string | null; http_status: number } | null)?.title || null,
-      httpStatus: ((ps.pages as unknown) as { url: string; title: string | null; http_status: number } | null)?.http_status || 200,
+      url:
+        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
+          ?.url || '',
+      title:
+        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
+          ?.title || null,
+      httpStatus:
+        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
+          ?.http_status || 200,
       rankPosition: ps.rank_position,
       sentimentScore: ps.sentiment_score,
     }));
@@ -324,11 +342,11 @@ export async function getScanDetailsData(
         scan: {
           id: scanRow.id,
           projectId: scanRow.project_id,
-          queryPrompt: scanRow.query_prompt,
-          aiModel: scanRow.ai_model,
+          queryPrompt: scanRow.prompt_text,
+          aiModel: scanRow.model_name || 'Gemini',
           status: scanRow.status,
-          visibilityScore: scanRow.visibility_score,
-          summary: scanRow.summary,
+          visibilityScore: scanRow.is_mentioned ? 100 : 0,
+          summary: scanRow.summary_markdown,
           rawResponse: scanRow.raw_response,
           errorMessage: scanRow.error_message,
           startedAt: scanRow.started_at,
@@ -363,10 +381,10 @@ export async function getScanDetailsData(
           sourcePages,
           citations: citationList.map((c) => ({
             id: c.id,
-            sourceUrl: c.source_url,
-            sourceDomain: c.source_domain,
-            anchorText: c.anchor_text,
-            citationOrder: c.citation_order ?? 0,
+            sourceUrl: c.url,
+            sourceDomain: c.url ? new URL(c.url).hostname : '',
+            anchorText: c.title,
+            citationOrder: c.position ?? 0,
             isOwnDomain: c.is_own_domain,
           })),
           rawResponse: scanRow.raw_response,

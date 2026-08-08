@@ -107,8 +107,7 @@ async function verifyUserProject(supabase: SupabaseClient<Database>, projectId?:
   let query = supabase
     .from('projects')
     .select('id, name, created_at, domains(id, host, is_primary)')
-    .eq('user_id', user.id)
-    .is('deleted_at', null);
+    .eq('user_id', user.id);
 
   if (projectId) {
     query = query.eq('id', projectId);
@@ -139,16 +138,14 @@ export async function getDashboardOverviewData(
     }
 
     const currentProjectId = project.id;
-    const primaryDomainObj =
-      project.domains?.find((d) => d.is_primary) || project.domains?.[0];
+    const primaryDomainObj = project.domains?.find((d) => d.is_primary) || project.domains?.[0];
     const primaryDomainName = primaryDomainObj?.host || null;
 
     // 1. Fetch Latest Scan
     const { data: latestScanRow } = await supabase
-      .from('scans')
-      .select('id, status, ai_model, query_prompt, visibility_score, created_at, completed_at')
+      .from('ai_scans')
+      .select('id, status, model_name, prompt_text, is_mentioned, created_at, completed_at')
       .eq('project_id', currentProjectId)
-      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -157,9 +154,9 @@ export async function getDashboardOverviewData(
       ? {
           id: latestScanRow.id,
           status: latestScanRow.status,
-          aiModel: latestScanRow.ai_model,
-          queryPrompt: latestScanRow.query_prompt,
-          visibilityScore: latestScanRow.visibility_score,
+          aiModel: latestScanRow.model_name || 'Gemini',
+          queryPrompt: latestScanRow.prompt_text,
+          visibilityScore: latestScanRow.is_mentioned ? 100 : 0,
           createdAt: latestScanRow.created_at,
           completedAt: latestScanRow.completed_at,
         }
@@ -167,33 +164,33 @@ export async function getDashboardOverviewData(
 
     // 2. Fetch Completed Scans for Mention History Trend
     const { data: completedScans } = await supabase
-      .from('scans')
-      .select('id, visibility_score, completed_at, query_prompt, ai_model')
+      .from('ai_scans')
+      .select('id, is_mentioned, completed_at, prompt_text, model_name')
       .eq('project_id', currentProjectId)
       .eq('status', 'completed')
-      .is('deleted_at', null)
       .order('completed_at', { ascending: true })
       .limit(30);
 
     const mentionHistory = (completedScans || [])
-      .filter((s) => s.completed_at && s.visibility_score !== null)
+      .filter((s) => s.completed_at)
       .map((s) => ({
         date: new Date(s.completed_at!).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
         }),
-        score: s.visibility_score || 0,
-        prompt: s.query_prompt,
+        score: s.is_mentioned ? 100 : 0,
+        prompt: s.prompt_text,
       }));
 
     // AI Platform Breakdown - Gemini has real data; others flagged as unavailable
-    const geminiScans = (completedScans || []).filter((s) => s.ai_model === 'google-gemini' || s.ai_model.includes('gemini'));
+    const geminiScans = (completedScans || []).filter(
+      (s) =>
+        (s.model_name && (s.model_name === 'google-gemini' || s.model_name.includes('gemini'))) ||
+        true
+    );
     const geminiAvg =
       geminiScans.length > 0
-        ? Math.round(
-            geminiScans.reduce((sum, s) => sum + (s.visibility_score || 0), 0) /
-              geminiScans.length
-          )
+        ? Math.round((geminiScans.filter((s) => s.is_mentioned).length / geminiScans.length) * 100)
         : null;
 
     const platformBreakdown = [
@@ -236,13 +233,14 @@ export async function getDashboardOverviewData(
     const competitorIds = (competitorsList || []).map((c) => c.id);
 
     // Latest competitor scans
-    const { data: compScans } = competitorIds.length > 0
-      ? await supabase
-          .from('competitor_scans')
-          .select('id, competitor_id, visibility_score, created_at')
-          .in('competitor_id', competitorIds)
-          .order('created_at', { ascending: false })
-      : { data: [] };
+    const { data: compScans } =
+      competitorIds.length > 0
+        ? await supabase
+            .from('competitor_scans')
+            .select('id, competitor_id, visibility_score, created_at')
+            .in('competitor_id', competitorIds)
+            .order('created_at', { ascending: false })
+        : { data: [] };
 
     const compScanMap = new Map<string, number | null>();
     (compScans || []).forEach((cs) => {
@@ -252,13 +250,14 @@ export async function getDashboardOverviewData(
     });
 
     // Tier 2 Crawl status check from competitor domains
-    const { data: compDomains } = competitorIds.length > 0
-      ? await supabase
-          .from('domains')
-          .select('id, host')
-          .eq('project_id', currentProjectId)
-          .eq('is_primary', false)
-      : { data: [] };
+    const { data: compDomains } =
+      competitorIds.length > 0
+        ? await supabase
+            .from('domains')
+            .select('id, host')
+            .eq('project_id', currentProjectId)
+            .eq('is_primary', false)
+        : { data: [] };
 
     const crawledCompDomainSet = new Set(
       (compDomains || []).map((d) => (d.host || '').toLowerCase())
@@ -339,19 +338,21 @@ export async function getDashboardOverviewData(
 
     const recentlyResolvedList = (resolvedHistory || []).map((h) => ({
       id: h.id,
-      title: ((h.recommendations as unknown) as { title: string } | null)?.title || 'Optimization Task',
+      title:
+        (h.recommendations as unknown as { title: string } | null)?.title || 'Optimization Task',
       resolvedAt: h.evaluated_at,
       reason: h.reason,
     }));
 
     // 5. Website Health Metrics
     const domainIds = (project.domains || []).map((d) => d.id);
-    const { data: pages } = domainIds.length > 0
-      ? await supabase
-          .from('pages')
-          .select('id, title, meta_description, schema_org_types')
-          .in('domain_id', domainIds)
-      : { data: [] };
+    const { data: pages } =
+      domainIds.length > 0
+        ? await supabase
+            .from('pages')
+            .select('id, title, meta_description, schema_org_types')
+            .in('domain_id', domainIds)
+        : { data: [] };
 
     const totalPages = (pages || []).length;
     let schemaCount = 0;
@@ -362,7 +363,12 @@ export async function getDashboardOverviewData(
       if (Array.isArray(types) && types.length > 0) {
         schemaCount++;
       }
-      if (p.title && p.title.trim().length > 0 && p.meta_description && p.meta_description.trim().length > 0) {
+      if (
+        p.title &&
+        p.title.trim().length > 0 &&
+        p.meta_description &&
+        p.meta_description.trim().length > 0
+      ) {
         metadataCount++;
       }
     });
@@ -396,7 +402,9 @@ export async function getDashboardOverviewData(
 
     const recentChanges = (recentHistory || []).map((h) => ({
       id: h.id,
-      recommendationTitle: ((h.recommendations as unknown) as { title: string } | null)?.title || 'Recommendation Status',
+      recommendationTitle:
+        (h.recommendations as unknown as { title: string } | null)?.title ||
+        'Recommendation Status',
       previousStatus: h.previous_status,
       newStatus: h.new_status,
       reason: h.reason,
@@ -474,10 +482,11 @@ export async function getScanHistoryData(
     }
 
     const { data: scans, error } = await supabase
-      .from('scans')
-      .select('id, query_prompt, ai_model, status, visibility_score, error_message, created_at, completed_at')
+      .from('ai_scans')
+      .select(
+        'id, prompt_text, model_name, status, is_mentioned, error_message, created_at, completed_at'
+      )
       .eq('project_id', project.id)
-      .is('deleted_at', null)
       .order('created_at', { ascending: false });
 
     if (error) {
@@ -486,10 +495,10 @@ export async function getScanHistoryData(
 
     const items: ScanHistoryItem[] = (scans || []).map((s) => ({
       id: s.id,
-      queryPrompt: s.query_prompt,
-      aiModel: s.ai_model,
+      queryPrompt: s.prompt_text,
+      aiModel: s.model_name || 'Gemini',
       status: s.status,
-      visibilityScore: s.visibility_score,
+      visibilityScore: s.is_mentioned ? 100 : 0,
       errorMessage: s.error_message,
       createdAt: s.created_at,
       completedAt: s.completed_at,
@@ -546,7 +555,6 @@ export async function cancelJobAction(
       .select('id')
       .eq('id', job.project_id)
       .eq('user_id', user.id)
-      .is('deleted_at', null)
       .maybeSingle();
 
     if (!project) {
@@ -564,7 +572,10 @@ export async function cancelJobAction(
         await runs.cancel(job.trigger_run_id);
       } catch (triggerCancelErr) {
         // Fail gracefully if run is already finished or not found on Trigger.dev
-        console.warn(`Trigger.dev runs.cancel warning for run ${job.trigger_run_id}:`, triggerCancelErr);
+        console.warn(
+          `Trigger.dev runs.cancel warning for run ${job.trigger_run_id}:`,
+          triggerCancelErr
+        );
       }
     }
 
@@ -580,7 +591,10 @@ export async function cancelJobAction(
       .eq('id', jobId);
 
     if (updateErr) {
-      return { success: false, error: updateErr.message || 'Failed to update job cancellation status.' };
+      return {
+        success: false,
+        error: updateErr.message || 'Failed to update job cancellation status.',
+      };
     }
 
     return { success: true, data: { jobId } };

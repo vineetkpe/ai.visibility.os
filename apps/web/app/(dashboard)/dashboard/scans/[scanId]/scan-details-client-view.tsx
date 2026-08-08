@@ -59,7 +59,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
       setIsCancellingScan(true);
       const res = await cancelJobAction(scan.id);
       if (res.success) {
-        toast.success(res.data?.alreadyFinished ? 'Scan already finished.' : 'Scan cancellation requested.');
+        toast.success(
+          res.data?.alreadyFinished ? 'Scan already finished.' : 'Scan cancellation requested.'
+        );
         window.location.reload();
       } else {
         toast.error(res.error || 'Failed to cancel scan.');
@@ -106,7 +108,12 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
     <div className="space-y-8">
       {/* Back Button */}
       <div>
-        <Button asChild variant="ghost" size="sm" className="text-xs text-slate-500 hover:text-slate-900 gap-1.5">
+        <Button
+          asChild
+          variant="ghost"
+          size="sm"
+          className="text-xs text-slate-500 hover:text-slate-900 gap-1.5"
+        >
           <Link href="/dashboard/scans">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Scan History</span>
@@ -158,8 +165,8 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
                 scan.status === 'completed'
                   ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                   : scan.status === 'failed'
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
               }`}
             >
               {scan.status}
@@ -196,7 +203,8 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
               <span>Recommended Optimization Tasks</span>
             </h2>
             <p className="text-xs text-slate-500">
-              Tasks generated specifically for this scan prompt or linked evidence ({recommendations.length} total)
+              Tasks generated specifically for this scan prompt or linked evidence (
+              {recommendations.length} total)
             </p>
           </div>
 
@@ -273,18 +281,27 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             <div className="space-y-2 max-h-48 overflow-y-auto">
               {aiVisibility.mentionSummary.length > 0 ? (
                 aiVisibility.mentionSummary.map((m) => (
-                  <div key={m.id} className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1">
+                  <div
+                    key={m.id}
+                    className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-slate-900">{m.entityName}</span>
                       <span className="text-[10px] uppercase font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
                         {m.sentiment}
                       </span>
                     </div>
-                    {m.snippet && <p className="text-[11px] text-slate-600 italic leading-snug">&quot;{m.snippet}&quot;</p>}
+                    {m.snippet && (
+                      <p className="text-[11px] text-slate-600 italic leading-snug">
+                        &quot;{m.snippet}&quot;
+                      </p>
+                    )}
                   </div>
                 ))
               ) : (
-                <div className="text-xs text-slate-400 italic">No entity mentions detected for this scan prompt.</div>
+                <div className="text-xs text-slate-400 italic">
+                  No entity mentions detected for this scan prompt.
+                </div>
               )}
             </div>
           </div>
@@ -310,10 +327,15 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             </div>
 
             <div className="space-y-1 pt-1 text-xs">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase">Top Source Domains:</div>
+              <div className="text-[11px] font-semibold text-slate-500 uppercase">
+                Top Source Domains:
+              </div>
               <div className="flex flex-wrap gap-1.5">
                 {aiVisibility.citationSummary.topDomains.map((dom, idx) => (
-                  <span key={idx} className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono text-[11px] text-slate-700">
+                  <span
+                    key={idx}
+                    className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono text-[11px] text-slate-700"
+                  >
                     {dom}
                   </span>
                 ))}
@@ -352,7 +374,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
                 {p.isAvailable ? (
                   <div className="text-base font-bold text-slate-900">{p.score}/100</div>
                 ) : (
-                  <div className="text-[11px] text-slate-400 italic">Not yet available for this provider</div>
+                  <div className="text-[11px] text-slate-400 italic">
+                    Not yet available for this provider
+                  </div>
                 )}
               </div>
             ))}
@@ -398,7 +422,10 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             {competitorAnalysis.tier1ScanCompetitors.length > 0 ? (
               <div className="space-y-2">
                 {competitorAnalysis.tier1ScanCompetitors.map((c) => (
-                  <div key={c.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                  <div
+                    key={c.id}
+                    className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                  >
                     <div>
                       <div className="font-bold text-slate-900">{c.name}</div>
                       <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
@@ -433,7 +460,10 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             {competitorAnalysis.tier2Profiles.length > 0 ? (
               <div className="space-y-2">
                 {competitorAnalysis.tier2Profiles.map((c) => (
-                  <div key={c.id} className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
+                  <div
+                    key={c.id}
+                    className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                  >
                     <div>
                       <div className="font-bold text-slate-900">{c.name}</div>
                       <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
@@ -482,13 +512,17 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
             <div className="text-xs text-slate-500">Schema.org Coverage</div>
-            <div className="text-2xl font-bold text-amber-600">{websiteDiscovery.schemaCoveragePct}%</div>
+            <div className="text-2xl font-bold text-amber-600">
+              {websiteDiscovery.schemaCoveragePct}%
+            </div>
             <div className="text-[11px] text-slate-400">JSON-LD structured data</div>
           </div>
 
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
             <div className="text-xs text-slate-500">Metadata Completeness</div>
-            <div className="text-2xl font-bold text-blue-600">{websiteDiscovery.metadataCoveragePct}%</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {websiteDiscovery.metadataCoveragePct}%
+            </div>
             <div className="text-[11px] text-slate-400">Title & description filled</div>
           </div>
 
@@ -497,11 +531,15 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             <div className="text-slate-500 font-medium">Robots & Sitemap</div>
             {websiteDiscovery.sitemapUrl !== null ? (
               <div className="space-y-0.5 pt-1">
-                <div className="text-[11px] font-mono text-slate-800 truncate" title={websiteDiscovery.sitemapUrl}>
+                <div
+                  className="text-[11px] font-mono text-slate-800 truncate"
+                  title={websiteDiscovery.sitemapUrl}
+                >
                   Sitemap: {websiteDiscovery.sitemapUrl}
                 </div>
                 <div className="text-[11px] text-slate-500">
-                  {websiteDiscovery.sitemapUrlsFound} URL(s) found • {websiteDiscovery.pagesSkippedRobots} skipped
+                  {websiteDiscovery.sitemapUrlsFound} URL(s) found •{' '}
+                  {websiteDiscovery.pagesSkippedRobots} skipped
                 </div>
               </div>
             ) : (
@@ -537,26 +575,42 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
               <Globe className="w-4 h-4 text-slate-600" />
               <span>Source Pages Matched ({evidence.sourcePages.length})</span>
             </span>
-            {isSourcePagesExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isSourcePagesExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
           {isSourcePagesExpanded && (
             <div id="source-pages-sec" className="p-4 space-y-2 bg-white text-xs">
               {evidence.sourcePages.length > 0 ? (
                 evidence.sourcePages.map((sp) => (
-                  <div key={sp.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
+                  <div
+                    key={sp.id}
+                    className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1"
+                  >
                     <div className="flex items-center justify-between">
-                      <a href={sp.url} target="_blank" rel="noopener noreferrer" className="font-mono text-cyan-700 hover:underline truncate max-w-lg">
+                      <a
+                        href={sp.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-mono text-cyan-700 hover:underline truncate max-w-lg"
+                      >
                         {sp.url}
                       </a>
                       <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
                         HTTP {sp.httpStatus}
                       </span>
                     </div>
-                    {sp.title && <p className="text-slate-600 text-[11px] font-medium">{sp.title}</p>}
+                    {sp.title && (
+                      <p className="text-slate-600 text-[11px] font-medium">{sp.title}</p>
+                    )}
                   </div>
                 ))
               ) : (
-                <div className="text-slate-400 italic">No source pages directly matched to this scan prompt.</div>
+                <div className="text-slate-400 italic">
+                  No source pages directly matched to this scan prompt.
+                </div>
               )}
             </div>
           )}
@@ -574,7 +628,11 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
               <ExternalLink className="w-4 h-4 text-blue-600" />
               <span>Full Citations List ({evidence.citations.length})</span>
             </span>
-            {isCitationsExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isCitationsExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
           {isCitationsExpanded && (
             <div id="citations-sec" className="p-4 bg-white text-xs overflow-x-auto">
@@ -593,7 +651,9 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
                       <tr key={c.id}>
                         <td className="p-2 font-mono text-slate-400">#{c.citationOrder}</td>
                         <td className="p-2 font-mono text-slate-800">{c.sourceDomain}</td>
-                        <td className="p-2 font-mono text-cyan-700 truncate max-w-xs">{c.sourceUrl}</td>
+                        <td className="p-2 font-mono text-cyan-700 truncate max-w-xs">
+                          {c.sourceUrl}
+                        </td>
                         <td className="p-2">
                           <span
                             className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
@@ -628,10 +688,17 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
               <Code className="w-4 h-4 text-amber-600" />
               <span>Verbatim Raw AI Response</span>
             </span>
-            {isRawResponseExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {isRawResponseExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
           </button>
           {isRawResponseExpanded && (
-            <div id="raw-response-sec" className="p-4 bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed border-t border-slate-800">
+            <div
+              id="raw-response-sec"
+              className="p-4 bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed border-t border-slate-800"
+            >
               {evidence.rawResponse && evidence.rawResponse.trim().length > 0
                 ? evidence.rawResponse
                 : 'Not available for this scan'}

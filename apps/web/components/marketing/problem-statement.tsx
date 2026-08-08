@@ -14,7 +14,9 @@ export function ProblemStatement() {
             Search is shifting from blue links to direct AI answers.
           </p>
           <p className="text-base text-slate-600">
-            Traditional SEO metrics no longer tell the full story. When users ask AI models for product or service recommendations, standard analytics miss how your brand is represented.
+            Traditional SEO metrics no longer tell the full story. When users ask AI models for
+            product or service recommendations, standard analytics miss how your brand is
+            represented.
           </p>
         </div>
 
@@ -24,11 +26,10 @@ export function ProblemStatement() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
                 <Search className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">
-                Traditional SEO Blindspots
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900">Traditional SEO Blindspots</h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Keyword rank trackers monitor web SERPs, but fail to measure direct synthetic answers synthesized by conversational LLM systems.
+                Keyword rank trackers monitor web SERPs, but fail to measure direct synthetic
+                answers synthesized by conversational LLM systems.
               </p>
             </CardContent>
           </Card>
@@ -38,11 +39,10 @@ export function ProblemStatement() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
                 <EyeOff className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">
-                Unseen Competitor Bias
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900">Unseen Competitor Bias</h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Competitors may be recommended repeatedly by AI models based on unstructured corpus training or specific authoritative citation sources.
+                Competitors may be recommended repeatedly by AI models based on unstructured corpus
+                training or specific authoritative citation sources.
               </p>
             </CardContent>
           </Card>
@@ -52,11 +52,10 @@ export function ProblemStatement() {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-900 text-white">
                 <Cpu className="h-5 w-5" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-900">
-                Lack of Actionable Evidence
-              </h3>
+              <h3 className="text-lg font-semibold text-slate-900">Lack of Actionable Evidence</h3>
               <p className="text-sm text-slate-600 leading-relaxed">
-                Without clear citation tracing and sentiment breakdown, marketing teams cannot optimize domain content for AI model retrieval.
+                Without clear citation tracing and sentiment breakdown, marketing teams cannot
+                optimize domain content for AI model retrieval.
               </p>
             </CardContent>
           </Card>

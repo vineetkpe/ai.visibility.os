@@ -10,9 +10,7 @@ export default function NotFound() {
         <FileQuestion className="h-8 w-8" />
       </div>
 
-      <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">
-        Page Not Found
-      </h2>
+      <h2 className="text-2xl font-bold tracking-tight text-slate-900 mb-2">Page Not Found</h2>
 
       <p className="text-sm text-slate-500 max-w-md mb-6">
         The page you are looking for does not exist or has been moved.

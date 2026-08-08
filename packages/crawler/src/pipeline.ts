@@ -45,8 +45,21 @@ export async function runDiscoveryPipeline(
 
     if (!baseValidation.valid) {
       const errorMsg = baseValidation.error || 'Base URL validation failed.';
-      await updateJobStatus(supabase, jobId, 'failed', { pages_crawled: 0, pages_failed: 1 }, errorMsg);
-      return { jobId, domainId, status: 'failed', pagesCrawled: 0, pagesFailed: 1, error: errorMsg };
+      await updateJobStatus(
+        supabase,
+        jobId,
+        'failed',
+        { pages_crawled: 0, pages_failed: 1 },
+        errorMsg
+      );
+      return {
+        jobId,
+        domainId,
+        status: 'failed',
+        pagesCrawled: 0,
+        pagesFailed: 1,
+        error: errorMsg,
+      };
     }
 
     const canonicalBaseUrl = baseValidation.url;
@@ -162,8 +175,15 @@ export async function runDiscoveryPipeline(
       error: finalError,
     };
   } catch (err: unknown) {
-    const errorMsg = err instanceof Error ? err.message : 'Pipeline execution encountered an unexpected error.';
-    await updateJobStatus(supabase, jobId, 'failed', { pages_crawled: pagesCrawled, pages_failed: pagesFailed }, errorMsg);
+    const errorMsg =
+      err instanceof Error ? err.message : 'Pipeline execution encountered an unexpected error.';
+    await updateJobStatus(
+      supabase,
+      jobId,
+      'failed',
+      { pages_crawled: pagesCrawled, pages_failed: pagesFailed },
+      errorMsg
+    );
     return {
       jobId,
       domainId,

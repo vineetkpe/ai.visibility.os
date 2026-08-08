@@ -18,17 +18,14 @@ export async function getCompetitorSuggestions(
   const trackedDomains = new Set(
     (existingComps || []).map((c) => c.domain_name.toLowerCase().replace(/^www\./, ''))
   );
-  const trackedNames = new Set(
-    (existingComps || []).map((c) => c.name.toLowerCase())
-  );
+  const trackedNames = new Set((existingComps || []).map((c) => c.name.toLowerCase()));
 
   // 2. Fetch primary own domain
   const { data: ownDomains } = await supabase
     .from('domains')
     .select('host')
     .eq('project_id', projectId)
-    .eq('is_primary', true)
-    .is('deleted_at', null);
+    .eq('is_primary', true);
 
   if (ownDomains) {
     for (const d of ownDomains) {
@@ -38,18 +35,17 @@ export async function getCompetitorSuggestions(
 
   // 3. Fetch completed scans for project
   const { data: scans } = await supabase
-    .from('scans')
-    .select('id, query_prompt')
+    .from('ai_scans')
+    .select('id, prompt_text')
     .eq('project_id', projectId)
-    .eq('status', 'completed')
-    .is('deleted_at', null);
+    .eq('status', 'completed');
 
   if (!scans || scans.length === 0) {
     return [];
   }
 
   const scanIds = scans.map((s) => s.id);
-  const scanMap = new Map(scans.map((s) => [s.id, s.query_prompt]));
+  const scanMap = new Map(scans.map((s) => [s.id, s.prompt_text]));
 
   // Map to hold aggregated candidate suggestions by domain
   const suggestionMap = new Map<
@@ -74,7 +70,8 @@ export async function getCompetitorSuggestions(
       const cleanDomain = c.source_domain.toLowerCase().replace(/^www\./, '');
       if (trackedDomains.has(cleanDomain)) continue;
       // Filter out generic search engine domains or social platforms if desired
-      if (['google.com', 'wikipedia.org', 'youtube.com', 'reddit.com'].includes(cleanDomain)) continue;
+      if (['google.com', 'wikipedia.org', 'youtube.com', 'reddit.com'].includes(cleanDomain))
+        continue;
 
       const existing = suggestionMap.get(cleanDomain);
       const promptText = scanMap.get(c.scan_id);
@@ -113,10 +110,17 @@ export async function getCompetitorSuggestions(
   if (mentions) {
     for (const m of mentions) {
       if (!m.scan_id) continue;
-      const entName = Array.isArray(m.entities) ? m.entities[0]?.name : (m.entities as { name?: string })?.name;
-      const entType = Array.isArray(m.entities) ? m.entities[0]?.entity_type : (m.entities as { entity_type?: string })?.entity_type;
+      const entName = Array.isArray(m.entities)
+        ? m.entities[0]?.name
+        : (m.entities as { name?: string })?.name;
+      const entType = Array.isArray(m.entities)
+        ? m.entities[0]?.entity_type
+        : (m.entities as { entity_type?: string })?.entity_type;
 
-      if (!entName || entType !== 'brand' && entType !== 'product' && entType !== 'organization') {
+      if (
+        !entName ||
+        (entType !== 'brand' && entType !== 'product' && entType !== 'organization')
+      ) {
         continue;
       }
 

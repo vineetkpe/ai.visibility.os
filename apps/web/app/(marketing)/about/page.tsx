@@ -14,7 +14,9 @@ export default function AboutPage() {
           About AI Visibility OS
         </h1>
         <p className="text-lg text-slate-600 leading-relaxed">
-          AI Visibility OS is engineered to give marketing leaders, SEO strategists, and brand managers clear visibility into how their business is represented across conversational AI platforms.
+          AI Visibility OS is engineered to give marketing leaders, SEO strategists, and brand
+          managers clear visibility into how their business is represented across conversational AI
+          platforms.
         </p>
       </div>
 

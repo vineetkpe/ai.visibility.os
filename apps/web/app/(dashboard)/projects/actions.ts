@@ -78,13 +78,10 @@ export async function createProjectAction(
     }
 
     // 5. Create project and primary domain atomically via RPC
-    const { data: projectId, error: rpcError } = await supabase.rpc(
-      'create_project_with_domain',
-      {
-        p_name: name.trim(),
-        p_host: domainName,
-      }
-    );
+    const { data: projectId, error: rpcError } = await supabase.rpc('create_project_with_domain', {
+      p_name: name.trim(),
+      p_host: domainName,
+    });
 
     if (rpcError || !projectId) {
       return {

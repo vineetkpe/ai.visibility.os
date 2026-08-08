@@ -1,6 +1,6 @@
 /**
  * Web Application Supabase Browser Client
- * 
+ *
  * Usage example:
  * const supabase = createClient();
  */

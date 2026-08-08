@@ -41,7 +41,8 @@ export function FeaturesSection() {
             Everything needed to audit and elevate your AI presence.
           </p>
           <p className="text-base text-slate-600">
-            A comprehensive suite of tools built for modern search visibility and brand intelligence.
+            A comprehensive suite of tools built for modern search visibility and brand
+            intelligence.
           </p>
         </div>
 

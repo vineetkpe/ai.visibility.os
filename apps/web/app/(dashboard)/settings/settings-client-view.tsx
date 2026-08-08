@@ -32,9 +32,7 @@ export function SettingsClientView({ project }: SettingsClientViewProps) {
       {/* General Project Settings Card */}
       <Card className="border-slate-200 bg-white shadow-xs">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-900">
-            Project Overview
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold text-slate-900">Project Overview</CardTitle>
           <CardDescription className="text-xs text-slate-500">
             Configuration and metadata for the current active project.
           </CardDescription>
@@ -46,9 +44,7 @@ export function SettingsClientView({ project }: SettingsClientViewProps) {
                 <Folder className="h-5 w-5 text-slate-500 shrink-0" />
                 <div className="overflow-hidden">
                   <div className="text-xs font-medium text-slate-500">Project Name</div>
-                  <div className="text-sm font-semibold text-slate-900 truncate">
-                    {currentName}
-                  </div>
+                  <div className="text-sm font-semibold text-slate-900 truncate">{currentName}</div>
                 </div>
               </div>
               <Button
@@ -76,9 +72,7 @@ export function SettingsClientView({ project }: SettingsClientViewProps) {
               <Calendar className="h-5 w-5 text-slate-500 shrink-0" />
               <div className="overflow-hidden">
                 <div className="text-xs font-medium text-slate-500">Created On</div>
-                <div className="text-sm font-semibold text-slate-900 truncate">
-                  {formattedDate}
-                </div>
+                <div className="text-sm font-semibold text-slate-900 truncate">{formattedDate}</div>
               </div>
             </div>
           </div>
@@ -88,9 +82,7 @@ export function SettingsClientView({ project }: SettingsClientViewProps) {
       {/* Danger Zone Card */}
       <Card className="border-red-200 bg-red-50/20 shadow-xs">
         <CardHeader>
-          <CardTitle className="text-lg font-semibold text-red-700">
-            Danger Zone
-          </CardTitle>
+          <CardTitle className="text-lg font-semibold text-red-700">Danger Zone</CardTitle>
           <CardDescription className="text-xs text-slate-600">
             Irreversible and destructive actions for this project.
           </CardDescription>

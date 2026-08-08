@@ -20,7 +20,8 @@ const businessContextSchema: Schema = {
   properties: {
     description: {
       type: Type.STRING,
-      description: 'Concise, literal description of what the company does based solely on the text.',
+      description:
+        'Concise, literal description of what the company does based solely on the text.',
     },
     industry: {
       type: Type.STRING,
@@ -47,7 +48,8 @@ const businessContextSchema: Schema = {
     },
     pricingModel: {
       type: Type.STRING,
-      description: 'Pricing model explicitly mentioned (e.g., Subscription, Freemium, Custom Enterprise Quote).',
+      description:
+        'Pricing model explicitly mentioned (e.g., Subscription, Freemium, Custom Enterprise Quote).',
     },
     topics: {
       type: Type.ARRAY,
@@ -163,7 +165,7 @@ ${payloadText}`,
 
     const parsed: AiSynthesizedResult = JSON.parse(textOutput);
 
-    const pushField = (fieldName: string, value?: string, confidence = 0.70) => {
+    const pushField = (fieldName: string, value?: string, confidence = 0.7) => {
       if (value && value.trim()) {
         fields.push({
           fieldName,
@@ -182,21 +184,21 @@ ${payloadText}`,
     };
 
     pushField('description', parsed.description, 0.75);
-    pushField('industry', parsed.industry, 0.70);
+    pushField('industry', parsed.industry, 0.7);
     pushField('subIndustry', parsed.subIndustry, 0.65);
     pushField('pricingModel', parsed.pricingModel, 0.65);
 
-    pushArrayFields('products', parsed.products, 0.70);
-    pushArrayFields('services', parsed.services, 0.70);
+    pushArrayFields('products', parsed.products, 0.7);
+    pushArrayFields('services', parsed.services, 0.7);
     pushArrayFields('targetAudience', parsed.targetAudience, 0.65);
     pushArrayFields('topics', parsed.topics, 0.65);
     pushArrayFields('brandKeywords', parsed.brandKeywords, 0.65);
-    pushArrayFields('trustSignals', parsed.trustSignals, 0.70);
+    pushArrayFields('trustSignals', parsed.trustSignals, 0.7);
 
     if (Array.isArray(parsed.faq)) {
       parsed.faq.forEach((item) => {
         if (item.question && item.answer) {
-          pushField('faq', `Q: ${item.question} | A: ${item.answer}`, 0.70);
+          pushField('faq', `Q: ${item.question} | A: ${item.answer}`, 0.7);
         }
       });
     }

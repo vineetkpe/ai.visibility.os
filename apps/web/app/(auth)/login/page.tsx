@@ -6,7 +6,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeRedirectUrl } from '@/proxy';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+} from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { OAuthButton } from '@/components/auth/oauth-button';
 import { LogIn } from 'lucide-react';
@@ -81,7 +88,9 @@ function LoginForm() {
 
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor="login-email" className="text-xs font-medium text-slate-700">Email address</label>
+            <label htmlFor="login-email" className="text-xs font-medium text-slate-700">
+              Email address
+            </label>
             <input
               id="login-email"
               type="email"
@@ -95,7 +104,9 @@ function LoginForm() {
 
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label htmlFor="login-password" className="text-xs font-medium text-slate-700">Password</label>
+              <label htmlFor="login-password" className="text-xs font-medium text-slate-700">
+                Password
+              </label>
               <Link
                 href="/forgot-password"
                 className="text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"

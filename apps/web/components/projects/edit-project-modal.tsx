@@ -62,21 +62,31 @@ export function EditProjectModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4" role="dialog" aria-modal="true" aria-labelledby="edit-proj-title">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="edit-proj-title"
+    >
       <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center space-x-3 text-slate-900 mb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 border border-slate-200">
             <Pencil className="h-5 w-5 text-slate-700" />
           </div>
           <div>
-            <h3 id="edit-proj-title" className="text-lg font-semibold text-slate-900">Edit Project Name</h3>
+            <h3 id="edit-proj-title" className="text-lg font-semibold text-slate-900">
+              Edit Project Name
+            </h3>
             <p className="text-xs text-slate-500">Update the display name of your project.</p>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="edit-project-name" className="block text-xs font-medium text-slate-700 mb-1.5">
+            <label
+              htmlFor="edit-project-name"
+              className="block text-xs font-medium text-slate-700 mb-1.5"
+            >
               Project Name
             </label>
             <input
@@ -95,17 +105,13 @@ export function EditProjectModal({
           <div className="flex items-start space-x-2.5 p-3 rounded-lg bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
             <Info className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
             <span>
-              Primary domain URL is read-only to preserve existing website crawls, AI scan records, and business context history.
+              Primary domain URL is read-only to preserve existing website crawls, AI scan records,
+              and business context history.
             </span>
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </Button>
             <Button

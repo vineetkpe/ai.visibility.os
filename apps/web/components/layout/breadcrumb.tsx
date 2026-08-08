@@ -28,9 +28,7 @@ export function Breadcrumb({ items, className, ...props }: BreadcrumbProps) {
       { label: 'Dashboard', href: '/' },
       ...segments.map((segment, index) => {
         const href = `/${segments.slice(0, index + 1).join('/')}`;
-        const label = segment
-          .replace(/-/g, ' ')
-          .replace(/^\w/, (c) => c.toUpperCase());
+        const label = segment.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
         return { label, href };
       }),
     ];

@@ -17,18 +17,20 @@ export async function detectProjectIssues(
   const { data: domains } = await supabase
     .from('domains')
     .select('id, host, is_primary')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+    .eq('project_id', projectId);
 
   const ownDomains = (domains || []).filter((d) => d.is_primary);
   const ownDomainIds = ownDomains.map((d) => d.id);
 
-  const { data: ownPages } = ownDomainIds.length > 0
-    ? await supabase
-        .from('pages')
-        .select('id, url, title, http_status, meta_description, canonical_url, schema_org_types, word_count, crawl_status')
-        .in('domain_id', ownDomainIds)
-    : { data: [] };
+  const { data: ownPages } =
+    ownDomainIds.length > 0
+      ? await supabase
+          .from('pages')
+          .select(
+            'id, url, title, http_status, meta_description, canonical_url, schema_org_types, word_count, crawl_status'
+          )
+          .in('domain_id', ownDomainIds)
+      : { data: [] };
 
   const pagesList = ownPages || [];
 
@@ -36,11 +38,10 @@ export async function detectProjectIssues(
 
   // 3. Fetch Completed Scans
   const { data: completedScans } = await supabase
-    .from('scans')
-    .select('id, query_prompt, ai_model, visibility_score, created_at')
+    .from('ai_scans')
+    .select('id, prompt_text, model_name, is_mentioned, created_at')
     .eq('project_id', projectId)
     .eq('status', 'completed')
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(20);
 
@@ -48,12 +49,13 @@ export async function detectProjectIssues(
   const scanIds = scanList.map((s) => s.id);
 
   // 4. Fetch Citations across completed scans
-  const { data: scanCitations } = scanIds.length > 0
-    ? await supabase
-        .from('citations')
-        .select('id, scan_id, source_url, source_domain, is_own_domain, competitor_id')
-        .in('scan_id', scanIds)
-    : { data: [] };
+  const { data: scanCitations } =
+    scanIds.length > 0
+      ? await supabase
+          .from('citations')
+          .select('id, scan_id, source_url, source_domain, is_own_domain, competitor_id')
+          .in('scan_id', scanIds)
+      : { data: [] };
 
   const citationList = scanCitations || [];
 
@@ -66,13 +68,14 @@ export async function detectProjectIssues(
   const competitorList = competitors || [];
   const competitorIds = competitorList.map((c) => c.id);
 
-  const { data: compScans } = competitorIds.length > 0 && scanIds.length > 0
-    ? await supabase
-        .from('competitor_scans')
-        .select('id, competitor_id, scan_id, visibility_score, mention_count')
-        .in('scan_id', scanIds)
-        .in('competitor_id', competitorIds)
-    : { data: [] };
+  const { data: compScans } =
+    competitorIds.length > 0 && scanIds.length > 0
+      ? await supabase
+          .from('competitor_scans')
+          .select('id, competitor_id, scan_id, visibility_score, mention_count')
+          .in('scan_id', scanIds)
+          .in('competitor_id', competitorIds)
+      : { data: [] };
 
   const compScanList = compScans || [];
 
@@ -157,7 +160,9 @@ export async function detectProjectIssues(
   // RULE 3: Metadata Optimization (Category: metadata)
   // Pages missing meta descriptions or canonical tags.
   // ---------------------------------------------------------------------------
-  const missingMetaPages = pagesList.filter((p) => !p.meta_description || p.meta_description.trim().length === 0);
+  const missingMetaPages = pagesList.filter(
+    (p) => !p.meta_description || p.meta_description.trim().length === 0
+  );
 
   if (missingMetaPages.length > 0) {
     const metaEvidence: EvidenceRef[] = missingMetaPages.slice(0, 5).map((p) => ({
@@ -187,7 +192,9 @@ export async function detectProjectIssues(
   // RULE 4: Thin Content Enrichment (Category: content)
   // Pages with low word count (< 300 words).
   // ---------------------------------------------------------------------------
-  const thinContentPages = pagesList.filter((p) => (p.word_count || 0) > 0 && (p.word_count || 0) < 300);
+  const thinContentPages = pagesList.filter(
+    (p) => (p.word_count || 0) > 0 && (p.word_count || 0) < 300
+  );
 
   if (thinContentPages.length > 0) {
     const thinEvidence: EvidenceRef[] = thinContentPages.slice(0, 5).map((p) => ({
@@ -217,7 +224,9 @@ export async function detectProjectIssues(
   // RULE 5: Technical Crawl Errors (Category: technical_seo)
   // Pages returning non-200 HTTP status or failed crawl status.
   // ---------------------------------------------------------------------------
-  const erroredPages = pagesList.filter((p) => (p.http_status && p.http_status !== 200) || p.crawl_status === 'failed');
+  const erroredPages = pagesList.filter(
+    (p) => (p.http_status && p.http_status !== 200) || p.crawl_status === 'failed'
+  );
 
   if (erroredPages.length > 0) {
     const techEvidence: EvidenceRef[] = erroredPages.slice(0, 5).map((p) => ({
@@ -245,25 +254,22 @@ export async function detectProjectIssues(
 
   // ---------------------------------------------------------------------------
   // RULE 6: AI Visibility Score Deficit (Category: ai_visibility)
-  // Scans where overall visibility score is below 50.
+  // Scans where target brand is not mentioned in response.
   // ---------------------------------------------------------------------------
-  const lowScans = scanList.filter((s) => s.visibility_score !== null && (s.visibility_score || 0) < 50);
+  const lowScans = scanList.filter((s) => !s.is_mentioned);
 
   if (lowScans.length > 0) {
     const scanEvidence: EvidenceRef[] = lowScans.slice(0, 5).map((s) => ({
       scanId: s.id,
-      description: `AI scan for prompt "${s.query_prompt}" yielded a low visibility score of ${s.visibility_score}/100 on ${s.ai_model}.`,
+      description: `AI scan for prompt "${s.prompt_text}" resulted in no brand mention on ${s.model_name || 'Gemini'}.`,
     }));
 
-    const avgScore = Math.round(
-      lowScans.reduce((acc, s) => acc + (s.visibility_score || 0), 0) / lowScans.length
-    );
-    const rawImpact = computeImpactScore(100 - avgScore, scanEvidence.length, true);
+    const rawImpact = computeImpactScore(80, scanEvidence.length, true);
 
     issues.push({
       scopeKey: `ai_visibility:low_scans:${projectId}`,
-      title: `Improve AI Search Visibility on Low-Scoring Prompts`,
-      summary: `${lowScans.length} recent AI search scan(s) yielded low visibility scores (avg ${avgScore}/100). Competitor brands currently dominate these prompts.`,
+      title: `Improve AI Search Visibility on Unmentioned Prompts`,
+      summary: `${lowScans.length} recent AI search scan(s) resulted in zero brand mentions. Competitor brands currently dominate these prompts.`,
       category: 'ai_visibility',
       rawImpactScore: rawImpact,
       effort: 'significant',

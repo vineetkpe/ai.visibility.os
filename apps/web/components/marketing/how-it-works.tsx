@@ -23,10 +23,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section
-      id="how-it-works"
-      className="scroll-mt-20 py-20 bg-white border-b border-slate-200/60"
-    >
+    <section id="how-it-works" className="scroll-mt-20 py-20 bg-white border-b border-slate-200/60">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-3xl text-center space-y-4 mb-16">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500">
@@ -49,12 +46,8 @@ export function HowItWorks() {
               <span className="text-4xl font-extrabold text-slate-300 mb-4 font-mono">
                 {item.step}
               </span>
-              <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                {item.title}
-              </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                {item.description}
-              </p>
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">{item.title}</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">{item.description}</p>
             </div>
           ))}
         </div>

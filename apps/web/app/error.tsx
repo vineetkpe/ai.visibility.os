@@ -21,12 +21,11 @@ export default function Error({ error, reset }: ErrorProps) {
         <AlertTriangle className="h-8 w-8" />
       </div>
 
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-2">
-        Something went wrong
-      </h2>
-      
+      <h2 className="text-xl font-bold tracking-tight text-slate-900 mb-2">Something went wrong</h2>
+
       <p className="text-sm text-slate-500 max-w-md mb-6">
-        An unexpected error occurred while rendering this page. You can try refreshing or resetting the component state.
+        An unexpected error occurred while rendering this page. You can try refreshing or resetting
+        the component state.
       </p>
 
       <Button onClick={() => reset()} variant="default" className="gap-2">

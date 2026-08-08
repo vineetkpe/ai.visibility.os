@@ -6,11 +6,7 @@ export interface SkeletonCardProps extends React.HTMLAttributes<HTMLDivElement> 
   hasFooter?: boolean;
 }
 
-export function SkeletonCard({
-  hasFooter = true,
-  className,
-  ...props
-}: SkeletonCardProps) {
+export function SkeletonCard({ hasFooter = true, className, ...props }: SkeletonCardProps) {
   return (
     <Card className={cn('animate-pulse', className)} {...props}>
       <CardHeader className="space-y-2">

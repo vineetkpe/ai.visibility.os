@@ -19,7 +19,13 @@ export function extractLinks(
     const href = $(el).attr('href')?.trim();
     const anchorText = $(el).text().replace(/\s+/g, ' ').trim() || null;
 
-    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+    if (
+      !href ||
+      href.startsWith('#') ||
+      href.startsWith('javascript:') ||
+      href.startsWith('mailto:') ||
+      href.startsWith('tel:')
+    ) {
       return;
     }
 

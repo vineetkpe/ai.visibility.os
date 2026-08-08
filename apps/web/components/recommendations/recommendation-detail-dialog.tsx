@@ -36,7 +36,12 @@ export function RecommendationDetailDialog({
   if (!isOpen || !recommendation) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="rec-detail-title">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="rec-detail-title"
+    >
       <div className="bg-neutral-900 border border-neutral-800 rounded-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Modal Header */}
         <div className="p-6 border-b border-neutral-800 flex items-start justify-between gap-4 bg-neutral-950/40">
@@ -55,7 +60,10 @@ export function RecommendationDetailDialog({
                 </span>
               )}
             </div>
-            <h2 id="rec-detail-title" className="text-xl font-bold text-neutral-100 flex items-center gap-2">
+            <h2
+              id="rec-detail-title"
+              className="text-xl font-bold text-neutral-100 flex items-center gap-2"
+            >
               <Lightbulb className="w-6 h-6 text-amber-400 shrink-0" />
               <span>{recommendation.title}</span>
             </h2>
@@ -138,7 +146,9 @@ export function RecommendationDetailDialog({
                       {ev.pageId && <span>Page ID: {ev.pageId}</span>}
                       {ev.scanId && <span>Scan ID: {ev.scanId}</span>}
                       {ev.citationId && <span>Citation ID: {ev.citationId}</span>}
-                      {ev.competitorScanId && <span>Competitor Scan ID: {ev.competitorScanId}</span>}
+                      {ev.competitorScanId && (
+                        <span>Competitor Scan ID: {ev.competitorScanId}</span>
+                      )}
                     </div>
                   </div>
                 </div>
