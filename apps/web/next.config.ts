@@ -12,6 +12,14 @@ if (typeof process !== 'undefined') {
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lh3.googleusercontent.com',
+      },
+    ],
+  },
   transpilePackages: [
     '@ai-visibility-os/ui',
     '@ai-visibility-os/database',

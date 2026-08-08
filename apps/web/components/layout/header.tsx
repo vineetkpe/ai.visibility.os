@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Menu, Search, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,17 @@ import { Breadcrumb } from './breadcrumb';
 
 export interface HeaderProps extends React.HTMLAttributes<HTMLElement> {
   onMenuToggle?: () => void;
+  displayName?: string | null;
+  avatarUrl?: string | null;
 }
 
-export function Header({ onMenuToggle, className, ...props }: HeaderProps) {
+export function Header({
+  onMenuToggle,
+  displayName,
+  avatarUrl,
+  className,
+  ...props
+}: HeaderProps) {
   return (
     <header
       className={cn(
@@ -36,7 +45,7 @@ export function Header({ onMenuToggle, className, ...props }: HeaderProps) {
         <Breadcrumb />
       </div>
 
-      {/* Right side: Search placeholder + Avatar placeholder */}
+      {/* Right side: Search placeholder + User Profile */}
       <div className="flex items-center space-x-3">
         <div className="hidden sm:flex items-center space-x-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs text-slate-400">
           <Search className="h-3.5 w-3.5" />
@@ -46,8 +55,25 @@ export function Header({ onMenuToggle, className, ...props }: HeaderProps) {
           </kbd>
         </div>
 
-        <div className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-600">
-          <User className="h-4 w-4" />
+        <div className="flex items-center space-x-2">
+          {displayName && (
+            <span className="hidden sm:inline-block text-sm font-medium text-slate-700">
+              {displayName}
+            </span>
+          )}
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={displayName || 'User avatar'}
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover border border-slate-200"
+            />
+          ) : (
+            <div className="h-8 w-8 flex items-center justify-center rounded-full bg-slate-100 border border-slate-200 text-slate-600">
+              <User className="h-4 w-4" />
+            </div>
+          )}
         </div>
       </div>
     </header>

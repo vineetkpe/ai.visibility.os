@@ -1,29 +1,39 @@
-'use client';
-
-import React, { useState, type ReactNode } from 'react';
-import { Sidebar } from '@/components/layout/sidebar';
-import { Header } from '@/components/layout/header';
+import type { ReactNode } from 'react';
+import { createClient } from '@/lib/supabase/server';
+import { DashboardShell } from '@/components/layout/dashboard-shell';
 
 export interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-export default function DashboardLayout({ children }: DashboardLayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+export default async function DashboardLayout({ children }: DashboardLayoutProps) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let displayName: string | null = null;
+  let avatarUrl: string | null = null;
+
+  if (user) {
+    const { data: profile } = await supabase
+      .from('users')
+      .select('display_name, avatar_url')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (profile?.display_name) {
+      displayName = profile.display_name;
+    } else if (user.email) {
+      displayName = user.email.split('@')[0] ?? null;
+    }
+
+    avatarUrl = profile?.avatar_url ?? null;
+  }
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      {/* Responsive Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col min-w-0">
-        <Header onMenuToggle={() => setSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto">{children}</main>
-      </div>
-    </div>
+    <DashboardShell displayName={displayName} avatarUrl={avatarUrl}>
+      {children}
+    </DashboardShell>
   );
 }

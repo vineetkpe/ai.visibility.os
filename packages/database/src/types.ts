@@ -12,28 +12,31 @@ export interface Database {
       users: {
         Row: {
           id: string;
-          email: string;
-          full_name: string | null;
+          display_name: string | null;
           avatar_url: string | null;
-          role: string;
+          role: Database['public']['Enums']['user_role'];
+          is_onboarded: boolean;
+          last_login_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: {
           id: string;
-          email: string;
-          full_name?: string | null;
+          display_name?: string | null;
           avatar_url?: string | null;
-          role?: string;
+          role?: Database['public']['Enums']['user_role'];
+          is_onboarded?: boolean;
+          last_login_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
         Update: {
           id?: string;
-          email?: string;
-          full_name?: string | null;
+          display_name?: string | null;
           avatar_url?: string | null;
-          role?: string;
+          role?: Database['public']['Enums']['user_role'];
+          is_onboarded?: boolean;
+          last_login_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -964,7 +967,7 @@ export interface Database {
       [_ in never]: never;
     };
     Enums: {
-      [_ in never]: never;
+      user_role: 'user' | 'admin' | 'owner';
     };
     CompositeTypes: {
       [_ in never]: never;
