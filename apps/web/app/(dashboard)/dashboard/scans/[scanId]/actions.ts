@@ -243,13 +243,13 @@ export async function getScanDetailsData(
     const { data: compDomains } = (projectCompetitors || []).length > 0
       ? await supabase
           .from('domains')
-          .select('id, domain_name, status')
+          .select('id, host')
           .eq('project_id', scanRow.project_id)
-          .eq('domain_type', 'competitor')
+          .eq('is_primary', false)
       : { data: [] };
 
     const crawledCompDomainSet = new Set(
-      (compDomains || []).filter((d) => d.status === 'crawled').map((d) => d.domain_name.toLowerCase())
+      (compDomains || []).map((d) => (d.host || '').toLowerCase())
     );
 
     const tier2Profiles = (projectCompetitors || []).map((c) => ({

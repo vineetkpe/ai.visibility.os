@@ -118,8 +118,8 @@ export async function triggerCompetitorCrawl(
       .from('domains')
       .select('id')
       .eq('project_id', projectId)
-      .eq('domain_name', competitor.domain_name)
-      .eq('domain_type', 'competitor')
+      .eq('host', competitor.domain_name)
+      .eq('is_primary', false)
       .is('deleted_at', null)
       .limit(1);
 
@@ -132,10 +132,8 @@ export async function triggerCompetitorCrawl(
         .from('domains')
         .insert({
           project_id: projectId,
-          domain_name: competitor.domain_name,
-          domain_type: 'competitor',
+          host: competitor.domain_name,
           is_primary: false,
-          status: 'active',
         })
         .select('id')
         .single();

@@ -52,12 +52,12 @@ export async function runVisibilityScanPipeline(
     // 3. Fetch primary domain for project
     const { data: domains } = await supabase
       .from('domains')
-      .select('id, domain_name')
+      .select('id, host')
       .eq('project_id', projectId)
       .is('deleted_at', null)
       .limit(1);
 
-    const targetDomainName = options.targetDomainName || domains?.[0]?.domain_name || 'example.com';
+    const targetDomainName = options.targetDomainName || domains?.[0]?.host || 'example.com';
     const domainId = domains?.[0]?.id;
 
     // Fetch existing crawled pages for page_scans matching

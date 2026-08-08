@@ -24,7 +24,7 @@ export default async function SettingsPage() {
   // Fetch user's primary active project with deleted_at filter
   const { data: project } = await supabase
     .from('projects')
-    .select('id, name, created_at, domains(domain_name, is_primary)')
+    .select('id, name, created_at, domains(host, is_primary)')
     .eq('user_id', user.id)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -42,7 +42,7 @@ export default async function SettingsPage() {
     id: project.id,
     name: project.name,
     createdAt: project.created_at,
-    primaryDomain: primaryDomainObj?.domain_name || null,
+    primaryDomain: primaryDomainObj?.host || null,
   };
 
   return (

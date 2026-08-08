@@ -25,14 +25,14 @@ export async function getCompetitorSuggestions(
   // 2. Fetch primary own domain
   const { data: ownDomains } = await supabase
     .from('domains')
-    .select('domain_name')
+    .select('host')
     .eq('project_id', projectId)
-    .eq('domain_type', 'own')
+    .eq('is_primary', true)
     .is('deleted_at', null);
 
   if (ownDomains) {
     for (const d of ownDomains) {
-      trackedDomains.add(d.domain_name.toLowerCase().replace(/^www\./, ''));
+      trackedDomains.add(d.host.toLowerCase().replace(/^www\./, ''));
     }
   }
 

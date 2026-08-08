@@ -16,11 +16,11 @@ export async function detectProjectIssues(
   // 1. Fetch Project Domains & Pages
   const { data: domains } = await supabase
     .from('domains')
-    .select('id, domain_name, domain_type')
+    .select('id, host, is_primary')
     .eq('project_id', projectId)
     .is('deleted_at', null);
 
-  const ownDomains = (domains || []).filter((d) => d.domain_type === 'own');
+  const ownDomains = (domains || []).filter((d) => d.is_primary);
   const ownDomainIds = ownDomains.map((d) => d.id);
 
   const { data: ownPages } = ownDomainIds.length > 0

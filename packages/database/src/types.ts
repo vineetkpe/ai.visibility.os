@@ -87,10 +87,15 @@ export interface Database {
         Row: {
           id: string;
           project_id: string;
+          host: string;
           domain_name: string;
-          domain_type: 'own' | 'competitor';
+          domain_type?: string;
+          scheme: string;
           is_primary: boolean;
-          status: string;
+          is_verified: boolean;
+          verification_method: string | null;
+          verification_token: string | null;
+          status?: string;
           created_at: string;
           updated_at: string;
           deleted_at: string | null;
@@ -98,9 +103,14 @@ export interface Database {
         Insert: {
           id?: string;
           project_id: string;
-          domain_name: string;
-          domain_type?: 'own' | 'competitor';
+          host: string;
+          domain_name?: string;
+          domain_type?: string;
+          scheme?: string;
           is_primary?: boolean;
+          is_verified?: boolean;
+          verification_method?: string | null;
+          verification_token?: string | null;
           status?: string;
           created_at?: string;
           updated_at?: string;
@@ -109,9 +119,14 @@ export interface Database {
         Update: {
           id?: string;
           project_id?: string;
+          host?: string;
           domain_name?: string;
-          domain_type?: 'own' | 'competitor';
+          domain_type?: string;
+          scheme?: string;
           is_primary?: boolean;
+          is_verified?: boolean;
+          verification_method?: string | null;
+          verification_token?: string | null;
           status?: string;
           created_at?: string;
           updated_at?: string;
@@ -964,7 +979,13 @@ export interface Database {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_project_with_domain: {
+        Args: {
+          p_name: string;
+          p_host: string;
+        };
+        Returns: string;
+      };
     };
     Enums: {
       user_role: 'user' | 'admin' | 'owner';

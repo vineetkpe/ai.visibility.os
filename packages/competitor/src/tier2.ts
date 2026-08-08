@@ -38,9 +38,9 @@ export async function computeTier2Comparison(
   // 3. Fetch user's primary domain and pages
   const { data: ownDomains } = await supabase
     .from('domains')
-    .select('id, domain_name')
+    .select('id, host')
     .eq('project_id', projectId)
-    .eq('domain_type', 'own')
+    .eq('is_primary', true)
     .is('deleted_at', null)
     .limit(1);
 

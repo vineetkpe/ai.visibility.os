@@ -106,7 +106,7 @@ async function verifyUserProject(supabase: SupabaseClient<Database>, projectId?:
 
   let query = supabase
     .from('projects')
-    .select('id, name, created_at, domains(id, domain_name, is_primary, domain_type)')
+    .select('id, name, created_at, domains(id, host, is_primary)')
     .eq('user_id', user.id)
     .is('deleted_at', null);
 
@@ -141,7 +141,7 @@ export async function getDashboardOverviewData(
     const currentProjectId = project.id;
     const primaryDomainObj =
       project.domains?.find((d) => d.is_primary) || project.domains?.[0];
-    const primaryDomainName = primaryDomainObj?.domain_name || null;
+    const primaryDomainName = primaryDomainObj?.host || null;
 
     // 1. Fetch Latest Scan
     const { data: latestScanRow } = await supabase
@@ -255,13 +255,13 @@ export async function getDashboardOverviewData(
     const { data: compDomains } = competitorIds.length > 0
       ? await supabase
           .from('domains')
-          .select('id, domain_name, status')
+          .select('id, host')
           .eq('project_id', currentProjectId)
-          .eq('domain_type', 'competitor')
+          .eq('is_primary', false)
       : { data: [] };
 
     const crawledCompDomainSet = new Set(
-      (compDomains || []).filter((d) => d.status === 'crawled').map((d) => d.domain_name.toLowerCase())
+      (compDomains || []).map((d) => (d.host || '').toLowerCase())
     );
 
     const topCompetitors = (competitorsList || []).map((c) => ({

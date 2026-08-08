@@ -62,7 +62,7 @@ export async function createProjectAction(
         .from('domains')
         .select('id')
         .in('project_id', projectIds)
-        .eq('domain_name', domainName)
+        .eq('host', domainName)
         .is('deleted_at', null);
 
       if (domainCheckError) {
@@ -77,43 +77,25 @@ export async function createProjectAction(
       }
     }
 
-    // 5. Create project row
-    const { data: project, error: projectInsertError } = await supabase
-      .from('projects')
-      .insert({
-        user_id: user.id,
-        name: name.trim(),
-      })
-      .select('id')
-      .single();
+    // 5. Create project and primary domain atomically via RPC
+    const { data: projectId, error: rpcError } = await supabase.rpc(
+      'create_project_with_domain',
+      {
+        p_name: name.trim(),
+        p_host: domainName,
+      }
+    );
 
-    if (projectInsertError || !project) {
+    if (rpcError || !projectId) {
       return {
         success: false,
-        error: projectInsertError?.message || 'Failed to create project record.',
-      };
-    }
-
-    // 6. Create primary domain row
-    const { error: domainInsertError } = await supabase.from('domains').insert({
-      project_id: project.id,
-      domain_name: domainName,
-      is_primary: true,
-      status: 'active',
-    });
-
-    if (domainInsertError) {
-      // Rollback project insertion on domain creation failure
-      await supabase.from('projects').delete().eq('id', project.id);
-      return {
-        success: false,
-        error: domainInsertError.message || 'Failed to save primary domain.',
+        error: rpcError?.message || 'Failed to create project and primary domain.',
       };
     }
 
     return {
       success: true,
-      data: { projectId: project.id },
+      data: { projectId },
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'An unexpected error occurred.';
