@@ -4,20 +4,22 @@ import type {
   FrequentlyCitedPage,
   CoOccurringEntity,
   ImportantCompetitorPage,
+  CompetitorStatus,
+  CompetitorSource,
 } from './types';
 
 /**
- * Synchronizes Tier 1 citation matches and entity mentions for a tracked competitor,
- * writing competitor_id back onto citations and aggregating historical competitor_scans rows.
+ * Synchronizes Tier 1 citation matches for a confirmed tracked competitor,
+ * linking competitor_id on citations matching the competitor domain host.
  */
 export async function syncCompetitorTier1Data(
   supabase: SupabaseClient<Database>,
   competitorId: string
 ): Promise<{ updatedCitationsCount: number; scansProcessedCount: number }> {
-  // 1. Fetch target competitor record
+  // 1. Fetch target competitor record joined with domain
   const { data: competitor, error: compErr } = await supabase
     .from('competitors')
-    .select('id, project_id, name, domain_name')
+    .select('id, project_id, name, domain_id, domains!inner(host)')
     .eq('id', competitorId)
     .single();
 
@@ -25,8 +27,8 @@ export async function syncCompetitorTier1Data(
     throw new Error(`Competitor not found: ${competitorId}`);
   }
 
-  const normalizedCompDomain = competitor.domain_name.toLowerCase().replace(/^www\./, '');
-  const normalizedCompName = competitor.name.toLowerCase();
+  const domainHost = (competitor.domains as unknown as { host: string }).host;
+  const normalizedCompDomain = domainHost.toLowerCase().replace(/^www\./, '');
 
   // 2. Fetch active project scans
   const { data: scans, error: scansErr } = await supabase
@@ -40,129 +42,45 @@ export async function syncCompetitorTier1Data(
 
   const scanIds = scans.map((s) => s.id);
 
-  // 3. Fetch citations for project scans matching competitor domain
+  // 3. Fetch unlinked non-own citations for project scans
   const { data: citations } = await supabase
     .from('citations')
-    .select('id, scan_id, source_url, source_domain, citation_order')
-    .in('scan_id', scanIds);
+    .select('id, ai_scan_id, url')
+    .in('ai_scan_id', scanIds)
+    .eq('is_own_domain', false)
+    .is('competitor_id', null);
 
-  let updatedCitationsCount = 0;
   const matchingCitationIds: string[] = [];
 
   if (citations) {
     for (const c of citations) {
-      const cDomain = c.source_domain.toLowerCase().replace(/^www\./, '');
-      if (cDomain === normalizedCompDomain || cDomain.endsWith(`.${normalizedCompDomain}`)) {
-        matchingCitationIds.push(c.id);
+      try {
+        const parsedUrl = new URL(c.url);
+        const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, '');
+        if (host === normalizedCompDomain || host.endsWith(`.${normalizedCompDomain}`)) {
+          matchingCitationIds.push(c.id);
+        }
+      } catch {
+        // Ignore invalid URLs
       }
     }
   }
 
   if (matchingCitationIds.length > 0) {
-    // Update citations.competitor_id
     await supabase
       .from('citations')
       .update({ competitor_id: competitorId })
       .in('id', matchingCitationIds);
-
-    updatedCitationsCount = matchingCitationIds.length;
   }
 
-  // 4. Aggregate into competitor_scans per scan
-  let scansProcessedCount = 0;
-
-  for (const scan of scans) {
-    const scanCitations = (citations || []).filter((c) => c.scan_id === scan.id);
-    const competitorCitations = scanCitations.filter((c) => matchingCitationIds.includes(c.id));
-
-    // Check entity mentions for this scan
-    const { data: entityMentions } = await supabase
-      .from('entity_mentions')
-      .select('id, context_snippet, entities!inner(name)')
-      .eq('scan_id', scan.id);
-
-    let entityMatchCount = 0;
-    if (entityMentions) {
-      for (const em of entityMentions) {
-        const entName = Array.isArray(em.entities)
-          ? em.entities[0]?.name?.toLowerCase()
-          : (em.entities as { name?: string })?.name?.toLowerCase();
-
-        const snippet = em.context_snippet?.toLowerCase() || '';
-
-        if (
-          (entName && entName.includes(normalizedCompName)) ||
-          snippet.includes(normalizedCompName) ||
-          snippet.includes(normalizedCompDomain)
-        ) {
-          entityMatchCount++;
-        }
-      }
-    }
-
-    const citationMatchCount = competitorCitations.length;
-    const mentionCount = citationMatchCount + entityMatchCount;
-
-    let rankPosition: number | null = null;
-    if (competitorCitations.length > 0) {
-      const orders = competitorCitations
-        .map((c) => c.citation_order)
-        .filter((o): o is number => o !== null);
-      if (orders.length > 0) {
-        rankPosition = Math.min(...orders);
-      }
-    }
-
-    // Compute visibility score (0-100)
-    let visScore: number | null = null;
-    if (mentionCount > 0) {
-      visScore = 50;
-      if (rankPosition === 1) visScore += 50;
-      else if (rankPosition === 2) visScore += 35;
-      else if (rankPosition === 3) visScore += 20;
-      else if (rankPosition && rankPosition <= 5) visScore += 10;
-    } else {
-      visScore = 0;
-    }
-
-    // Check if competitor_scan row exists for scan_id and competitor_id
-    const { data: existingCompScan } = await supabase
-      .from('competitor_scans')
-      .select('id')
-      .eq('competitor_id', competitorId)
-      .eq('scan_id', scan.id)
-      .limit(1);
-
-    const firstCompScan = existingCompScan?.[0];
-    const existingId = firstCompScan ? firstCompScan.id : null;
-    if (existingId) {
-      await supabase
-        .from('competitor_scans')
-        .update({
-          visibility_score: visScore,
-          mention_count: mentionCount,
-          rank_position: rankPosition,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingId);
-    } else {
-      await supabase.from('competitor_scans').insert({
-        competitor_id: competitorId,
-        scan_id: scan.id,
-        visibility_score: visScore,
-        mention_count: mentionCount,
-        rank_position: rankPosition,
-      });
-    }
-
-    scansProcessedCount++;
-  }
-
-  return { updatedCitationsCount, scansProcessedCount };
+  return {
+    updatedCitationsCount: matchingCitationIds.length,
+    scansProcessedCount: scans.length,
+  };
 }
 
 /**
- * Derives profile information for a competitor including latest derived visibilityScore,
+ * Derives profile information for a competitor including calculated visibilityScore,
  * citation count, frequently cited pages, first/last seen timestamps, and co-occurring entities.
  */
 export async function getCompetitorProfile(
@@ -171,7 +89,7 @@ export async function getCompetitorProfile(
 ): Promise<CompetitorProfile> {
   const { data: comp, error } = await supabase
     .from('competitors')
-    .select('id, project_id, name, domain_name, domain_id, created_at')
+    .select('id, project_id, name, source, status, confirmed_at, domain_id, created_at, domains!inner(host)')
     .eq('id', competitorId)
     .single();
 
@@ -179,32 +97,47 @@ export async function getCompetitorProfile(
     throw new Error(`Competitor not found: ${competitorId}`);
   }
 
-  // 1. Derive visibilityScore from latest competitor_scans row
-  const { data: latestScanRow } = await supabase
-    .from('competitor_scans')
-    .select('visibility_score, created_at')
-    .eq('competitor_id', competitorId)
-    .order('created_at', { ascending: false })
-    .limit(1);
+  const domainHost = (comp.domains as unknown as { host: string }).host;
 
-  const visibilityScore = latestScanRow?.[0]?.visibility_score ?? null;
-
-  // 2. Fetch citations for this competitor
+  // 1. Fetch citations linked to this competitor
   const { data: citations } = await supabase
     .from('citations')
-    .select('id, source_url, created_at')
+    .select('id, ai_scan_id, url, position, created_at')
     .eq('competitor_id', competitorId);
 
   const citationCount = citations?.length || 0;
 
-  // Group frequently cited pages
+  // 2. Fetch project scans count for visibility score derivation
+  const { count: totalScansCount } = await supabase
+    .from('ai_scans')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', comp.project_id)
+    .eq('status', 'completed');
+
+  // Derive visibility score (0 to 100) dynamically from citations & position
+  let visibilityScore: number | null = null;
+  if (totalScansCount && totalScansCount > 0 && citations && citations.length > 0) {
+    const uniqueScansCited = new Set(citations.map((c) => c.ai_scan_id)).size;
+    const minPosition = Math.min(...citations.map((c) => c.position));
+    
+    let baseScore = Math.round((uniqueScansCited / totalScansCount) * 70);
+    if (minPosition === 1) baseScore += 30;
+    else if (minPosition <= 3) baseScore += 20;
+    else if (minPosition <= 5) baseScore += 10;
+    
+    visibilityScore = Math.min(100, Math.max(0, baseScore));
+  } else if (totalScansCount && totalScansCount > 0) {
+    visibilityScore = 0;
+  }
+
+  // 3. Aggregate frequently cited pages
   const pageMap = new Map<string, number>();
   let earliestDate: string | null = citations?.[0]?.created_at || null;
   let latestDate: string | null = citations?.[0]?.created_at || null;
 
   if (citations) {
     for (const c of citations) {
-      pageMap.set(c.source_url, (pageMap.get(c.source_url) || 0) + 1);
+      pageMap.set(c.url, (pageMap.get(c.url) || 0) + 1);
       if (!earliestDate || new Date(c.created_at) < new Date(earliestDate)) {
         earliestDate = c.created_at;
       }
@@ -218,25 +151,22 @@ export async function getCompetitorProfile(
     .map(([sourceUrl, count]) => ({ sourceUrl, count }))
     .sort((a, b) => b.count - a.count);
 
-  // 3. Fetch co-occurring entity mentions in scans where this competitor was cited
-  const scanIdsForComp = Array.from(new Set((citations || []).map((c) => c.id)));
+  // 4. Fetch co-occurring entities from scans where competitor was cited
+  const scanIdsForComp = Array.from(new Set((citations || []).map((c) => c.ai_scan_id)));
 
   let entities: CoOccurringEntity[] = [];
   if (scanIdsForComp.length > 0) {
     const { data: mentions } = await supabase
       .from('entity_mentions')
-      .select('entities!inner(name, entity_type)')
-      .in('scan_id', scanIdsForComp);
+      .select('tracked_entities!inner(name, entity_type)')
+      .in('ai_scan_id', scanIdsForComp);
 
     if (mentions) {
       const entCounts = new Map<string, { name: string; type: string; count: number }>();
       for (const m of mentions) {
-        const entName = Array.isArray(m.entities)
-          ? m.entities[0]?.name
-          : (m.entities as { name?: string })?.name;
-        const entType = Array.isArray(m.entities)
-          ? m.entities[0]?.entity_type
-          : (m.entities as { entity_type?: string })?.entity_type;
+        const entObj = (m.tracked_entities as unknown as { name: string; entity_type: string }) || {};
+        const entName = entObj.name;
+        const entType = entObj.entity_type;
 
         if (entName && entName.toLowerCase() !== comp.name.toLowerCase()) {
           const key = entName.toLowerCase();
@@ -244,7 +174,7 @@ export async function getCompetitorProfile(
           if (existing) {
             existing.count++;
           } else {
-            entCounts.set(key, { name: entName, type: entType || 'general', count: 1 });
+            entCounts.set(key, { name: entName, type: entType || 'other', count: 1 });
           }
         }
       }
@@ -252,7 +182,7 @@ export async function getCompetitorProfile(
     }
   }
 
-  // 4. Check Tier 2 availability (pages crawled under competitor.domain_id)
+  // 5. Check Tier 2 availability (pages under competitor.domain_id)
   let tier2Available = false;
   let importantPages: ImportantCompetitorPage[] | null = null;
   let topics: string[] | null = null;
@@ -260,36 +190,41 @@ export async function getCompetitorProfile(
   if (comp.domain_id) {
     const { data: pages } = await supabase
       .from('pages')
-      .select('id, url, title, http_status, word_count, crawl_status')
+      .select(`
+        id,
+        url,
+        status_code,
+        page_metadata (
+          title,
+          meta_description
+        )
+      `)
       .eq('domain_id', comp.domain_id);
 
     if (pages && pages.length > 0) {
-      const completedPages = pages.filter(
-        (p) => p.crawl_status === 'completed' || p.crawl_status === 'scanned'
-      );
-      if (completedPages.length > 0) {
-        tier2Available = true;
-        importantPages = completedPages.slice(0, 10).map((p) => ({
+      tier2Available = true;
+      importantPages = pages.slice(0, 10).map((p) => {
+        const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+        return {
           id: p.id,
           url: p.url,
-          title: p.title,
-          httpStatus: p.http_status,
-          wordCount: p.word_count,
-        }));
+          title: meta?.title || null,
+          statusCode: p.status_code,
+        };
+      });
 
-        // Extract topics from page titles
-        const topicSet = new Set<string>();
-        for (const p of completedPages) {
-          if (p.title) {
-            const words = p.title
-              .split(/[\s|,\-:]+/)
-              .map((w: string) => w.trim())
-              .filter((w: string) => w.length > 3);
-            for (const w of words) topicSet.add(w.toLowerCase());
-          }
+      const topicSet = new Set<string>();
+      for (const p of pages) {
+        const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+        if (meta?.title) {
+          const words = meta.title
+            .split(/[\s|,\-:]+/)
+            .map((w: string) => w.trim())
+            .filter((w: string) => w.length > 3);
+          for (const w of words) topicSet.add(w.toLowerCase());
         }
-        topics = Array.from(topicSet).slice(0, 15);
       }
+      topics = Array.from(topicSet).slice(0, 15);
     }
   }
 
@@ -297,9 +232,11 @@ export async function getCompetitorProfile(
     id: comp.id,
     projectId: comp.project_id,
     companyName: comp.name,
-    domain: comp.domain_name,
+    domain: domainHost,
     domainId: comp.domain_id,
-    detectedFrom: 'user_added',
+    source: comp.source as CompetitorSource,
+    status: comp.status as CompetitorStatus,
+    confirmedAt: comp.confirmed_at,
     firstSeen: earliestDate || comp.created_at,
     lastSeen: latestDate || comp.created_at,
     visibilityScore,

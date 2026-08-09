@@ -1,4 +1,4 @@
-import type { SupabaseClient, Database } from '@ai-visibility-os/database';
+import type { SupabaseClient, Database, Json } from '@ai-visibility-os/database';
 import type { Tier2ComparisonMetrics, MetricResult } from './types';
 
 /**
@@ -14,10 +14,10 @@ export async function computeTier2Comparison(
   const unavailableReason =
     'Competitor domain has not been crawled yet. Trigger a competitor crawl to unlock content comparison metrics.';
 
-  // 1. Fetch target competitor
+  // 1. Fetch target competitor joined with domain
   const { data: competitor } = await supabase
     .from('competitors')
-    .select('id, name, domain_name, domain_id')
+    .select('id, name, domain_id, domains!inner(host)')
     .eq('id', competitorId)
     .single();
 
@@ -25,10 +25,18 @@ export async function computeTier2Comparison(
     return createUnavailableTier2Metrics(unavailableReason);
   }
 
-  // 2. Fetch competitor crawled pages
+  // 2. Fetch competitor crawled pages with metadata
   const { data: competitorPages } = await supabase
     .from('pages')
-    .select('id, url, title, schema_org_types, headings, meta_description')
+    .select(`
+      id,
+      url,
+      page_metadata (
+        title,
+        meta_description,
+        schema_json
+      )
+    `)
     .eq('domain_id', competitor.domain_id);
 
   if (!competitorPages || competitorPages.length === 0) {
@@ -48,51 +56,74 @@ export async function computeTier2Comparison(
   let ownPages: Array<{
     id: string;
     url: string;
-    title: string | null;
-    schema_org_types: string[] | null;
-    headings: unknown;
-    meta_description: string | null;
+    page_metadata: {
+      title: string | null;
+      meta_description: string | null;
+      schema_json: Json;
+    } | null;
   }> = [];
 
   if (ownDomainId) {
     const { data: pData } = await supabase
       .from('pages')
-      .select('id, url, title, schema_org_types, headings, meta_description')
+      .select(`
+        id,
+        url,
+        page_metadata (
+          title,
+          meta_description,
+          schema_json
+        )
+      `)
       .eq('domain_id', ownDomainId);
-    if (pData) ownPages = pData;
+
+    if (pData) {
+      ownPages = pData.map((p) => ({
+        id: p.id,
+        url: p.url,
+        page_metadata: Array.isArray(p.page_metadata) ? p.page_metadata[0] || null : p.page_metadata,
+      }));
+    }
   }
 
-  // 4. Fetch user's current business context fields
-  const { data: currentVersion } = await supabase
+  // 4. Fetch user's current business context topics & description
+  const { data: currentVersions } = await supabase
     .from('business_context_versions')
-    .select('id')
+    .select('id, description')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false })
     .limit(1);
 
   let ownContextTokens: string[] = [];
-  if (currentVersion && currentVersion[0]) {
-    const { data: fields } = await supabase
-      .from('business_context_fields')
-      .select('field_value')
-      .eq('context_version_id', currentVersion[0].id);
+  if (currentVersions && currentVersions[0]) {
+    const contextId = currentVersions[0].id;
+    const { data: topics } = await supabase
+      .from('topics')
+      .select('name')
+      .eq('business_context_version_id', contextId);
 
-    if (fields) {
-      ownContextTokens = fields.flatMap((f) => tokenizeText(f.field_value));
+    if (topics) {
+      ownContextTokens = topics.flatMap((t) => tokenizeText(t.name));
+    }
+    if (currentVersions[0].description) {
+      ownContextTokens.push(...tokenizeText(currentVersions[0].description));
     }
   }
 
   // Tokenize own domain page titles & context
-  const ownPageTokens = ownPages.flatMap((p) => tokenizeText(p.title || ''));
+  const ownPageTokens = ownPages.flatMap((p) => tokenizeText(p.page_metadata?.title || ''));
   const allOwnTokens = Array.from(new Set([...ownContextTokens, ...ownPageTokens]));
 
-  // Tokenize competitor page titles, headings, and descriptions
+  // Tokenize competitor page titles and descriptions
   const competitorTokens = Array.from(
     new Set(
-      competitorPages.flatMap((p) => [
-        ...tokenizeText(p.title || ''),
-        ...tokenizeText(p.meta_description || ''),
-      ])
+      competitorPages.flatMap((p) => {
+        const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+        return [
+          ...tokenizeText(meta?.title || ''),
+          ...tokenizeText(meta?.meta_description || ''),
+        ];
+      })
     )
   );
 
@@ -100,27 +131,45 @@ export async function computeTier2Comparison(
   const sharedTopics = competitorTokens.filter((token) => allOwnTokens.includes(token));
   const missingTopics = competitorTokens.filter((token) => !allOwnTokens.includes(token));
 
-  // B. Schema coverage
-  const userSchemas = Array.from(new Set(ownPages.flatMap((p) => p.schema_org_types || [])));
-  const competitorSchemas = Array.from(
-    new Set(competitorPages.flatMap((p) => p.schema_org_types || []))
+  // B. Schema coverage (extracted from schema_json @type properties)
+  const extractSchemas = (schemaJson: unknown): string[] => {
+    if (!schemaJson) return [];
+    const list = Array.isArray(schemaJson) ? schemaJson : [schemaJson];
+    const types: string[] = [];
+    for (const item of list) {
+      if (item && typeof item === 'object' && '@type' in item && typeof item['@type'] === 'string') {
+        types.push(item['@type']);
+      }
+    }
+    return types;
+  };
+
+  const userSchemas = Array.from(
+    new Set(ownPages.flatMap((p) => extractSchemas(p.page_metadata?.schema_json)))
   );
+
+  const competitorSchemas = Array.from(
+    new Set(
+      competitorPages.flatMap((p) => {
+        const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+        return extractSchemas(meta?.schema_json);
+      })
+    )
+  );
+
   const schemaOverlap = competitorSchemas.filter((s) => userSchemas.includes(s));
   const missingSchemasInUser = competitorSchemas.filter((s) => !userSchemas.includes(s));
 
   // C. Entity coverage
   const { data: ownMentions } = await supabase
     .from('entity_mentions')
-    .select('entities!inner(name)')
-    .not('scan_id', 'is', null);
+    .select('tracked_entities!inner(name)');
 
   const ownEntities = Array.from(
     new Set(
       (ownMentions || []).map((m) => {
-        const entObj = Array.isArray(m.entities)
-          ? m.entities[0]
-          : (m.entities as { name?: string } | null);
-        return (entObj?.name || '').toLowerCase();
+        const entObj = (m.tracked_entities as unknown as { name: string }) || {};
+        return (entObj.name || '').toLowerCase();
       })
     )
   ).filter(Boolean);

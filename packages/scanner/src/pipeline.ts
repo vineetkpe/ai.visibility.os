@@ -45,7 +45,7 @@ export async function runVisibilityScanPipeline(
   const { projectId } = options;
 
   try {
-    // 1. Require a valid current business_context_versions row
+    // 1. Require a valid current business_context_versions row (resolved via created_at DESC)
     const { data: currentVersions, error: versionError } = await supabase
       .from('business_context_versions')
       .select('id, industry, description, value_proposition, target_audience')
@@ -91,6 +91,24 @@ export async function runVisibilityScanPipeline(
 
     const targetDomainName = options.targetDomainName || domains?.[0]?.host || 'example.com';
 
+    // 4. Fetch CONFIRMED competitors for citation matching
+    const { data: confirmedCompetitors } = await supabase
+      .from('competitors')
+      .select('id, status, domains!inner(host)')
+      .eq('project_id', projectId)
+      .eq('status', 'confirmed');
+
+    const competitorHostMap = new Map<string, string>();
+    if (confirmedCompetitors) {
+      for (const c of confirmedCompetitors) {
+        const domainHost = (c.domains as unknown as { host?: string } | null)?.host;
+        if (domainHost) {
+          const normalizedHost = domainHost.toLowerCase().replace(/^www\./, '');
+          competitorHostMap.set(normalizedHost, c.id);
+        }
+      }
+    }
+
     // Fetch active provider id for Gemini
     const { data: providerRow } = await supabase
       .from('providers')
@@ -109,7 +127,7 @@ export async function runVisibilityScanPipeline(
 
     const providerId = providerRow.id;
 
-    // 4. Generate & Sync Prompts to prompt_library
+    // 5. Generate & Sync Prompts to prompt_library
     const generatedPrompts = generatePromptsFromContext(fields);
     const syncedPrompts = await syncPromptLibrary(supabase, projectId, generatedPrompts);
 
@@ -126,7 +144,7 @@ export async function runVisibilityScanPipeline(
     let scansExecuted = 0;
     const normalizedTargetDomain = targetDomainName.toLowerCase().replace(/^www\./, '');
 
-    // 5. Execute Scan pipeline for each prompt
+    // 6. Execute Scan pipeline for each prompt
     for (const promptObj of syncedPrompts) {
       const promptText = promptObj.prompt_text;
       const now = new Date().toISOString();
@@ -164,7 +182,7 @@ export async function runVisibilityScanPipeline(
           targetDomainName
         );
 
-        // Persist Citations according to CURRENT citations schema
+        // Persist Citations according to CURRENT citations schema & confirmed competitor matching
         if (groundedResult.citations.length > 0) {
           const citationRows = groundedResult.citations
             .filter((c) => c.sourceUrl && c.sourceUrl.trim().length > 0)
@@ -179,12 +197,15 @@ export async function runVisibilityScanPipeline(
                 normDomain === normalizedTargetDomain ||
                 c.sourceDomain.toLowerCase().endsWith(`.${normalizedTargetDomain}`);
 
+              const matchedCompetitorId = isOwn ? null : (competitorHostMap.get(normDomain) || null);
+
               return {
                 ai_scan_id: scan.id,
                 url: validUrl,
                 title: c.anchorText || null,
                 position: idx + 1,
                 is_own_domain: isOwn,
+                competitor_id: matchedCompetitorId,
               };
             });
 

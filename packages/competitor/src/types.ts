@@ -13,8 +13,7 @@ export interface ImportantCompetitorPage {
   id: string;
   url: string;
   title: string | null;
-  httpStatus: number | null;
-  wordCount: number | null;
+  statusCode: number | null;
 }
 
 export interface MetricAvailableResult<T> {
@@ -80,13 +79,18 @@ export interface ComparisonMetrics {
   tier2: Tier2ComparisonMetrics;
 }
 
+export type CompetitorStatus = 'suggested' | 'confirmed' | 'dismissed';
+export type CompetitorSource = 'user_added' | 'ai_suggested';
+
 export interface CompetitorProfile {
   id: string;
   projectId: string;
   companyName: string;
   domain: string;
-  domainId: string | null;
-  detectedFrom: string;
+  domainId: string;
+  source: CompetitorSource;
+  status: CompetitorStatus;
+  confirmedAt: string | null;
   firstSeen: string | null;
   lastSeen: string | null;
   visibilityScore: number | null;
@@ -112,4 +116,20 @@ export interface CompetitorSuggestion {
   domain: string;
   coOccurrenceCount: number;
   evidence: SuggestionEvidence[];
+}
+
+export interface ConfirmedCompetitorVisibilitySummary {
+  competitorId: string;
+  name: string;
+  domainHost: string;
+  citationsCount: number;
+  visibilityScore: number;
+}
+
+export interface CompetitiveVisibilityComparison {
+  projectId: string;
+  ownDomainHost: string;
+  ownDomainCitationsCount: number;
+  ownDomainVisibilityScore: number;
+  confirmedCompetitors: ConfirmedCompetitorVisibilitySummary[];
 }
