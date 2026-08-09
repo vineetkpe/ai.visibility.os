@@ -4,6 +4,7 @@ import { createServerClient, createTokenClient } from '@ai-visibility-os/databas
 
 export interface VisibilityScanTaskPayload {
   projectId: string;
+  jobId?: string;
   accessToken?: string;
   targetDomainName?: string;
 }
@@ -23,6 +24,7 @@ export const visibilityScanTask = task({
 
     const result = await runVisibilityScanPipeline(supabase, {
       projectId: payload.projectId,
+      jobId: payload.jobId,
       targetDomainName: payload.targetDomainName,
     });
 

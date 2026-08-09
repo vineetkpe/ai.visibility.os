@@ -30,6 +30,7 @@ export interface ScanAnalysisResult {
 
 export interface VisibilityScanPipelineOptions {
   projectId: string;
+  jobId?: string;
   targetDomainName?: string;
 }
 

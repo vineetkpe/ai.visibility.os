@@ -42,7 +42,28 @@ export async function runVisibilityScanPipeline(
   supabase: SupabaseClient<Database>,
   options: VisibilityScanPipelineOptions
 ): Promise<VisibilityScanPipelineResult> {
-  const { projectId } = options;
+  const { projectId, jobId } = options;
+
+  if (jobId) {
+    await supabase.from('jobs').update({ status: 'running' }).eq('id', jobId);
+  }
+
+  const finish = async (result: VisibilityScanPipelineResult): Promise<VisibilityScanPipelineResult> => {
+    if (jobId) {
+      if (result.status === 'failed') {
+        await supabase
+          .from('jobs')
+          .update({ status: 'failed', error_message: result.error || 'Visibility scan failed.' })
+          .eq('id', jobId);
+      } else {
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed' })
+          .eq('id', jobId);
+      }
+    }
+    return result;
+  };
 
   try {
     // 1. Require a valid current business_context_versions row (resolved via created_at DESC)
@@ -54,13 +75,13 @@ export async function runVisibilityScanPipeline(
       .limit(1);
 
     if (versionError || !currentVersions || currentVersions.length === 0) {
-      return {
+      return finish({
         projectId,
         scansExecuted: 0,
         status: 'failed',
         error:
           'Scan generation requires a current business context version. Please generate business context first.',
-      };
+      });
     }
 
     const currentVersion = currentVersions[0];
@@ -117,12 +138,12 @@ export async function runVisibilityScanPipeline(
       .maybeSingle();
 
     if (!providerRow) {
-      return {
+      return finish({
         projectId,
         scansExecuted: 0,
         status: 'failed',
         error: 'Active Gemini provider record not found in database.',
-      };
+      });
     }
 
     const providerId = providerRow.id;
@@ -132,16 +153,17 @@ export async function runVisibilityScanPipeline(
     const syncedPrompts = await syncPromptLibrary(supabase, projectId, generatedPrompts);
 
     if (syncedPrompts.length === 0) {
-      return {
+      return finish({
         projectId,
         scansExecuted: 0,
         status: 'failed',
         error: 'No active query prompts available for scan execution.',
-      };
+      });
     }
 
     const provider = new GeminiProvider();
     let scansExecuted = 0;
+    let lastScanErrorMessage: string | undefined = undefined;
     const normalizedTargetDomain = targetDomainName.toLowerCase().replace(/^www\./, '');
 
     // 6. Execute Scan pipeline for each prompt
@@ -167,6 +189,7 @@ export async function runVisibilityScanPipeline(
 
       if (scanInsertError || !scan) {
         console.error('Scan insert failed:', scanInsertError?.message);
+        lastScanErrorMessage = scanInsertError?.message || 'Failed to insert scan record.';
         continue;
       }
 
@@ -293,7 +316,24 @@ export async function runVisibilityScanPipeline(
 
         scansExecuted++;
       } catch (scanErr: unknown) {
-        const errMsg = scanErr instanceof Error ? scanErr.message : 'Scan execution error.';
+        let errMsg = 'Scan execution error.';
+        if (scanErr instanceof Error) {
+          errMsg = scanErr.message;
+        } else if (typeof scanErr === 'string') {
+          errMsg = scanErr;
+        }
+        if (errMsg.startsWith('{') && errMsg.includes('"message"')) {
+          try {
+            const parsed = JSON.parse(errMsg);
+            if (parsed.error?.message) {
+              errMsg = parsed.error.message;
+            }
+          } catch {
+            // Keep original
+          }
+        }
+        lastScanErrorMessage = errMsg;
+
         await supabase
           .from('ai_scans')
           .update({
@@ -306,18 +346,19 @@ export async function runVisibilityScanPipeline(
       }
     }
 
-    return {
+    return finish({
       projectId,
       scansExecuted,
       status: scansExecuted > 0 ? 'completed' : 'failed',
-    };
+      error: scansExecuted > 0 ? undefined : (lastScanErrorMessage || 'Scan execution failed for all query prompts.'),
+    });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Visibility scan pipeline error.';
-    return {
+    return finish({
       projectId,
       scansExecuted: 0,
       status: 'failed',
       error: errorMsg,
-    };
+    });
   }
 }

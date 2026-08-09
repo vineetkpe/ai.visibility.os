@@ -110,6 +110,7 @@ export async function startVisibilityScanAction(
     try {
       const handle = await visibilityScanTask.trigger({
         projectId: project.id,
+        jobId: job.id,
         accessToken: session.access_token,
       });
       await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
