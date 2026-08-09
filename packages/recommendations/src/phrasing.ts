@@ -1,16 +1,15 @@
 import { GoogleGenAI } from '@google/genai';
-import type { DetectedIssue, GenerationMethod } from './types';
+import type { DetectedIssue, ExtractionMethod } from './types';
 
 export interface PhrasedRecommendation {
   title: string;
-  summary: string;
-  implementationSteps: string[];
-  generationMethod: GenerationMethod;
+  description: string;
+  generationMethod: ExtractionMethod;
 }
 
 /**
  * Gemini Natural Language Phrasing Pass.
- * Rephrases detected technical issues into crisp, executive-ready language,
+ * Rephrases detected issues into crisp, executive-ready title and description,
  * strictly grounded ONLY in the provided evidence.
  */
 export async function phraseRecommendationWithGemini(
@@ -21,26 +20,24 @@ export async function phraseRecommendationWithGemini(
   if (!apiKey || apiKey.trim().length === 0) {
     return {
       title: issue.title,
-      summary: issue.summary,
-      implementationSteps: issue.implementationSteps,
+      description: issue.description,
       generationMethod: 'deterministic',
     };
   }
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const evidenceText = issue.evidence.map((e, idx) => `${idx + 1}. ${e.description}`).join('\n');
+    const evidenceText = issue.evidence
+      .map((e, idx) => `${idx + 1}. ${e.notes || 'Evidence record'}`)
+      .join('\n');
 
-    const prompt = `Rephrase the following detected technical recommendation into executive-ready language.
+    const prompt = `Rephrase the following detected recommendation into executive-ready language.
 
 Detected Title: ${issue.title}
 Detected Category: ${issue.category}
-Detected Summary: ${issue.summary}
+Detected Description: ${issue.description}
 Evidence Collected:
 ${evidenceText}
-
-Implementation Steps Input:
-${issue.implementationSteps.map((step, idx) => `${idx + 1}. ${step}`).join('\n')}
 
 STRICT RULES:
 1. Ground every sentence ONLY in the evidence provided above.
@@ -48,8 +45,7 @@ STRICT RULES:
 3. Return valid JSON matching the following schema exactly:
 {
   "title": "Clear action title",
-  "summary": "Crisp executive summary explaining why this issue was detected",
-  "implementationSteps": ["Step 1...", "Step 2...", "Step 3..."]
+  "description": "Crisp executive summary explaining why this issue was detected and how to resolve it"
 }`;
 
     const response = await ai.models.generateContent({
@@ -58,24 +54,18 @@ STRICT RULES:
       config: {
         responseMimeType: 'application/json',
         systemInstruction:
-          'You are an AI Search Visibility Copywriter. Rephrase detected issues into executive-ready language strictly grounded in the provided evidence. Never invent ungrounded claims or generic SEO advice.',
+          'You are an AI Search Visibility Copywriter. Rephrase detected issues into executive-ready language strictly grounded in the provided evidence. Never invent ungrounded claims.',
       },
     });
 
     const text = response.text;
     if (text) {
       const parsed = JSON.parse(text);
-      if (
-        parsed &&
-        typeof parsed.title === 'string' &&
-        typeof parsed.summary === 'string' &&
-        Array.isArray(parsed.implementationSteps)
-      ) {
+      if (parsed && typeof parsed.title === 'string' && typeof parsed.description === 'string') {
         return {
           title: parsed.title,
-          summary: parsed.summary,
-          implementationSteps: parsed.implementationSteps,
-          generationMethod: 'ai_phrased',
+          description: parsed.description,
+          generationMethod: 'ai_assisted',
         };
       }
     }
@@ -85,8 +75,7 @@ STRICT RULES:
 
   return {
     title: issue.title,
-    summary: issue.summary,
-    implementationSteps: issue.implementationSteps,
+    description: issue.description,
     generationMethod: 'deterministic',
   };
 }

@@ -3,20 +3,17 @@ import type {
   Recommendation,
   RecommendationEngineRunResult,
   RecommendationStatus,
-  RecommendationCategory,
-  PriorityBand,
-  EstimatedImpact,
-  EstimatedEffort,
-  GenerationMethod,
+  RecommendationPriority,
+  ExtractionMethod,
+  EvidenceRef,
 } from './types';
 import { detectProjectIssues } from './rules';
-import { determineImpactBand, determinePriorityBand, computeConfidenceScore } from './formula';
 import { phraseRecommendationWithGemini } from './phrasing';
 
 /**
  * Main AI Recommendation Engine Pipeline.
- * Detects issues from real evidence, scores impact & effort, phrases recommendations,
- * deduplicates against open issues, and auto-resolves fixed recommendations.
+ * Detects issues from real evidence, scores 1..5 impact & effort, phrases recommendations,
+ * deduplicates against open issues using scope_key, and auto-resolves fixed recommendations.
  */
 export async function runRecommendationEngine(
   supabase: SupabaseClient<Database>,
@@ -36,7 +33,8 @@ export async function runRecommendationEngine(
     .from('recommendations')
     .select('id, category, scope_key, status')
     .eq('project_id', projectId)
-    .in('status', ['open', 'in_progress']);
+    .in('status', ['open', 'in_progress'])
+    .is('superseded_by', null);
 
   const existingMap = new Map((existingRecs || []).map((r) => [r.scope_key, r]));
 
@@ -44,15 +42,10 @@ export async function runRecommendationEngine(
   for (const issue of detectedIssues) {
     processedScopeKeys.add(issue.scopeKey);
 
-    const impactBand = determineImpactBand(issue.rawImpactScore);
-    const priorityBand = determinePriorityBand(impactBand, issue.effort);
-    const confidenceScore = computeConfidenceScore(issue.evidence.length);
-
-    // Phrase Title & Summary
+    // Phrase Title & Description via Gemini or deterministic fallback
     const phrased = await phraseRecommendationWithGemini(issue);
 
     const existing = existingMap.get(issue.scopeKey);
-
     let recId: string;
 
     if (existing) {
@@ -62,12 +55,10 @@ export async function runRecommendationEngine(
         .from('recommendations')
         .update({
           title: phrased.title,
-          description: phrased.summary,
-          priority: priorityBand,
-          estimated_impact: impactBand,
-          estimated_effort: issue.effort,
-          confidence_score: confidenceScore,
-          implementation_steps: phrased.implementationSteps,
+          description: phrased.description,
+          impact_score: issue.impactScore,
+          effort_score: issue.effortScore,
+          priority: issue.priority,
           generation_method: phrased.generationMethod,
           updated_at: new Date().toISOString(),
         })
@@ -80,25 +71,17 @@ export async function runRecommendationEngine(
         await supabase.from('recommendation_evidence').insert({
           recommendation_id: recId,
           page_id: ev.pageId || null,
-          scan_id: ev.scanId || null,
+          ai_scan_id: ev.aiScanId || null,
           citation_id: ev.citationId || null,
-          competitor_scan_id: ev.competitorScanId || null,
-          evidence_description: ev.description,
+          competitor_id: ev.competitorId || null,
+          notes: ev.notes || null,
         });
       }
-
-      // Log History
-      await supabase.from('recommendation_history').insert({
-        recommendation_id: recId,
-        previous_status: existing.status,
-        new_status: existing.status,
-        reason: 'evidence_still_present',
-      });
 
       updatedCount++;
     } else {
       // Insert New Recommendation
-      const firstScanId = issue.evidence.find((e) => e.scanId)?.scanId || null;
+      const firstScanId = issue.evidence.find((e) => e.aiScanId)?.aiScanId || null;
 
       const { data: insertedRec, error: insertErr } = await supabase
         .from('recommendations')
@@ -107,13 +90,11 @@ export async function runRecommendationEngine(
           scan_id: firstScanId,
           scope_key: issue.scopeKey,
           title: phrased.title,
-          description: phrased.summary,
+          description: phrased.description,
           category: issue.category,
-          priority: priorityBand,
-          estimated_impact: impactBand,
-          estimated_effort: issue.effort,
-          confidence_score: confidenceScore,
-          implementation_steps: phrased.implementationSteps,
+          impact_score: issue.impactScore,
+          effort_score: issue.effortScore,
+          priority: issue.priority,
           generation_method: phrased.generationMethod,
           status: 'open',
         })
@@ -132,43 +113,29 @@ export async function runRecommendationEngine(
         await supabase.from('recommendation_evidence').insert({
           recommendation_id: recId,
           page_id: ev.pageId || null,
-          scan_id: ev.scanId || null,
+          ai_scan_id: ev.aiScanId || null,
           citation_id: ev.citationId || null,
-          competitor_scan_id: ev.competitorScanId || null,
-          evidence_description: ev.description,
+          competitor_id: ev.competitorId || null,
+          notes: ev.notes || null,
         });
       }
-
-      // Log History
-      await supabase.from('recommendation_history').insert({
-        recommendation_id: recId,
-        previous_status: null,
-        new_status: 'open',
-        reason: 'created',
-      });
 
       createdCount++;
     }
   }
 
-  // 3. Re-evaluation Pass (Auto-Resolve fixed recommendations)
+  // 3. Auto-Resolve Pass (Fixed recommendations where issue no longer fires)
+  const now = new Date().toISOString();
   for (const existing of existingRecs || []) {
     if (!processedScopeKeys.has(existing.scope_key)) {
-      // Issue no longer fires against current evidence -> Auto-Resolve
       await supabase
         .from('recommendations')
         .update({
-          status: 'completed',
-          updated_at: new Date().toISOString(),
+          status: 'resolved',
+          resolved_at: now,
+          updated_at: now,
         })
         .eq('id', existing.id);
-
-      await supabase.from('recommendation_history').insert({
-        recommendation_id: existing.id,
-        previous_status: existing.status,
-        new_status: 'completed',
-        reason: 'auto_resolved',
-      });
 
       autoResolvedCount++;
     }
@@ -195,8 +162,8 @@ export async function getProjectRecommendations(
   projectId: string,
   filter?: {
     status?: RecommendationStatus;
-    category?: RecommendationCategory;
-    priority?: PriorityBand;
+    category?: string;
+    priority?: RecommendationPriority;
   }
 ): Promise<Recommendation[]> {
   let query = supabase
@@ -206,29 +173,32 @@ export async function getProjectRecommendations(
       id,
       project_id,
       scan_id,
-      scope_key,
+      category,
       title,
       description,
-      category,
+      impact_score,
+      effort_score,
       priority,
-      estimated_impact,
-      estimated_effort,
-      confidence_score,
-      implementation_steps,
-      generation_method,
       status,
+      scope_key,
+      generation_method,
+      superseded_by,
+      resolved_by_scan_id,
+      resolved_at,
       created_at,
+      updated_at,
       recommendation_evidence (
         id,
         page_id,
-        scan_id,
+        ai_scan_id,
         citation_id,
-        competitor_scan_id,
-        evidence_description
+        competitor_id,
+        notes
       )
     `
     )
-    .eq('project_id', projectId);
+    .eq('project_id', projectId)
+    .is('superseded_by', null);
 
   if (filter?.status) {
     query = query.eq('status', filter.status);
@@ -248,11 +218,12 @@ export async function getProjectRecommendations(
 
   // Fetch URLs for affected page IDs
   const allPageIds = new Set<string>();
-  (recRows as any[]).forEach((r: any) => {
-    ((r.recommendation_evidence || []) as any[]).forEach((e: any) => {
+  for (const r of recRows) {
+    const evidenceItems = Array.isArray(r.recommendation_evidence) ? r.recommendation_evidence : [];
+    for (const e of evidenceItems) {
       if (e.page_id) allPageIds.add(e.page_id);
-    });
-  });
+    }
+  }
 
   const pageUrlMap = new Map<string, string>();
   if (allPageIds.size > 0) {
@@ -264,14 +235,15 @@ export async function getProjectRecommendations(
     (pages || []).forEach((p) => pageUrlMap.set(p.id, p.url));
   }
 
-  return (recRows as any[]).map((r: any) => {
-    const evidenceList = ((r.recommendation_evidence || []) as any[]).map((e: any) => ({
+  return recRows.map((r) => {
+    const rawEvidence = Array.isArray(r.recommendation_evidence) ? r.recommendation_evidence : [];
+    const evidenceList: EvidenceRef[] = rawEvidence.map((e) => ({
       id: e.id,
       pageId: e.page_id,
-      scanId: e.scan_id,
+      aiScanId: e.ai_scan_id,
       citationId: e.citation_id,
-      competitorScanId: e.competitor_scan_id,
-      description: e.evidence_description,
+      competitorId: e.competitor_id,
+      notes: e.notes,
     }));
 
     const affectedPages = Array.from(
@@ -282,38 +254,37 @@ export async function getProjectRecommendations(
       )
     );
 
-    const steps = Array.isArray(r.implementation_steps) ? (r.implementation_steps as string[]) : [];
-
     return {
       id: r.id,
       projectId: r.project_id,
       scanId: r.scan_id,
-      scopeKey: r.scope_key,
+      category: r.category,
       title: r.title,
-      summary: r.description,
-      category: r.category as RecommendationCategory,
-      priority: r.priority as PriorityBand,
-      estimatedImpact: (r.estimated_impact || 'medium') as EstimatedImpact,
-      estimatedEffort: (r.estimated_effort || 'moderate') as EstimatedEffort,
-      confidenceScore: r.confidence_score || 0.8,
-      generationMethod: r.generation_method as GenerationMethod,
+      description: r.description,
+      impactScore: r.impact_score,
+      effortScore: r.effort_score,
+      priority: r.priority as RecommendationPriority,
       status: r.status as RecommendationStatus,
+      scopeKey: r.scope_key,
+      generationMethod: r.generation_method as ExtractionMethod,
+      supersededBy: r.superseded_by,
+      resolvedByScanId: r.resolved_by_scan_id,
+      resolvedAt: r.resolved_at,
+      createdAt: r.created_at,
+      updatedAt: r.updated_at,
       evidence: evidenceList,
       affectedPages,
-      implementationSteps: steps,
-      generatedAt: r.created_at,
     };
   });
 }
 
 /**
- * Manually updates a recommendation status (e.g., user marks in_progress, completed, or dismissed).
+ * Manually updates a recommendation status (e.g., user marks in_progress, resolved, or dismissed).
  */
 export async function updateRecommendationStatus(
   supabase: SupabaseClient<Database>,
   recommendationId: string,
-  newStatus: RecommendationStatus,
-  reason = 'user_action'
+  newStatus: RecommendationStatus
 ): Promise<boolean> {
   const { data: existing } = await supabase
     .from('recommendations')
@@ -323,20 +294,28 @@ export async function updateRecommendationStatus(
 
   if (!existing) return false;
 
-  await supabase
+  const now = new Date().toISOString();
+  const isCurrentlyResolved = (existing.status as string) === 'resolved';
+
+  const updateData: {
+    status: RecommendationStatus;
+    updated_at: string;
+    resolved_at?: string | null;
+  } = {
+    status: newStatus,
+    updated_at: now,
+  };
+
+  if (newStatus === 'resolved') {
+    updateData.resolved_at = now;
+  } else if (isCurrentlyResolved) {
+    updateData.resolved_at = null;
+  }
+
+  const { error } = await supabase
     .from('recommendations')
-    .update({
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', recommendationId);
 
-  await supabase.from('recommendation_history').insert({
-    recommendation_id: recommendationId,
-    previous_status: existing.status,
-    new_status: newStatus,
-    reason,
-  });
-
-  return true;
+  return !error;
 }

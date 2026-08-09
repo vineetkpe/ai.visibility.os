@@ -1,57 +1,47 @@
-export type RecommendationCategory =
-  | 'content'
-  | 'technical_seo'
-  | 'schema'
-  | 'entity_optimization'
-  | 'citation_opportunity'
-  | 'internal_linking'
-  | 'metadata'
-  | 'ai_visibility';
-
-export type PriorityBand = 'critical' | 'high' | 'medium' | 'low';
-export type EstimatedImpact = 'high' | 'medium' | 'low';
-export type EstimatedEffort = 'quick_win' | 'moderate' | 'significant';
-export type GenerationMethod = 'deterministic' | 'ai_phrased';
-export type RecommendationStatus = 'open' | 'in_progress' | 'completed' | 'dismissed';
+export type RecommendationPriority = 'low' | 'medium' | 'high' | 'critical';
+export type RecommendationStatus = 'open' | 'in_progress' | 'resolved' | 'dismissed';
+export type ExtractionMethod = 'deterministic' | 'ai_assisted';
 
 export interface EvidenceRef {
   id?: string;
   pageId?: string | null;
-  scanId?: string | null;
+  aiScanId?: string | null;
   citationId?: string | null;
-  competitorScanId?: string | null;
-  description: string;
+  competitorId?: string | null;
+  notes?: string | null;
 }
 
 export interface DetectedIssue {
   scopeKey: string;
   title: string;
-  summary: string;
-  category: RecommendationCategory;
-  rawImpactScore: number;
-  effort: EstimatedEffort;
+  description: string;
+  category: string;
+  impactScore: number; // 1..5
+  effortScore: number; // 1..5
+  priority: RecommendationPriority;
   evidence: EvidenceRef[];
-  implementationSteps: string[];
 }
 
 export interface Recommendation {
   id: string;
   projectId: string;
   scanId: string | null;
-  scopeKey: string;
+  category: string;
   title: string;
-  summary: string;
-  category: RecommendationCategory;
-  priority: PriorityBand;
-  estimatedImpact: EstimatedImpact;
-  estimatedEffort: EstimatedEffort;
-  confidenceScore: number;
-  generationMethod: GenerationMethod;
+  description: string | null;
+  impactScore: number;
+  effortScore: number;
+  priority: RecommendationPriority;
   status: RecommendationStatus;
+  scopeKey: string;
+  generationMethod: ExtractionMethod;
+  supersededBy: string | null;
+  resolvedByScanId: string | null;
+  resolvedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
   evidence: EvidenceRef[];
   affectedPages: string[];
-  implementationSteps: string[];
-  generatedAt: string;
 }
 
 export interface RecommendationEngineRunResult {
