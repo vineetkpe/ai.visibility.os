@@ -1,53 +1,99 @@
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
 import type {
-  ExtractedField,
-  PageRecord,
+  JoinedPageRecord,
   BusinessContextPipelineOptions,
   BusinessContextPipelineResult,
+  ExtractedEntity,
+  ExtractedTopic,
+  ExtractedProduct,
+  ExtractedService,
+  ExtractedTechnology,
 } from './types';
 import { extractDeterministicFields } from './deterministic';
 import { synthesizeBusinessContextWithAi } from './ai-synthesis';
 
 /**
- * Case-insensitive trimmed deduplication of extracted fields within a single version.
+ * Deduplicates entities by (entity_type, name).
  */
-export function deduplicateFields(fields: ExtractedField[]): ExtractedField[] {
-  const seen = new Map<string, ExtractedField>();
-
-  for (const field of fields) {
-    const trimmedVal = field.fieldValue.trim();
-    if (!trimmedVal) continue;
-
-    const key = `${field.fieldName.toLowerCase()}:${trimmedVal.toLowerCase()}`;
-    const existing = seen.get(key);
-
-    if (!existing) {
-      seen.set(key, { ...field, fieldValue: trimmedVal });
-    } else {
-      // If candidate is deterministic and existing is ai_inferred, upgrade to deterministic
-      if (
-        field.extractionMethod === 'deterministic' &&
-        existing.extractionMethod === 'ai_inferred'
-      ) {
-        seen.set(key, { ...field, fieldValue: trimmedVal });
-      }
+function deduplicateEntities(list: ExtractedEntity[]): ExtractedEntity[] {
+  const map = new Map<string, ExtractedEntity>();
+  for (const item of list) {
+    const key = `${item.entity_type}:${item.name.toLowerCase()}`;
+    if (!map.has(key)) {
+      map.set(key, item);
     }
   }
-
-  return Array.from(seen.values());
+  return Array.from(map.values());
 }
 
 /**
- * Executes the complete Business Context Engine pipeline for a target project.
+ * Deduplicates topics by name.
+ */
+function deduplicateTopics(list: ExtractedTopic[]): ExtractedTopic[] {
+  const map = new Map<string, ExtractedTopic>();
+  for (const item of list) {
+    const key = item.name.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Deduplicates products by name.
+ */
+function deduplicateProducts(list: ExtractedProduct[]): ExtractedProduct[] {
+  const map = new Map<string, ExtractedProduct>();
+  for (const item of list) {
+    const key = item.name.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Deduplicates services by name.
+ */
+function deduplicateServices(list: ExtractedService[]): ExtractedService[] {
+  const map = new Map<string, ExtractedService>();
+  for (const item of list) {
+    const key = item.name.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Deduplicates technologies by name.
+ */
+function deduplicateTechnologies(list: ExtractedTechnology[]): ExtractedTechnology[] {
+  const map = new Map<string, ExtractedTechnology>();
+  for (const item of list) {
+    const key = item.name.toLowerCase();
+    if (!map.has(key)) {
+      map.set(key, item);
+    }
+  }
+  return Array.from(map.values());
+}
+
+/**
+ * Executes the Business Context Engine pipeline for a target project against the CURRENT schema.
  */
 export async function runBusinessContextPipeline(
   supabase: SupabaseClient<Database>,
   options: BusinessContextPipelineOptions
 ): Promise<BusinessContextPipelineResult> {
+  const startTime = Date.now();
   const { projectId } = options;
 
   try {
-    // 1. Fetch active primary domain for the project
+    // 1. Fetch active domains for the project
     const { data: domains, error: domainError } = await supabase
       .from('domains')
       .select('id')
@@ -59,22 +105,39 @@ export async function runBusinessContextPipeline(
         projectId,
         contextVersionId: '',
         versionNumber: 0,
-        fieldsExtracted: 0,
+        entitiesCount: 0,
+        topicsCount: 0,
+        productsCount: 0,
+        servicesCount: 0,
+        technologiesCount: 0,
         status: 'failed',
-        error: 'No active domain found for project.',
+        error: 'No domain found for project.',
       };
     }
 
     const domainId = domains[0]?.id as string;
 
-    // 2. Fetch completed crawled pages for the domain
+    // 2. Fetch crawled pages with joined page_metadata
     const { data: rawPages, error: pagesError } = await supabase
       .from('pages')
-      .select(
-        'id, url, title, meta_description, canonical_url, language, organization_details, json_ld, social_links, headings, word_count'
-      )
+      .select(`
+        id,
+        url,
+        path,
+        status_code,
+        content_type,
+        last_crawled_at,
+        page_metadata (
+          title,
+          meta_description,
+          canonical_url,
+          language,
+          schema_json,
+          open_graph,
+          twitter_cards
+        )
+      `)
       .eq('domain_id', domainId)
-      .eq('crawl_status', 'completed')
       .order('created_at', { ascending: true });
 
     if (pagesError || !rawPages || rawPages.length === 0) {
@@ -82,50 +145,78 @@ export async function runBusinessContextPipeline(
         projectId,
         contextVersionId: '',
         versionNumber: 0,
-        fieldsExtracted: 0,
+        entitiesCount: 0,
+        topicsCount: 0,
+        productsCount: 0,
+        servicesCount: 0,
+        technologiesCount: 0,
         status: 'failed',
-        error: 'No completed crawl pages available for context synthesis.',
+        error: pagesError?.message || 'No crawl pages available for business context synthesis.',
       };
     }
 
-    const pages = rawPages as unknown as PageRecord[];
+    const pages = rawPages as unknown as JoinedPageRecord[];
 
-    // 3. Deterministic Extraction Pass
-    const deterministicFields = extractDeterministicFields(pages);
+    // 3. Run Deterministic Pass
+    const deterministicResult = extractDeterministicFields(pages);
 
-    // 4. AI Inferred Synthesis Pass (Gemini)
-    const aiFields = await synthesizeBusinessContextWithAi(pages);
+    // 4. Run AI Synthesis Pass
+    const aiResult = await synthesizeBusinessContextWithAi(pages);
 
-    // 5. Deduplicate combined field set
-    const allFields = [...deterministicFields, ...aiFields];
-    const deduplicated = deduplicateFields(allFields);
+    // 5. Combine and deduplicate extracted entities, topics, products, services
+    const combinedEntities = deduplicateEntities([
+      ...deterministicResult.entities,
+      ...(aiResult?.entities || []),
+    ]);
 
-    if (deduplicated.length === 0) {
-      return {
-        projectId,
-        contextVersionId: '',
-        versionNumber: 0,
-        fieldsExtracted: 0,
-        status: 'failed',
-        error: 'No business context fields could be extracted.',
-      };
-    }
+    const combinedTopics = deduplicateTopics([
+      ...deterministicResult.topics,
+      ...(aiResult?.topics || []),
+    ]);
 
-    // Extract summary fields for version
-    const industryField = deduplicated.find((f) => f.fieldName === 'industry')?.fieldValue || null;
-    const descField = deduplicated.find((f) => f.fieldName === 'description')?.fieldValue || null;
-    const valuePropField =
-      deduplicated.find((f) => f.fieldName === 'value_proposition')?.fieldValue || null;
+    const combinedProducts = deduplicateProducts([
+      ...deterministicResult.products,
+      ...(aiResult?.products || []),
+    ]);
 
-    // Insert new version row into business_context_versions
+    const combinedServices = deduplicateServices([
+      ...deterministicResult.services,
+      ...(aiResult?.services || []),
+    ]);
+
+    const combinedTechnologies = deduplicateTechnologies([
+      ...deterministicResult.technologies,
+      ...(aiResult?.technologies || []),
+    ]);
+
+    const industry = aiResult?.industry || deterministicResult.industry;
+    const description = aiResult?.description || deterministicResult.description;
+    const valueProposition = aiResult?.value_proposition || deterministicResult.value_proposition;
+    const targetAudience = aiResult?.target_audience || deterministicResult.target_audience;
+    const extractionMethod = aiResult ? 'ai_assisted' : 'deterministic';
+    const confidenceScore = aiResult?.confidence_score ?? deterministicResult.confidence_score;
+
+    // 6. Calculate version number for reporting (count of existing rows + 1)
+    const { count: existingVersionsCount } = await supabase
+      .from('business_context_versions')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId);
+
+    const versionNumber = (existingVersionsCount ?? 0) + 1;
+    const durationMs = Date.now() - startTime;
+
+    // 7. Insert new row into business_context_versions
     const { data: newVersion, error: versionInsertError } = await supabase
       .from('business_context_versions')
       .insert({
         project_id: projectId,
-        industry: industryField,
-        description: descField,
-        value_proposition: valuePropField,
-        extraction_method: 'ai_assisted',
+        industry,
+        description,
+        value_proposition: valueProposition,
+        target_audience: targetAudience,
+        extraction_method: extractionMethod,
+        confidence_score: confidenceScore,
+        generation_duration_ms: durationMs,
       })
       .select('id')
       .single();
@@ -134,43 +225,95 @@ export async function runBusinessContextPipeline(
       return {
         projectId,
         contextVersionId: '',
-        versionNumber: 1,
-        fieldsExtracted: 0,
+        versionNumber,
+        entitiesCount: 0,
+        topicsCount: 0,
+        productsCount: 0,
+        servicesCount: 0,
+        technologiesCount: 0,
         status: 'failed',
-        error: versionInsertError?.message || 'Failed to create business context version record.',
+        error: versionInsertError?.message || 'Failed to create business_context_versions record.',
       };
     }
 
-    // Insert deduplicated business_context_fields rows
-    const fieldRows = deduplicated.map((f) => ({
-      context_version_id: newVersion.id,
-      field_name: f.fieldName,
-      field_value: f.fieldValue,
-      confidence_score: f.confidenceScore,
-      source_page_id: f.sourcePageId,
-      extraction_method: f.extractionMethod,
-    }));
+    const versionId = newVersion.id;
 
-    const { error: fieldsInsertError } = await supabase
-      .from('business_context_fields')
-      .insert(fieldRows);
+    // 8. Insert child records into normalized schema tables
+    if (combinedEntities.length > 0) {
+      const entityRows = combinedEntities.map((e) => ({
+        business_context_version_id: versionId,
+        entity_type: e.entity_type,
+        name: e.name,
+        description: e.description,
+        source_page_id: e.source_page_id,
+        extraction_method: e.extraction_method,
+        confidence_score: e.confidence_score,
+      }));
+      await supabase.from('entities').insert(entityRows);
+    }
 
-    if (fieldsInsertError) {
-      return {
-        projectId,
-        contextVersionId: newVersion.id,
-        versionNumber: 1,
-        fieldsExtracted: 0,
-        status: 'failed',
-        error: fieldsInsertError.message || 'Failed to persist business context fields.',
-      };
+    if (combinedTopics.length > 0) {
+      const topicRows = combinedTopics.map((t) => ({
+        business_context_version_id: versionId,
+        name: t.name,
+        relevance_score: t.relevance_score,
+        source_page_id: t.source_page_id,
+        extraction_method: t.extraction_method,
+      }));
+      await supabase.from('topics').insert(topicRows);
+    }
+
+    if (combinedProducts.length > 0) {
+      const productRows = combinedProducts.map((p) => ({
+        business_context_version_id: versionId,
+        name: p.name,
+        description: p.description,
+        category: p.category,
+        url: p.url,
+        source_page_id: p.source_page_id,
+        extraction_method: p.extraction_method,
+        confidence_score: p.confidence_score,
+      }));
+      await supabase.from('products').insert(productRows);
+    }
+
+    if (combinedServices.length > 0) {
+      const serviceRows = combinedServices.map((s) => ({
+        business_context_version_id: versionId,
+        name: s.name,
+        description: s.description,
+        category: s.category,
+        url: s.url,
+        source_page_id: s.source_page_id,
+        extraction_method: s.extraction_method,
+        confidence_score: s.confidence_score,
+      }));
+      await supabase.from('services').insert(serviceRows);
+    }
+
+    if (combinedTechnologies.length > 0) {
+      const techRows = combinedTechnologies.map((tech) => ({
+        domain_id: domainId,
+        name: tech.name,
+        category: tech.category,
+        source_page_id: tech.source_page_id,
+      }));
+      for (const row of techRows) {
+        await supabase
+          .from('technologies')
+          .upsert(row, { onConflict: 'domain_id, name' });
+      }
     }
 
     return {
       projectId,
-      contextVersionId: newVersion.id,
-      versionNumber: 1,
-      fieldsExtracted: fieldRows.length,
+      contextVersionId: versionId,
+      versionNumber,
+      entitiesCount: combinedEntities.length,
+      topicsCount: combinedTopics.length,
+      productsCount: combinedProducts.length,
+      servicesCount: combinedServices.length,
+      technologiesCount: combinedTechnologies.length,
       status: 'completed',
     };
   } catch (err: unknown) {
@@ -179,7 +322,11 @@ export async function runBusinessContextPipeline(
       projectId,
       contextVersionId: '',
       versionNumber: 0,
-      fieldsExtracted: 0,
+      entitiesCount: 0,
+      topicsCount: 0,
+      productsCount: 0,
+      servicesCount: 0,
+      technologiesCount: 0,
       status: 'failed',
       error: errorMsg,
     };

@@ -191,6 +191,9 @@ importers:
       '@ai-visibility-os/config':
         specifier: workspace:*
         version: link:../config
+      '@electric-sql/pglite':
+        specifier: ^0.5.4
+        version: 0.5.4
       '@types/node':
         specifier: ^22.13.5
         version: 22.20.1
