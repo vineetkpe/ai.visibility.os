@@ -9,7 +9,11 @@ export const metadata = {
   description: 'Evidence-grounded AI search optimization recommendations.',
 };
 
-export default async function RecommendationsPage() {
+interface PageProps {
+  searchParams: Promise<{ projectId?: string; project_id?: string }>;
+}
+
+export default async function RecommendationsPage({ searchParams }: PageProps) {
   const supabase = await createClient();
 
   const {
@@ -21,15 +25,23 @@ export default async function RecommendationsPage() {
     redirect('/login');
   }
 
-  // Fetch primary active project for user
-  const { data: project } = await supabase
+  const params = await searchParams;
+  const requestedProjectId = params?.projectId || params?.project_id;
+
+  // Fetch requested project or default to latest active project
+  let query = supabase
     .from('projects')
     .select('id')
     .eq('user_id', user.id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single();
+    .is('deleted_at', null);
+
+  if (requestedProjectId) {
+    query = query.eq('id', requestedProjectId);
+  } else {
+    query = query.order('created_at', { ascending: false }).limit(1);
+  }
+
+  const { data: project } = await query.maybeSingle();
 
   if (!project) {
     redirect('/projects/new');

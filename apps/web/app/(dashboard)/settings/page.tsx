@@ -9,7 +9,11 @@ export const metadata = {
   description: 'Manage project metadata, domain links, and danger zone actions.',
 };
 
-export default async function SettingsPage() {
+interface PageProps {
+  searchParams: Promise<{ projectId?: string; project_id?: string }>;
+}
+
+export default async function SettingsPage({ searchParams }: PageProps) {
   const supabase = await createClient();
 
   const {
@@ -21,15 +25,23 @@ export default async function SettingsPage() {
     redirect('/login?redirect=%2Fsettings');
   }
 
-  // Fetch user's primary active project with deleted_at filter
-  const { data: project } = await supabase
+  const params = await searchParams;
+  const requestedProjectId = params?.projectId || params?.project_id;
+
+  // Fetch user's requested active project or default to latest active project
+  let query = supabase
     .from('projects')
     .select('id, name, created_at, domains(host, is_primary)')
     .eq('user_id', user.id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .is('deleted_at', null);
+
+  if (requestedProjectId) {
+    query = query.eq('id', requestedProjectId);
+  } else {
+    query = query.order('created_at', { ascending: false }).limit(1);
+  }
+
+  const { data: project } = await query.maybeSingle();
 
   if (!project) {
     redirect('/onboarding');

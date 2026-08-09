@@ -90,6 +90,19 @@ export async function createProjectAction(
       };
     }
 
+    // Automatically trigger initial website discovery crawl for the newly created domain
+    const { data: domain } = await supabase
+      .from('domains')
+      .select('id')
+      .eq('project_id', projectId)
+      .limit(1)
+      .maybeSingle();
+
+    if (domain) {
+      const { startSiteCrawlAction } = await import('./crawl-actions');
+      await startSiteCrawlAction(domain.id);
+    }
+
     return {
       success: true,
       data: { projectId },
