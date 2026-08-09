@@ -8,70 +8,32 @@ export interface ClaimJobOptions {
 }
 
 /**
- * Atomically claims the next queued job using the PostgreSQL claim_next_job RPC function (with optimistic locking fallback).
+ * Atomically claims the next queued job using the PostgreSQL claim_next_job RPC function.
  * Uses FOR UPDATE SKIP LOCKED via RPC to prevent double execution.
+ * Authoritative: If the RPC call fails, throws the exact database error.
  */
 export async function claimNextJob(
   supabase: SupabaseClient<Database>,
   options?: ClaimJobOptions
 ): Promise<JobRow | null> {
-  const pJobType = options?.jobType ?? null;
-  const pProjectId = options?.projectId ?? null;
+  const p_job_type = options?.jobType ?? null;
+  const p_project_id = options?.projectId ?? null;
 
-  // 1. Try PostgreSQL RPC function claim_next_job (FOR UPDATE SKIP LOCKED)
-  try {
-    type RpcFn = 'claim_next_job';
-    const { data, error } = await supabase.rpc(
-      'claim_next_job' as unknown as RpcFn,
-      {
-        p_job_type: pJobType,
-        p_project_id: pProjectId,
-      } as unknown as Record<string, unknown>
-    );
+  const { data, error } = await supabase.rpc('claim_next_job', {
+    p_job_type,
+    p_project_id,
+  });
 
-    if (!error && data && Array.isArray(data) && data.length > 0) {
-      return data[0] as unknown as JobRow;
-    }
-  } catch (rpcErr) {
-    console.warn('claim_next_job RPC warning:', rpcErr);
+  if (error) {
+    console.error('Failed to claim next job:', error.message);
+    throw new Error(`claimNextJob RPC error: ${error.message}`);
   }
 
-  // 2. Optimistic locking fallback for database concurrency control
-  let query = supabase
-    .from('jobs')
-    .select('*')
-    .eq('status', 'queued')
-    .order('created_at', { ascending: true })
-    .limit(1);
-
-  if (pJobType) query = query.eq('job_type', pJobType);
-  if (pProjectId) query = query.eq('project_id', pProjectId);
-
-  const { data: queuedJobs, error: selectErr } = await query;
-  if (selectErr || !queuedJobs || queuedJobs.length === 0) {
+  if (!data || data.length === 0) {
     return null;
   }
 
-  const candidateJob = queuedJobs[0];
-  if (!candidateJob) {
-    return null;
-  }
-  const now = new Date().toISOString();
-
-  // Atomic state transition (queued -> running) with status guard
-  const { data: claimedJob } = await supabase
-    .from('jobs')
-    .update({
-      status: 'running',
-      started_at: now,
-      updated_at: now,
-    })
-    .eq('id', candidateJob.id)
-    .eq('status', 'queued')
-    .select('*')
-    .maybeSingle();
-
-  return claimedJob || null;
+  return data[0] ?? null;
 }
 
 /**
@@ -90,7 +52,7 @@ export async function completeJob(
       status: 'completed',
       completed_at: now,
       error_message: null,
-      ...(progress ? { progress: progress as unknown as Database['public']['Tables']['jobs']['Update']['progress'] } : {}),
+      ...(progress ? { progress: progress as Database['public']['Tables']['jobs']['Update']['progress'] } : {}),
       updated_at: now,
     })
     .eq('id', jobId)

@@ -11,21 +11,30 @@ export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
 /**
  * Worker Authorization Helper
  * Validates request against JOB_WORKER_SECRET without exposing credentials.
+ * Fails closed immediately if JOB_WORKER_SECRET is missing or empty.
  */
-function isAuthorized(request: NextRequest): boolean {
-  const expectedSecret = process.env.JOB_WORKER_SECRET || 'internal_job_worker_secret_fallback';
-  
+function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: string } {
+  const secret = process.env.JOB_WORKER_SECRET;
+  if (!secret || !secret.trim()) {
+    console.error('[SECURITY ERROR] JOB_WORKER_SECRET environment variable is not configured on server.');
+    return {
+      authorized: false,
+      error: 'Server configuration error: Worker authorization secret is not configured.',
+    };
+  }
+
+  const trimmedSecret = secret.trim();
   const authHeader = request.headers.get('authorization') || '';
-  if (authHeader.startsWith('Bearer ') && authHeader.substring(7) === expectedSecret) {
-    return true;
+  if (authHeader.startsWith('Bearer ') && authHeader.substring(7) === trimmedSecret) {
+    return { authorized: true };
   }
 
   const customHeader = request.headers.get('x-job-worker-secret') || '';
-  if (customHeader === expectedSecret) {
-    return true;
+  if (customHeader === trimmedSecret) {
+    return { authorized: true };
   }
 
-  return false;
+  return { authorized: false, error: 'Unauthorized worker request.' };
 }
 
 /**
@@ -57,11 +66,13 @@ function cleanErrorMessage(err: unknown): string {
  * Claims and executes queued jobs atomically using FOR UPDATE SKIP LOCKED via RPC.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  // 1. Enforce Authentication Security
-  if (!isAuthorized(request)) {
+  // 1. Enforce Authentication Security (Fail Closed if secret unconfigured)
+  const authCheck = checkWorkerAuth(request);
+  if (!authCheck.authorized) {
+    const status = authCheck.error?.startsWith('Server configuration error') ? 500 : 401;
     return NextResponse.json(
-      { success: false, error: 'Unauthorized worker request.' },
-      { status: 401 }
+      { success: false, error: authCheck.error },
+      { status }
     );
   }
 
