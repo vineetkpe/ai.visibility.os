@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import type {
   Recommendation,
-  RecommendationCategory,
-  PriorityBand,
+  RecommendationPriority,
   RecommendationStatus,
 } from '@ai-visibility-os/recommendations';
 import {
@@ -53,18 +52,18 @@ export function RecommendationsClientView({
   const refreshRecommendations = async () => {
     const filterObj: {
       status?: RecommendationStatus;
-      category?: RecommendationCategory;
-      priority?: PriorityBand;
+      category?: string;
+      priority?: RecommendationPriority;
     } = {};
 
     if (selectedStatus !== 'all') {
       filterObj.status = selectedStatus as RecommendationStatus;
     }
     if (selectedCategory !== 'all') {
-      filterObj.category = selectedCategory as RecommendationCategory;
+      filterObj.category = selectedCategory;
     }
     if (selectedPriority !== 'all') {
-      filterObj.priority = selectedPriority as PriorityBand;
+      filterObj.priority = selectedPriority as RecommendationPriority;
     }
 
     const res = await getRecommendationsOverviewAction(projectId, filterObj);
@@ -131,8 +130,8 @@ export function RecommendationsClientView({
   const criticalCount = recommendations.filter(
     (r) => r.priority === 'critical' || r.priority === 'high'
   ).length;
-  const quickWinCount = recommendations.filter((r) => r.estimatedEffort === 'quick_win').length;
-  const resolvedCount = recommendations.filter((r) => r.status === 'completed').length;
+  const quickWinCount = recommendations.filter((r) => r.effortScore <= 2).length;
+  const resolvedCount = recommendations.filter((r) => r.status === 'resolved').length;
 
   return (
     <div className="space-y-6">
@@ -201,7 +200,7 @@ export function RecommendationsClientView({
 
         <div className="bg-neutral-900/60 p-4 rounded-xl border border-neutral-800 flex items-center justify-between">
           <div className="space-y-1">
-            <div className="text-xs text-neutral-400">Auto / Resolved Tasks</div>
+            <div className="text-xs text-neutral-400">Resolved Tasks</div>
             <div className="text-2xl font-bold text-emerald-400">{resolvedCount}</div>
           </div>
           <CheckCircle2 className="w-8 h-8 text-emerald-500/30" />
@@ -216,7 +215,7 @@ export function RecommendationsClientView({
           role="tablist"
           aria-label="Recommendation status filter"
         >
-          {['open', 'in_progress', 'completed', 'dismissed', 'all'].map((st) => (
+          {['open', 'in_progress', 'resolved', 'dismissed', 'all'].map((st) => (
             <button
               key={st}
               role="tab"
@@ -264,12 +263,6 @@ export function RecommendationsClientView({
               <option value="technical_seo" className="bg-neutral-900 text-neutral-200">
                 Technical SEO
               </option>
-              <option value="entity_optimization" className="bg-neutral-900 text-neutral-200">
-                Entity Optimization
-              </option>
-              <option value="internal_linking" className="bg-neutral-900 text-neutral-200">
-                Internal Linking
-              </option>
               <option value="ai_visibility" className="bg-neutral-900 text-neutral-200">
                 AI Visibility
               </option>
@@ -282,6 +275,7 @@ export function RecommendationsClientView({
             </label>
             <select
               id="rec-prio-select"
+              value={selectedPriority}
               onChange={(e) => setSelectedPriority(e.target.value)}
               className="bg-transparent text-neutral-200 focus:outline-none capitalize"
             >

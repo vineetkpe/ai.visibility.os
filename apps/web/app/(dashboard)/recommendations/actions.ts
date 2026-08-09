@@ -8,8 +8,7 @@ import {
   getProjectRecommendations,
   updateRecommendationStatus,
   type Recommendation,
-  type RecommendationCategory,
-  type PriorityBand,
+  type RecommendationPriority,
   type RecommendationStatus,
   type RecommendationEngineRunResult,
 } from '@ai-visibility-os/recommendations';
@@ -130,8 +129,8 @@ export async function getRecommendationsOverviewAction(
   projectId: string,
   filter?: {
     status?: RecommendationStatus;
-    category?: RecommendationCategory;
-    priority?: PriorityBand;
+    category?: string;
+    priority?: RecommendationPriority;
   }
 ): Promise<ActionResult<Recommendation[]>> {
   try {
@@ -147,7 +146,7 @@ export async function getRecommendationsOverviewAction(
 }
 
 /**
- * Server action to update recommendation status (e.g. open -> in_progress -> completed / dismissed).
+ * Server action to update recommendation status (e.g. open -> in_progress -> resolved / dismissed).
  */
 export async function updateRecommendationStatusAction(input: {
   projectId: string;
@@ -161,8 +160,7 @@ export async function updateRecommendationStatusAction(input: {
     const updated = await updateRecommendationStatus(
       supabase,
       input.recommendationId,
-      input.status,
-      'user_action'
+      input.status
     );
 
     return { success: true, data: updated };

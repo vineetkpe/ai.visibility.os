@@ -26,6 +26,7 @@
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.0",
     "@tanstack/react-query": "^5.101.4",
+    "@trigger.dev/sdk": "^3.3.17",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.28.0",
@@ -35,8 +36,7 @@
     "recharts": "^2.15.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
-    "zod": "^3.24.2",
-    "@trigger.dev/sdk": "^3.3.17"
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@ai-visibility-os/config": "workspace:*",

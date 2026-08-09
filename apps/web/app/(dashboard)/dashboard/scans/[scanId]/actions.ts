@@ -94,7 +94,7 @@ export interface ScanDetailsData {
 }
 
 /**
- * Server Action to fetch complete grounded scan details, evidence, and narrative sections.
+ * Server Action to fetch complete scan details, evidence, and recommendations using CURRENT schema.
  */
 export async function getScanDetailsData(scanId: string): Promise<ActionResult<ScanDetailsData>> {
   try {
@@ -149,7 +149,7 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
     const { data: scanEvidence } = await supabase
       .from('recommendation_evidence')
       .select('recommendation_id')
-      .eq('scan_id', scanId);
+      .eq('ai_scan_id', scanId);
 
     const linkedRecIds = new Set<string>();
     (scanEvidence || []).forEach((e) => linkedRecIds.add(e.recommendation_id));
@@ -159,41 +159,37 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
       (r) => r.scanId === scanId || linkedRecIds.has(r.id)
     );
 
-    // 4. Fetch AI Visibility Data (Mentions & Citations for scan)
-    const { data: mentionsData } = await supabase
-      .from('entity_mentions')
-      .select('id, context_snippet, sentiment, tracked_entities(name, entity_type)')
-      .eq('ai_scan_id', scanId);
-
-    const mentionSummary = (mentionsData || []).map((m) => ({
-      id: m.id,
-      entityName:
-        (m.tracked_entities as unknown as { name: string; entity_type: string } | null)?.name ||
-        'Unknown Entity',
-      entityType:
-        (m.tracked_entities as unknown as { name: string; entity_type: string } | null)
-          ?.entity_type || 'Brand',
-      snippet: m.context_snippet,
-      sentiment: m.sentiment || 'neutral',
-    }));
-
+    // 4. Fetch Citations for scan
     const { data: citationsData } = await supabase
       .from('citations')
-      .select('id, url, title, position, is_own_domain')
+      .select('id, url, title, position, is_own_domain, competitor_id')
       .eq('ai_scan_id', scanId)
       .order('position', { ascending: true });
 
     const citationList = citationsData || [];
     const ownCount = citationList.filter((c) => c.is_own_domain).length;
     const externalCount = citationList.length - ownCount;
-    const topDomains = Array.from(new Set(citationList.map((c) => c.source_domain)));
+
+    const topDomains = Array.from(
+      new Set(
+        citationList
+          .map((c) => {
+            try {
+              return c.url ? new URL(c.url).hostname : '';
+            } catch {
+              return '';
+            }
+          })
+          .filter(Boolean)
+      )
+    );
 
     const platformBreakdown = [
       {
         provider: 'google-gemini',
         displayName: 'Google Gemini 3.6 Flash',
         isAvailable: true,
-        score: scanRow.is_mentioned ? 100 : 0,
+        score: scanRow.status === 'completed' ? (scanRow.is_mentioned ? 100 : 0) : null,
         summary: scanRow.summary_markdown,
       },
       {
@@ -219,50 +215,33 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
       },
     ];
 
-    // 5. Fetch Competitor Data (Tier 1 vs Tier 2)
-    // Tier 1: competitor_scans for THIS scan_id
-    const { data: tier1Scans } = await supabase
-      .from('competitor_scans')
-      .select('id, competitor_id, visibility_score, mention_count, competitors(name, domain_name)')
-      .eq('scan_id', scanId);
-
-    const tier1ScanCompetitors = (tier1Scans || []).map((cs) => ({
-      id: cs.id,
-      competitorId: cs.competitor_id,
-      name:
-        (cs.competitors as unknown as { name: string; domain_name: string } | null)?.name ||
-        'Competitor',
-      domainName:
-        (cs.competitors as unknown as { name: string; domain_name: string } | null)?.domain_name ||
-        '',
-      visibilityScore: cs.visibility_score,
-      mentionCount: cs.mention_count || 0,
-    }));
-
-    // Tier 2: Domain-level tracked competitors for project
+    // 5. Fetch Confirmed Competitors for project & check citations in this scan
     const { data: projectCompetitors } = await supabase
       .from('competitors')
-      .select('id, name, domain_name')
-      .eq('project_id', scanRow.project_id);
+      .select('id, name, domain_id, status, domains!inner(host)')
+      .eq('project_id', scanRow.project_id)
+      .eq('status', 'confirmed');
 
-    const { data: compDomains } =
-      (projectCompetitors || []).length > 0
-        ? await supabase
-            .from('domains')
-            .select('id, host')
-            .eq('project_id', scanRow.project_id)
-            .eq('is_primary', false)
-        : { data: [] };
+    const confirmedList = projectCompetitors || [];
 
-    const crawledCompDomainSet = new Set(
-      (compDomains || []).map((d) => (d.host || '').toLowerCase())
-    );
+    const tier1ScanCompetitors = confirmedList.map((c) => {
+      const host = c.domains?.host || '';
+      const citedInScan = citationList.some((cit) => cit.competitor_id === c.id);
+      return {
+        id: c.id,
+        competitorId: c.id,
+        name: c.name,
+        domainName: host,
+        visibilityScore: citedInScan ? 100 : 0,
+        mentionCount: citedInScan ? 1 : 0,
+      };
+    });
 
-    const tier2Profiles = (projectCompetitors || []).map((c) => ({
+    const tier2Profiles = confirmedList.map((c) => ({
       id: c.id,
       name: c.name,
-      domainName: c.domain_name,
-      tier2Crawled: crawledCompDomainSet.has(c.domain_name.toLowerCase()),
+      domainName: c.domains?.host || '',
+      tier2Crawled: false,
     }));
 
     // 6. Fetch Website Discovery & Crawl Job Payload
@@ -276,7 +255,7 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
       domainIds.length > 0
         ? await supabase
             .from('pages')
-            .select('id, url, title, http_status, meta_description, schema_org_types')
+            .select('id, url, status_code, page_metadata(title, meta_description, schema_json)')
             .in('domain_id', domainIds)
         : { data: [] };
 
@@ -286,55 +265,49 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
     let metadataCount = 0;
 
     pageList.forEach((p) => {
-      const types = p.schema_org_types as string[] | null;
-      if (Array.isArray(types) && types.length > 0) schemaCount++;
-      if (p.title?.trim() && p.meta_description?.trim()) metadataCount++;
+      const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+      if (meta) {
+        if (meta.schema_json) schemaCount++;
+        if (meta.title?.trim() && meta.meta_description?.trim()) metadataCount++;
+      }
     });
 
     const schemaCoveragePct = totalPages > 0 ? Math.round((schemaCount / totalPages) * 100) : 0;
     const metadataCoveragePct = totalPages > 0 ? Math.round((metadataCount / totalPages) * 100) : 0;
 
-    // Crawl Job result payload for sitemap & robots
-    const { data: latestCrawlJob } = await supabase
-      .from('jobs')
-      .select('result')
-      .eq('project_id', scanRow.project_id)
-      .eq('job_type', 'site_crawl')
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const sitemapUrl: string | null = null;
+    const sitemapUrlsFound: number | null = null;
+    const pagesSkippedRobots: number | null = null;
 
-    const jobResultObj = (latestCrawlJob?.result as Record<string, unknown> | null) || {};
-    const sitemapUrl =
-      typeof jobResultObj.sitemap_url === 'string' ? jobResultObj.sitemap_url : null;
-    const sitemapUrlsFound =
-      typeof jobResultObj.sitemap_urls_found === 'number' ? jobResultObj.sitemap_urls_found : null;
-    const pagesSkippedRobots =
-      typeof jobResultObj.pages_skipped_robots === 'number'
-        ? jobResultObj.pages_skipped_robots
-        : null;
+    // 7. Evidence: Crawled source pages
+    const sourcePages = pageList.map((p) => {
+      const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+      return {
+        id: p.id,
+        url: p.url,
+        title: meta?.title || null,
+        httpStatus: p.status_code || 200,
+        rankPosition: null,
+        sentimentScore: null,
+      };
+    });
 
-    // 7. Fetch Evidence (Source Pages, Citations, Raw Response)
-    const { data: pageScansData } = await supabase
-      .from('page_scans')
-      .select('id, page_id, rank_position, sentiment_score, pages(url, title, http_status)')
-      .eq('scan_id', scanId);
-
-    const sourcePages = (pageScansData || []).map((ps) => ({
-      id: ps.id,
-      url:
-        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
-          ?.url || '',
-      title:
-        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
-          ?.title || null,
-      httpStatus:
-        (ps.pages as unknown as { url: string; title: string | null; http_status: number } | null)
-          ?.http_status || 200,
-      rankPosition: ps.rank_position,
-      sentimentScore: ps.sentiment_score,
-    }));
+    const formattedCitations = citationList.map((c) => {
+      let host = '';
+      try {
+        if (c.url) host = new URL(c.url).hostname;
+      } catch {
+        host = '';
+      }
+      return {
+        id: c.id,
+        sourceUrl: c.url,
+        sourceDomain: host,
+        anchorText: c.title,
+        citationOrder: c.position ?? 0,
+        isOwnDomain: c.is_own_domain,
+      };
+    });
 
     return {
       success: true,
@@ -345,7 +318,7 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
           queryPrompt: scanRow.prompt_text,
           aiModel: scanRow.model_name || 'Gemini',
           status: scanRow.status,
-          visibilityScore: scanRow.is_mentioned ? 100 : 0,
+          visibilityScore: scanRow.status === 'completed' ? (scanRow.is_mentioned ? 100 : 0) : null,
           summary: scanRow.summary_markdown,
           rawResponse: scanRow.raw_response,
           errorMessage: scanRow.error_message,
@@ -356,7 +329,7 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
         },
         recommendations: scanRecommendations,
         aiVisibility: {
-          mentionSummary,
+          mentionSummary: [],
           citationSummary: {
             totalCount: citationList.length,
             ownCount,
@@ -379,14 +352,7 @@ export async function getScanDetailsData(scanId: string): Promise<ActionResult<S
         },
         evidence: {
           sourcePages,
-          citations: citationList.map((c) => ({
-            id: c.id,
-            sourceUrl: c.url,
-            sourceDomain: c.url ? new URL(c.url).hostname : '',
-            anchorText: c.title,
-            citationOrder: c.position ?? 0,
-            isOwnDomain: c.is_own_domain,
-          })),
+          citations: formattedCitations,
           rawResponse: scanRow.raw_response,
         },
       },

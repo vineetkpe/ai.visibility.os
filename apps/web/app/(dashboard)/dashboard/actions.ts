@@ -107,7 +107,8 @@ async function verifyUserProject(supabase: SupabaseClient<Database>, projectId?:
   let query = supabase
     .from('projects')
     .select('id, name, created_at, domains(id, host, is_primary)')
-    .eq('user_id', user.id);
+    .eq('user_id', user.id)
+    .is('deleted_at', null);
 
   if (projectId) {
     query = query.eq('id', projectId);
@@ -124,7 +125,7 @@ async function verifyUserProject(supabase: SupabaseClient<Database>, projectId?:
 }
 
 /**
- * Server action to fetch comprehensive real database metrics for the main Dashboard view.
+ * Server action to fetch real database metrics for the main Dashboard view using CURRENT schema.
  */
 export async function getDashboardOverviewData(
   projectId?: string
@@ -156,7 +157,7 @@ export async function getDashboardOverviewData(
           status: latestScanRow.status,
           aiModel: latestScanRow.model_name || 'Gemini',
           queryPrompt: latestScanRow.prompt_text,
-          visibilityScore: latestScanRow.is_mentioned ? 100 : 0,
+          visibilityScore: latestScanRow.status === 'completed' ? (latestScanRow.is_mentioned ? 100 : 0) : null,
           createdAt: latestScanRow.created_at,
           completedAt: latestScanRow.completed_at,
         }
@@ -171,10 +172,12 @@ export async function getDashboardOverviewData(
       .order('completed_at', { ascending: true })
       .limit(30);
 
-    const mentionHistory = (completedScans || [])
-      .filter((s) => s.completed_at)
+    const completedList = completedScans || [];
+
+    const mentionHistory = completedList
+      .filter((s): s is typeof s & { completed_at: string } => Boolean(s.completed_at))
       .map((s) => ({
-        date: new Date(s.completed_at!).toLocaleDateString(undefined, {
+        date: new Date(s.completed_at).toLocaleDateString(undefined, {
           month: 'short',
           day: 'numeric',
         }),
@@ -182,12 +185,8 @@ export async function getDashboardOverviewData(
         prompt: s.prompt_text,
       }));
 
-    // AI Platform Breakdown - Gemini has real data; others flagged as unavailable
-    const geminiScans = (completedScans || []).filter(
-      (s) =>
-        (s.model_name && (s.model_name === 'google-gemini' || s.model_name.includes('gemini'))) ||
-        true
-    );
+    // AI Platform Breakdown
+    const geminiScans = completedList;
     const geminiAvg =
       geminiScans.length > 0
         ? Math.round((geminiScans.filter((s) => s.is_mentioned).length / geminiScans.length) * 100)
@@ -224,59 +223,51 @@ export async function getDashboardOverviewData(
       },
     ];
 
-    // 3. Fetch Competitors & Competitor Scans
-    const { data: competitorsList } = await supabase
+    // 3. Fetch ONLY CONFIRMED Competitors for Project
+    const { data: confirmedCompetitors } = await supabase
       .from('competitors')
-      .select('id, name, domain_name, created_at')
-      .eq('project_id', currentProjectId);
+      .select('id, name, created_at, domain_id, domains!inner(host)')
+      .eq('project_id', currentProjectId)
+      .eq('status', 'confirmed');
 
-    const competitorIds = (competitorsList || []).map((c) => c.id);
+    const confirmedList = confirmedCompetitors || [];
 
-    // Latest competitor scans
-    const { data: compScans } =
-      competitorIds.length > 0
+    // Fetch Citations across completed scans
+    const scanIds = completedList.map((s) => s.id);
+    const { data: citationsData } =
+      scanIds.length > 0
         ? await supabase
-            .from('competitor_scans')
-            .select('id, competitor_id, visibility_score, created_at')
-            .in('competitor_id', competitorIds)
-            .order('created_at', { ascending: false })
+            .from('citations')
+            .select('id, ai_scan_id, url, position, is_own_domain, competitor_id')
+            .in('ai_scan_id', scanIds)
         : { data: [] };
 
-    const compScanMap = new Map<string, number | null>();
-    (compScans || []).forEach((cs) => {
-      if (!compScanMap.has(cs.competitor_id)) {
-        compScanMap.set(cs.competitor_id, cs.visibility_score);
-      }
+    const citationList = citationsData || [];
+
+    // Calculate competitor visibility scores & citation counts
+    const totalScansCount = completedList.length;
+
+    const topCompetitors = confirmedList.map((c) => {
+      const host = c.domains?.host || '';
+      const compCitations = citationList.filter((cit) => cit.competitor_id === c.id);
+      const citedScansCount = new Set(compCitations.map((cit) => cit.ai_scan_id)).size;
+      const visibilityScore =
+        totalScansCount > 0 ? Math.round((citedScansCount / totalScansCount) * 100) : null;
+
+      return {
+        id: c.id,
+        name: c.name,
+        domainName: host,
+        latestVisibilityScore: visibilityScore,
+        tier2Crawled: false,
+      };
     });
 
-    // Tier 2 Crawl status check from competitor domains
-    const { data: compDomains } =
-      competitorIds.length > 0
-        ? await supabase
-            .from('domains')
-            .select('id, host')
-            .eq('project_id', currentProjectId)
-            .eq('is_primary', false)
-        : { data: [] };
-
-    const crawledCompDomainSet = new Set(
-      (compDomains || []).map((d) => (d.host || '').toLowerCase())
-    );
-
-    const topCompetitors = (competitorsList || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      domainName: c.domain_name,
-      latestVisibilityScore: compScanMap.get(c.id) ?? null,
-      tier2Crawled: crawledCompDomainSet.has(c.domain_name.toLowerCase()),
-    }));
-
-    // Own latest score for comparison chart
-    const latestOwnScore = latestScan?.visibilityScore ?? 0;
+    const ownVisibilityScore = latestScan?.visibilityScore ?? (geminiAvg ?? 0);
     const visibilityComparison = [
       {
         name: primaryDomainName || 'Own Domain',
-        score: latestOwnScore,
+        score: ownVisibilityScore,
         isOwnDomain: true,
       },
       ...topCompetitors.map((c) => ({
@@ -286,16 +277,7 @@ export async function getDashboardOverviewData(
       })),
     ];
 
-    // Citations grouping (own vs competitor)
-    const { data: citationsData } = await supabase
-      .from('citations')
-      .select('id, is_own_domain, competitor_id, source_domain')
-      .in(
-        'scan_id',
-        (completedScans || []).map((s) => s.id)
-      );
-
-    const ownCitationsCount = (citationsData || []).filter((c) => c.is_own_domain).length;
+    const ownCitationsCount = citationList.filter((c) => c.is_own_domain).length;
     const citationComparison = [
       {
         name: primaryDomainName || 'Own Domain',
@@ -303,7 +285,7 @@ export async function getDashboardOverviewData(
         isOwnDomain: true,
       },
       ...topCompetitors.map((comp) => {
-        const count = (citationsData || []).filter((c) => c.competitor_id === comp.id).length;
+        const count = citationList.filter((c) => c.competitor_id === comp.id).length;
         return {
           name: comp.name,
           citationCount: count,
@@ -312,64 +294,62 @@ export async function getDashboardOverviewData(
       }),
     ];
 
-    // 4. Fetch Recommendations Overview
+    // 4. Fetch Recommendations from CURRENT recommendations table
     const { data: recs } = await supabase
       .from('recommendations')
-      .select('id, title, description, category, priority, status, created_at')
-      .eq('project_id', currentProjectId);
+      .select('id, title, description, category, priority, status, created_at, resolved_at')
+      .eq('project_id', currentProjectId)
+      .is('superseded_by', null);
 
-    const openRecs = (recs || []).filter((r) => r.status === 'open');
+    const allRecs = recs || [];
+    const openRecs = allRecs.filter((r) => r.status === 'open' || r.status === 'in_progress');
+
     const criticalList = openRecs
       .filter((r) => r.priority === 'critical')
       .slice(0, 5)
-      .map((r) => ({ id: r.id, title: r.title, summary: r.description, category: r.category }));
+      .map((r) => ({ id: r.id, title: r.title, summary: r.description || '', category: r.category }));
 
     const highPriorityList = openRecs
       .filter((r) => r.priority === 'high')
       .slice(0, 5)
-      .map((r) => ({ id: r.id, title: r.title, summary: r.description, category: r.category }));
+      .map((r) => ({ id: r.id, title: r.title, summary: r.description || '', category: r.category }));
 
-    const { data: resolvedHistory } = await supabase
-      .from('recommendation_history')
-      .select('id, recommendation_id, reason, evaluated_at, recommendations(title)')
-      .eq('new_status', 'completed')
-      .order('evaluated_at', { ascending: false })
-      .limit(5);
+    const resolvedRecs = allRecs
+      .filter((r) => r.status === 'resolved')
+      .sort((a, b) => new Date(b.resolved_at || b.created_at).getTime() - new Date(a.resolved_at || a.created_at).getTime())
+      .slice(0, 5);
 
-    const recentlyResolvedList = (resolvedHistory || []).map((h) => ({
-      id: h.id,
-      title:
-        (h.recommendations as unknown as { title: string } | null)?.title || 'Optimization Task',
-      resolvedAt: h.evaluated_at,
-      reason: h.reason,
+    const recentlyResolvedList = resolvedRecs.map((r) => ({
+      id: r.id,
+      title: r.title,
+      resolvedAt: r.resolved_at || r.created_at,
+      reason: 'Issue resolved',
     }));
 
-    // 5. Website Health Metrics
+    // 5. Website Health Metrics (pages joined with page_metadata)
     const domainIds = (project.domains || []).map((d) => d.id);
     const { data: pages } =
       domainIds.length > 0
         ? await supabase
             .from('pages')
-            .select('id, title, meta_description, schema_org_types')
+            .select('id, status_code, page_metadata(title, meta_description, schema_json)')
             .in('domain_id', domainIds)
         : { data: [] };
 
-    const totalPages = (pages || []).length;
+    const pageList = pages || [];
+    const totalPages = pageList.length;
     let schemaCount = 0;
     let metadataCount = 0;
 
-    (pages || []).forEach((p) => {
-      const types = p.schema_org_types as string[] | null;
-      if (Array.isArray(types) && types.length > 0) {
-        schemaCount++;
-      }
-      if (
-        p.title &&
-        p.title.trim().length > 0 &&
-        p.meta_description &&
-        p.meta_description.trim().length > 0
-      ) {
-        metadataCount++;
+    pageList.forEach((p) => {
+      const meta = Array.isArray(p.page_metadata) ? p.page_metadata[0] : p.page_metadata;
+      if (meta) {
+        if (meta.schema_json) {
+          schemaCount++;
+        }
+        if (meta.title && meta.title.trim().length > 0 && meta.meta_description && meta.meta_description.trim().length > 0) {
+          metadataCount++;
+        }
       }
     });
 
@@ -384,31 +364,31 @@ export async function getDashboardOverviewData(
       .order('created_at', { ascending: false })
       .limit(5);
 
-    const recentJobs = (jobsList || []).map((j) => ({
-      id: j.id,
-      jobType: j.job_type,
-      status: j.status,
-      createdAt: j.created_at,
-      errorMessage: j.error_message,
-      triggerRunId: j.trigger_run_id,
-      progress: (j.progress as unknown as { completed: number; total: number } | null) || null,
-    }));
+    const recentJobs = (jobsList || []).map((j) => {
+      const rawProg = j.progress as { completed?: number; total?: number } | null;
+      const progress =
+        rawProg && typeof rawProg.completed === 'number' && typeof rawProg.total === 'number'
+          ? { completed: rawProg.completed, total: rawProg.total }
+          : null;
 
-    const { data: recentHistory } = await supabase
-      .from('recommendation_history')
-      .select('id, previous_status, new_status, reason, evaluated_at, recommendations(title)')
-      .order('evaluated_at', { ascending: false })
-      .limit(5);
+      return {
+        id: j.id,
+        jobType: j.job_type,
+        status: j.status,
+        createdAt: j.created_at,
+        errorMessage: j.error_message,
+        triggerRunId: j.trigger_run_id,
+        progress,
+      };
+    });
 
-    const recentChanges = (recentHistory || []).map((h) => ({
-      id: h.id,
-      recommendationTitle:
-        (h.recommendations as unknown as { title: string } | null)?.title ||
-        'Recommendation Status',
-      previousStatus: h.previous_status,
-      newStatus: h.new_status,
-      reason: h.reason,
-      evaluatedAt: h.evaluated_at,
+    const recentChanges = resolvedRecs.map((r) => ({
+      id: r.id,
+      recommendationTitle: r.title,
+      previousStatus: 'open',
+      newStatus: 'resolved',
+      reason: 'Issue resolved',
+      evaluatedAt: r.resolved_at || r.created_at,
     }));
 
     return {
@@ -437,7 +417,7 @@ export async function getDashboardOverviewData(
           recentlyResolvedList,
           openCriticalCount: openRecs.filter((r) => r.priority === 'critical').length,
           openHighCount: openRecs.filter((r) => r.priority === 'high').length,
-          totalResolvedCount: (recs || []).filter((r) => r.status === 'completed').length,
+          totalResolvedCount: allRecs.filter((r) => r.status === 'resolved').length,
         },
         websiteHealth: {
           totalPages,
@@ -498,7 +478,7 @@ export async function getScanHistoryData(
       queryPrompt: s.prompt_text,
       aiModel: s.model_name || 'Gemini',
       status: s.status,
-      visibilityScore: s.is_mentioned ? 100 : 0,
+      visibilityScore: s.status === 'completed' ? (s.is_mentioned ? 100 : 0) : null,
       errorMessage: s.error_message,
       createdAt: s.created_at,
       completedAt: s.completed_at,
@@ -519,8 +499,6 @@ export async function getScanHistoryData(
 
 /**
  * Server action to cancel a pending or running background job.
- * Verification requirement: Scoped via auth.uid() project ownership.
- * Uses @trigger.dev/sdk/v3 runs.cancel(runId) API.
  */
 export async function cancelJobAction(
   jobId: string
@@ -528,7 +506,6 @@ export async function cancelJobAction(
   try {
     const supabase = await createClient();
 
-    // 1. Authenticate User
     const {
       data: { user },
       error: authErr,
@@ -538,7 +515,6 @@ export async function cancelJobAction(
       return { success: false, error: 'Authentication required.' };
     }
 
-    // 2. Fetch Job & verify project ownership via RLS/query
     const { data: job, error: jobErr } = await supabase
       .from('jobs')
       .select('id, project_id, status, trigger_run_id')
@@ -549,7 +525,6 @@ export async function cancelJobAction(
       return { success: false, error: 'Job record not found.' };
     }
 
-    // Verify project ownership
     const { data: project } = await supabase
       .from('projects')
       .select('id')
@@ -561,17 +536,14 @@ export async function cancelJobAction(
       return { success: false, error: 'Project access denied.' };
     }
 
-    // Handle already completed/failed jobs gracefully
     if (job.status === 'completed' || job.status === 'failed') {
       return { success: true, data: { jobId, alreadyFinished: true } };
     }
 
-    // 3. Invoke Trigger.dev runs.cancel API if run ID exists
     if (job.trigger_run_id) {
       try {
         await runs.cancel(job.trigger_run_id);
       } catch (triggerCancelErr) {
-        // Fail gracefully if run is already finished or not found on Trigger.dev
         console.warn(
           `Trigger.dev runs.cancel warning for run ${job.trigger_run_id}:`,
           triggerCancelErr
@@ -579,7 +551,6 @@ export async function cancelJobAction(
       }
     }
 
-    // 4. Update jobs row status to 'failed' with clear error_message
     const { error: updateErr } = await supabase
       .from('jobs')
       .update({

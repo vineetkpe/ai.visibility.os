@@ -6,12 +6,10 @@ import { Button } from '@/components/ui/button';
 import {
   Lightbulb,
   FileText,
-  ListOrdered,
   Globe,
   Sparkles,
   Cpu,
   ExternalLink,
-  ShieldCheck,
   Zap,
   Clock,
   X,
@@ -50,9 +48,9 @@ export function RecommendationDetailDialog({
               <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full border uppercase tracking-wider bg-amber-500/10 text-amber-400 border-amber-500/20">
                 {recommendation.priority}
               </span>
-              {recommendation.generationMethod === 'ai_phrased' ? (
+              {recommendation.generationMethod === 'ai_assisted' ? (
                 <span className="inline-flex items-center gap-1 text-xs text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded-full">
-                  <Sparkles className="w-3 h-3" /> AI Grounded Phrasing
+                  <Sparkles className="w-3 h-3" /> AI Assisted Phrasing
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-xs text-neutral-400 bg-neutral-800 px-2 py-0.5 rounded-full">
@@ -80,22 +78,22 @@ export function RecommendationDetailDialog({
 
         {/* Modal Scrollable Content */}
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-sm text-neutral-300">
-          {/* Executive Summary */}
+          {/* Executive Summary / Description */}
           <div className="space-y-2 bg-neutral-950/40 p-4 rounded-lg border border-neutral-800">
             <h3 className="text-xs font-semibold uppercase text-neutral-400 tracking-wider">
-              Executive Summary & Why This Recommendation Exists
+              Recommendation Description & Context
             </h3>
-            <p className="text-neutral-200 leading-relaxed">{recommendation.summary}</p>
+            <p className="text-neutral-200 leading-relaxed">{recommendation.description}</p>
           </div>
 
-          {/* Impact, Effort & Confidence Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Impact & Effort Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="bg-neutral-950/40 p-3 rounded-lg border border-neutral-800 flex items-center gap-3">
               <Zap className="w-5 h-5 text-orange-400 shrink-0" />
               <div>
-                <div className="text-xs text-neutral-400">Estimated Impact</div>
-                <div className="font-semibold text-neutral-100 capitalize">
-                  {recommendation.estimatedImpact}
+                <div className="text-xs text-neutral-400">Impact Score</div>
+                <div className="font-semibold text-neutral-100">
+                  {recommendation.impactScore}/5
                 </div>
               </div>
             </div>
@@ -103,19 +101,9 @@ export function RecommendationDetailDialog({
             <div className="bg-neutral-950/40 p-3 rounded-lg border border-neutral-800 flex items-center gap-3">
               <Clock className="w-5 h-5 text-blue-400 shrink-0" />
               <div>
-                <div className="text-xs text-neutral-400">Estimated Effort</div>
-                <div className="font-semibold text-neutral-100 capitalize">
-                  {recommendation.estimatedEffort.replace('_', ' ')}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-neutral-950/40 p-3 rounded-lg border border-neutral-800 flex items-center gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
-              <div>
-                <div className="text-xs text-neutral-400">Evidence Confidence</div>
+                <div className="text-xs text-neutral-400">Effort Score</div>
                 <div className="font-semibold text-neutral-100">
-                  {Math.round(recommendation.confidenceScore * 100)}%
+                  {recommendation.effortScore}/5
                 </div>
               </div>
             </div>
@@ -141,37 +129,18 @@ export function RecommendationDetailDialog({
                     #{idx + 1}
                   </span>
                   <div className="space-y-1 flex-1">
-                    <p className="text-neutral-200 leading-normal">{ev.description}</p>
+                    <p className="text-neutral-200 leading-normal">{ev.notes || 'Evidence record'}</p>
                     <div className="flex items-center gap-3 text-[11px] text-neutral-400 font-mono pt-1">
                       {ev.pageId && <span>Page ID: {ev.pageId}</span>}
-                      {ev.scanId && <span>Scan ID: {ev.scanId}</span>}
+                      {ev.aiScanId && <span>Scan ID: {ev.aiScanId}</span>}
                       {ev.citationId && <span>Citation ID: {ev.citationId}</span>}
-                      {ev.competitorScanId && (
-                        <span>Competitor Scan ID: {ev.competitorScanId}</span>
-                      )}
+                      {ev.competitorId && <span>Competitor ID: {ev.competitorId}</span>}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Implementation Steps */}
-          {recommendation.implementationSteps.length > 0 && (
-            <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-neutral-100 flex items-center gap-2">
-                <ListOrdered className="w-4 h-4 text-emerald-400" />
-                <span>Step-by-Step Implementation Guide</span>
-              </h3>
-              <ol className="space-y-2 list-decimal list-inside bg-neutral-950/40 p-4 rounded-lg border border-neutral-800">
-                {recommendation.implementationSteps.map((step, idx) => (
-                  <li key={idx} className="text-neutral-200 leading-relaxed pl-1">
-                    <span>{step}</span>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          )}
 
           {/* Affected Pages */}
           {recommendation.affectedPages.length > 0 && (
@@ -208,12 +177,12 @@ export function RecommendationDetailDialog({
           </div>
 
           <div className="flex items-center gap-2">
-            {recommendation.status !== 'completed' && (
+            {recommendation.status !== 'resolved' && (
               <Button
                 size="sm"
                 disabled={isUpdating}
                 onClick={() => {
-                  onUpdateStatus(recommendation.id, 'completed');
+                  onUpdateStatus(recommendation.id, 'resolved');
                   onClose();
                 }}
                 className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs flex items-center gap-1"

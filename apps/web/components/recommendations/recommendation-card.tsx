@@ -13,7 +13,6 @@ import {
   Sparkles,
   Cpu,
   ArrowUpRight,
-  ShieldCheck,
   FileText,
 } from 'lucide-react';
 
@@ -49,7 +48,7 @@ export function RecommendationCard({
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'resolved':
         return (
           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <CheckCircle2 className="w-3 h-3" /> Resolved
@@ -92,12 +91,12 @@ export function RecommendationCard({
             <span className="text-xs text-neutral-400 font-mono uppercase bg-neutral-800/80 px-2 py-0.5 rounded">
               {getCategoryLabel(recommendation.category)}
             </span>
-            {recommendation.generationMethod === 'ai_phrased' ? (
+            {recommendation.generationMethod === 'ai_assisted' ? (
               <span
                 className="inline-flex items-center gap-1 text-[11px] text-cyan-400 bg-cyan-950/40 border border-cyan-800/40 px-2 py-0.5 rounded-full"
                 title="Phrased by Gemini based strictly on detected evidence"
               >
-                <Sparkles className="w-3 h-3 text-cyan-400" /> AI Phrased
+                <Sparkles className="w-3 h-3 text-cyan-400" /> AI Assisted
               </span>
             ) : (
               <span
@@ -117,9 +116,9 @@ export function RecommendationCard({
           <span>{recommendation.title}</span>
         </h3>
 
-        {/* Summary */}
+        {/* Description */}
         <p className="text-sm text-neutral-300 line-clamp-2 leading-relaxed">
-          {recommendation.summary}
+          {recommendation.description}
         </p>
       </div>
 
@@ -129,27 +128,18 @@ export function RecommendationCard({
           <div className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-orange-400" />
             <span>
-              Impact:{' '}
-              <strong className="text-neutral-200 capitalize">
-                {recommendation.estimatedImpact}
+              Impact Score:{' '}
+              <strong className="text-neutral-200">
+                {recommendation.impactScore}/5
               </strong>
             </span>
           </div>
           <div className="flex items-center gap-1">
             <Clock className="w-3.5 h-3.5 text-blue-400" />
             <span>
-              Effort:{' '}
-              <strong className="text-neutral-200 capitalize">
-                {recommendation.estimatedEffort.replace('_', ' ')}
-              </strong>
-            </span>
-          </div>
-          <div className="flex items-center gap-1" title="Evidence confidence score">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>
-              Conf:{' '}
+              Effort Score:{' '}
               <strong className="text-neutral-200">
-                {Math.round(recommendation.confidenceScore * 100)}%
+                {recommendation.effortScore}/5
               </strong>
             </span>
           </div>
@@ -188,12 +178,12 @@ export function RecommendationCard({
             </Button>
           )}
 
-          {recommendation.status !== 'completed' && (
+          {recommendation.status !== 'resolved' && (
             <Button
               variant="ghost"
               size="sm"
               disabled={isUpdating}
-              onClick={() => onUpdateStatus(recommendation.id, 'completed')}
+              onClick={() => onUpdateStatus(recommendation.id, 'resolved')}
               className="text-xs text-emerald-400 hover:bg-emerald-950/40"
             >
               Mark Resolved

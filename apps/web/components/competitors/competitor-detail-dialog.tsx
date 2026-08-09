@@ -126,7 +126,7 @@ export function CompetitorDetailDialog({
                       </span>
                     </span>
                     <span>•</span>
-                    <span>Source: {profile.detectedFrom}</span>
+                    <span>Source: {profile.source}</span>
                   </p>
                 </div>
               </div>
