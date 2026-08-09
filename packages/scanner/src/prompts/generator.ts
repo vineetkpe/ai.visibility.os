@@ -74,6 +74,15 @@ export function generatePromptsFromContext(
     });
   }
 
+  // Fallback prompt if no field data generated prompts
+  if (prompts.length === 0) {
+    prompts.push({
+      promptText: `Best ${primaryIndustry} tools and services in 2026`,
+      intent: 'informational',
+      sourceFields: ['industry'],
+    });
+  }
+
   return prompts;
 }
 
@@ -90,15 +99,14 @@ export async function syncPromptLibrary(
   const rows = prompts.map((p) => ({
     project_id: projectId,
     prompt_text: p.promptText,
-    intent: p.intent,
-    source_fields: p.sourceFields,
+    category: p.intent,
     is_active: true,
   }));
 
   // Upsert or insert ignoring duplicates on (project_id, prompt_text)
   const { data: upserted, error } = await supabase
     .from('prompt_library')
-    .upsert(rows, { onConflict: 'project_id,prompt_text' })
+    .upsert(rows, { onConflict: 'project_id, prompt_text' })
     .select('id, prompt_text');
 
   if (error || !upserted) {

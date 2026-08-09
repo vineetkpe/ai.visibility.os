@@ -10,13 +10,12 @@ import { generatePromptsFromContext, syncPromptLibrary } from './prompts/generat
 type ValidEntityType = 'organization' | 'person' | 'brand' | 'location' | 'other';
 
 /**
- * Maps provider sentiment string (which may include 'mixed') to the database sentiment_type enum.
+ * Maps provider sentiment string (which may include 'mixed') to the database sentiment_type enum ('positive' | 'neutral' | 'negative').
  */
 function mapSentiment(
   sentiment?: 'positive' | 'neutral' | 'negative' | 'mixed' | string | null
 ): 'positive' | 'neutral' | 'negative' | null {
   if (!sentiment) return null;
-  if (sentiment === 'mixed') return 'neutral';
   if (sentiment === 'positive' || sentiment === 'neutral' || sentiment === 'negative') {
     return sentiment;
   }
@@ -24,7 +23,7 @@ function mapSentiment(
 }
 
 /**
- * Validates and normalizes free-form entity type string against tracked_entities.entity_type enum.
+ * Validates and normalizes free-form entity type string against public.entity_type enum.
  */
 function validateEntityType(rawType?: string | null): ValidEntityType {
   if (!rawType) return 'other';
@@ -46,7 +45,7 @@ export async function runVisibilityScanPipeline(
   const { projectId } = options;
 
   try {
-    // 1. Verify project has a current business context version
+    // 1. Require a valid current business_context_versions row
     const { data: currentVersions, error: versionError } = await supabase
       .from('business_context_versions')
       .select('id, industry, description, value_proposition, target_audience')
@@ -60,17 +59,27 @@ export async function runVisibilityScanPipeline(
         scansExecuted: 0,
         status: 'failed',
         error:
-          'Scan generation requires a current business context. Please generate business context first.',
+          'Scan generation requires a current business context version. Please generate business context first.',
       };
     }
 
     const currentVersion = currentVersions[0];
+    if (!currentVersion) {
+      return {
+        projectId,
+        scansExecuted: 0,
+        status: 'failed',
+        error: 'Current business context version record is missing.',
+      };
+    }
+
+    const businessContextVersionId = currentVersion.id;
 
     // 2. Build context text from business_context_versions
     const fields: BusinessContextFieldRecord[] = [
-      { field_name: 'industry', field_value: currentVersion?.industry || '' },
-      { field_name: 'description', field_value: currentVersion?.description || '' },
-      { field_name: 'value_proposition', field_value: currentVersion?.value_proposition || '' },
+      { field_name: 'industry', field_value: currentVersion.industry || '' },
+      { field_name: 'description', field_value: currentVersion.description || '' },
+      { field_name: 'value_proposition', field_value: currentVersion.value_proposition || '' },
     ];
 
     // 3. Fetch primary domain for project
@@ -82,24 +91,6 @@ export async function runVisibilityScanPipeline(
 
     const targetDomainName = options.targetDomainName || domains?.[0]?.host || 'example.com';
 
-    // 4. Fetch CONFIRMED competitors for citation matching
-    const { data: confirmedCompetitors } = await supabase
-      .from('competitors')
-      .select('id, status, domains!inner(host)')
-      .eq('project_id', projectId)
-      .eq('status', 'confirmed');
-
-    const competitorHostMap = new Map<string, string>();
-    if (confirmedCompetitors) {
-      for (const c of confirmedCompetitors) {
-        const domainHost = (c.domains as unknown as { host?: string } | null)?.host;
-        if (domainHost) {
-          const normalizedHost = domainHost.toLowerCase().replace(/^www\./, '');
-          competitorHostMap.set(normalizedHost, c.id);
-        }
-      }
-    }
-
     // Fetch active provider id for Gemini
     const { data: providerRow } = await supabase
       .from('providers')
@@ -107,9 +98,18 @@ export async function runVisibilityScanPipeline(
       .eq('slug', 'gemini')
       .maybeSingle();
 
-    const providerId = providerRow?.id || '00000000-0000-0000-0000-000000000000';
+    if (!providerRow) {
+      return {
+        projectId,
+        scansExecuted: 0,
+        status: 'failed',
+        error: 'Active Gemini provider record not found in database.',
+      };
+    }
 
-    // 5. Generate & Sync Prompts to prompt_library
+    const providerId = providerRow.id;
+
+    // 4. Generate & Sync Prompts to prompt_library
     const generatedPrompts = generatePromptsFromContext(fields);
     const syncedPrompts = await syncPromptLibrary(supabase, projectId, generatedPrompts);
 
@@ -126,17 +126,18 @@ export async function runVisibilityScanPipeline(
     let scansExecuted = 0;
     const normalizedTargetDomain = targetDomainName.toLowerCase().replace(/^www\./, '');
 
-    // 6. Execute Scan pipeline for each prompt
+    // 5. Execute Scan pipeline for each prompt
     for (const promptObj of syncedPrompts) {
       const promptText = promptObj.prompt_text;
       const now = new Date().toISOString();
 
-      // Insert pending/running scan row
+      // Insert pending/running scan row (ALWAYS persisting business_context_version_id)
       const { data: scan, error: scanInsertError } = await supabase
         .from('ai_scans')
         .insert({
           project_id: projectId,
           provider_id: providerId,
+          business_context_version_id: businessContextVersionId,
           prompt_library_id: promptObj.id,
           prompt_text: promptText,
           model_name: provider.modelName,
@@ -147,6 +148,7 @@ export async function runVisibilityScanPipeline(
         .single();
 
       if (scanInsertError || !scan) {
+        console.error('Scan insert failed:', scanInsertError?.message);
         continue;
       }
 
@@ -162,27 +164,33 @@ export async function runVisibilityScanPipeline(
           targetDomainName
         );
 
-        // Persist Citations
+        // Persist Citations according to CURRENT citations schema
         if (groundedResult.citations.length > 0) {
-          const citationRows = groundedResult.citations.map((c) => {
-            const normDomain = c.sourceDomain.toLowerCase().replace(/^www\./, '');
-            const isOwn =
-              normDomain === normalizedTargetDomain ||
-              c.sourceDomain.toLowerCase().endsWith(`.${normalizedTargetDomain}`);
+          const citationRows = groundedResult.citations
+            .filter((c) => c.sourceUrl && c.sourceUrl.trim().length > 0)
+            .map((c, idx) => {
+              let validUrl = c.sourceUrl.trim();
+              if (!/^https?:\/\//i.test(validUrl)) {
+                validUrl = `https://${validUrl}`;
+              }
 
-            const matchedCompId = competitorHostMap.get(normDomain) || null;
+              const normDomain = c.sourceDomain.toLowerCase().replace(/^www\./, '');
+              const isOwn =
+                normDomain === normalizedTargetDomain ||
+                c.sourceDomain.toLowerCase().endsWith(`.${normalizedTargetDomain}`);
 
-            return {
-              ai_scan_id: scan.id,
-              url: c.sourceUrl,
-              title: c.anchorText || null,
-              position: c.order,
-              is_own_domain: isOwn,
-              competitor_id: matchedCompId,
-            };
-          });
+              return {
+                ai_scan_id: scan.id,
+                url: validUrl,
+                title: c.anchorText || null,
+                position: idx + 1,
+                is_own_domain: isOwn,
+              };
+            });
 
-          await supabase.from('citations').insert(citationRows);
+          if (citationRows.length > 0) {
+            await supabase.from('citations').insert(citationRows);
+          }
         }
 
         // Persist Tracked Entities & Entity Mentions
