@@ -1418,6 +1418,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_next_job: {
+        Args: {
+          p_job_type?: string | null
+          p_project_id?: string | null
+        }
+        Returns: Database["public"]["Tables"]["jobs"]["Row"][]
+      }
       create_project_with_domain: {
         Args: {
           p_name: string

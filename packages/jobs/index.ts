@@ -9,3 +9,12 @@ export {
   type RecommendationsTaskPayload,
 } from './src/trigger/recommendations';
 export { runs } from '@trigger.dev/sdk/v3';
+
+export {
+  claimNextJob,
+  completeJob,
+  failJob,
+  retryJob,
+  type JobRow,
+  type ClaimJobOptions,
+} from './src/management';
