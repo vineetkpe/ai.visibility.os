@@ -88,6 +88,7 @@ export async function generateBusinessContextAction(
     try {
       const handle = await businessContextTask.trigger({
         projectId: project.id,
+        jobId: job.id,
         accessToken: session.access_token,
       });
       await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);

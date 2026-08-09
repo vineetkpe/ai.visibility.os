@@ -90,7 +90,28 @@ export async function runBusinessContextPipeline(
   options: BusinessContextPipelineOptions
 ): Promise<BusinessContextPipelineResult> {
   const startTime = Date.now();
-  const { projectId } = options;
+  const { projectId, jobId } = options;
+
+  if (jobId) {
+    await supabase.from('jobs').update({ status: 'running' }).eq('id', jobId);
+  }
+
+  const finish = async (result: BusinessContextPipelineResult): Promise<BusinessContextPipelineResult> => {
+    if (jobId) {
+      if (result.status === 'failed') {
+        await supabase
+          .from('jobs')
+          .update({ status: 'failed', error_message: result.error || 'Business context generation failed.' })
+          .eq('id', jobId);
+      } else {
+        await supabase
+          .from('jobs')
+          .update({ status: 'completed' })
+          .eq('id', jobId);
+      }
+    }
+    return result;
+  };
 
   try {
     // 1. Fetch active domains for the project
@@ -101,7 +122,7 @@ export async function runBusinessContextPipeline(
       .limit(1);
 
     if (domainError || !domains || domains.length === 0) {
-      return {
+      return finish({
         projectId,
         contextVersionId: '',
         versionNumber: 0,
@@ -112,7 +133,7 @@ export async function runBusinessContextPipeline(
         technologiesCount: 0,
         status: 'failed',
         error: 'No domain found for project.',
-      };
+      });
     }
 
     const domainId = domains[0]?.id as string;
@@ -141,7 +162,7 @@ export async function runBusinessContextPipeline(
       .order('created_at', { ascending: true });
 
     if (pagesError || !rawPages || rawPages.length === 0) {
-      return {
+      return finish({
         projectId,
         contextVersionId: '',
         versionNumber: 0,
@@ -152,7 +173,7 @@ export async function runBusinessContextPipeline(
         technologiesCount: 0,
         status: 'failed',
         error: pagesError?.message || 'No crawl pages available for business context synthesis.',
-      };
+      });
     }
 
     const pages = rawPages as unknown as JoinedPageRecord[];
@@ -222,7 +243,7 @@ export async function runBusinessContextPipeline(
       .single();
 
     if (versionInsertError || !newVersion) {
-      return {
+      return finish({
         projectId,
         contextVersionId: '',
         versionNumber,
@@ -233,7 +254,7 @@ export async function runBusinessContextPipeline(
         technologiesCount: 0,
         status: 'failed',
         error: versionInsertError?.message || 'Failed to create business_context_versions record.',
-      };
+      });
     }
 
     const versionId = newVersion.id;
@@ -305,7 +326,7 @@ export async function runBusinessContextPipeline(
       }
     }
 
-    return {
+    return finish({
       projectId,
       contextVersionId: versionId,
       versionNumber,
@@ -315,10 +336,10 @@ export async function runBusinessContextPipeline(
       servicesCount: combinedServices.length,
       technologiesCount: combinedTechnologies.length,
       status: 'completed',
-    };
+    });
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Business Context pipeline error.';
-    return {
+    return finish({
       projectId,
       contextVersionId: '',
       versionNumber: 0,
@@ -329,6 +350,6 @@ export async function runBusinessContextPipeline(
       technologiesCount: 0,
       status: 'failed',
       error: errorMsg,
-    };
+    });
   }
 }

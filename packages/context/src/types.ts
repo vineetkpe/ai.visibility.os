@@ -79,6 +79,7 @@ export interface ExtractedBusinessContextData {
 
 export interface BusinessContextPipelineOptions {
   projectId: string;
+  jobId?: string;
   generationMethod?: SchemaExtractionMethod;
   maxPagesForSynthesis?: number;
   maxCharLengthForSynthesis?: number;

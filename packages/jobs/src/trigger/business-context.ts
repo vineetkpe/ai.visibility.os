@@ -4,6 +4,7 @@ import { createServerClient, createTokenClient } from '@ai-visibility-os/databas
 
 export interface BusinessContextTaskPayload {
   projectId: string;
+  jobId?: string;
   accessToken?: string;
 }
 
@@ -22,6 +23,7 @@ export const businessContextTask = task({
 
     const result = await runBusinessContextPipeline(supabase, {
       projectId: payload.projectId,
+      jobId: payload.jobId,
     });
 
     return result;

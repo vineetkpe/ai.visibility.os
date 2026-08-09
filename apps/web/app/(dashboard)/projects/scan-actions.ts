@@ -54,6 +54,31 @@ export async function startVisibilityScanAction(
     }
 
     if (!currentVersions || currentVersions.length === 0) {
+      // Check status of recent business_context job for this project to report exact status/error
+      const { data: recentContextJobs } = await supabase
+        .from('jobs')
+        .select('id, status, error_message')
+        .eq('project_id', projectId)
+        .eq('job_type', 'business_context')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const latestContextJob = recentContextJobs?.[0];
+      if (latestContextJob?.status === 'failed') {
+        const errorDetail = latestContextJob.error_message ? `: ${latestContextJob.error_message}` : '.';
+        return {
+          success: false,
+          error: `Business context generation failed because AI synthesis is unavailable${errorDetail}`,
+        };
+      }
+
+      if (latestContextJob?.status === 'running' || latestContextJob?.status === 'queued') {
+        return {
+          success: false,
+          error: 'Business context generation is currently in progress. Please wait for it to complete.',
+        };
+      }
+
       return {
         success: false,
         error:
