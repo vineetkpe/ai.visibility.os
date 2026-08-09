@@ -197,15 +197,7 @@ export async function runVisibilityScanPipeline(
         // Call 1: Grounded Search Query
         const groundedResult = await provider.runGroundedQuery(promptText);
 
-        // Call 2: Structured Response Analysis
-        const analysis = await provider.analyzeResponse(
-          promptText,
-          groundedResult.rawText,
-          groundedResult.citations,
-          targetDomainName
-        );
-
-        // Persist Citations according to CURRENT citations schema & confirmed competitor matching
+        // Persist real Citations from Call 1 immediately
         if (groundedResult.citations.length > 0) {
           const citationRows = groundedResult.citations
             .filter((c) => c.sourceUrl && c.sourceUrl.trim().length > 0)
@@ -236,6 +228,14 @@ export async function runVisibilityScanPipeline(
             await supabase.from('citations').insert(citationRows);
           }
         }
+
+        // Call 2: Structured Response Analysis
+        const analysis = await provider.analyzeResponse(
+          promptText,
+          groundedResult.rawText,
+          groundedResult.citations,
+          targetDomainName
+        );
 
         // Persist Tracked Entities & Entity Mentions
         if (analysis.entitiesDetected.length > 0) {

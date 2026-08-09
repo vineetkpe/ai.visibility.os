@@ -1,6 +1,15 @@
-import { GoogleGenAI, Type, type Schema } from '@google/genai';
+import { GoogleGenAI, Type, type Schema, type GenerateContentResponse } from '@google/genai';
 import type { AIVisibilityProvider } from './interface';
 import type { GroundedQueryResult, ScanAnalysisResult, GroundingCitation } from '../types';
+
+interface GroundingChunkWeb {
+  uri?: string;
+  title?: string;
+}
+
+interface GroundingChunk {
+  web?: GroundingChunkWeb;
+}
 
 const analysisResponseSchema: Schema = {
   type: Type.OBJECT,
@@ -62,6 +71,7 @@ export class GeminiProvider implements AIVisibilityProvider {
 
   /**
    * Call 1: Executes Google Search grounded query using gemini-3.6-flash with google_search tool.
+   * Model fallback is allowed ONLY for valid models that actually exist and successfully return real data.
    */
   async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> {
     if (!this.apiKey) {
@@ -69,8 +79,8 @@ export class GeminiProvider implements AIVisibilityProvider {
     }
 
     const ai = new GoogleGenAI({ apiKey: this.apiKey });
-    const modelsToTry = [this.modelName, 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
-    let response: any = null;
+    const modelsToTry = [this.modelName, 'gemini-2.0-flash'];
+    let response: GenerateContentResponse | null = null;
     let lastError: unknown = null;
 
     for (const model of modelsToTry) {
@@ -93,26 +103,29 @@ export class GeminiProvider implements AIVisibilityProvider {
         const errString = err instanceof Error ? err.message : String(err);
         console.warn(`Gemini model ${model} grounded query failed:`, errString);
         if (errString.includes('429') || errString.includes('RESOURCE_EXHAUSTED')) {
-          // Wait 2 seconds before next retry
-          await new Promise((resolve) => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 1500));
         }
       }
     }
 
     if (!response) {
-      console.warn('All Gemini models exhausted or unavailable. Providing grounded search evaluation fallback.');
-      return {
-        rawText: `AI Search evaluation for query "${promptText}". Search grounding analysis performed for target domain.`,
-        citations: [
-          {
-            sourceUrl: `https://www.hostamble.com`,
-            sourceDomain: `www.hostamble.com`,
-            anchorText: `Hostamble Web Hosting`,
-            order: 1,
-          },
-        ],
-        groundingAvailable: true,
-      };
+      let errMsg = 'Gemini AI query failed.';
+      if (lastError instanceof Error) {
+        errMsg = lastError.message;
+      } else if (typeof lastError === 'string') {
+        errMsg = lastError;
+      }
+      if (errMsg.startsWith('{') && errMsg.includes('"message"')) {
+        try {
+          const parsed = JSON.parse(errMsg);
+          if (parsed.error?.message) {
+            errMsg = parsed.error.message;
+          }
+        } catch {
+          // Keep original
+        }
+      }
+      throw new Error(errMsg);
     }
 
     const rawText = response.text || '';
@@ -124,7 +137,7 @@ export class GeminiProvider implements AIVisibilityProvider {
 
     if (groundingMetadata && Array.isArray(groundingMetadata.groundingChunks)) {
       let orderCounter = 1;
-      groundingMetadata.groundingChunks.forEach((chunk: any) => {
+      (groundingMetadata.groundingChunks as GroundingChunk[]).forEach((chunk) => {
         if (chunk.web?.uri) {
           try {
             const uri = chunk.web.uri;
@@ -159,6 +172,10 @@ export class GeminiProvider implements AIVisibilityProvider {
     citations: GroundingCitation[],
     targetDomainName: string
   ): Promise<ScanAnalysisResult> {
+    if (!this.apiKey) {
+      throw new Error('GEMINI_API_KEY environment variable is not configured.');
+    }
+
     const normalizedTarget = targetDomainName.toLowerCase().replace(/^www\./, '');
 
     // Calculate rank position in citation list (1-based index)
@@ -176,18 +193,15 @@ export class GeminiProvider implements AIVisibilityProvider {
       .map((c) => `[#${c.order}] ${c.sourceDomain} (${c.sourceUrl})`)
       .join('\n');
 
-    let outputText = '';
-    if (this.apiKey) {
-      try {
-        const ai = new GoogleGenAI({ apiKey: this.apiKey });
-        const response = await ai.models.generateContent({
-          model: this.modelName,
-          contents: [
+    const ai = new GoogleGenAI({ apiKey: this.apiKey });
+    const response = await ai.models.generateContent({
+      model: this.modelName,
+      contents: [
+        {
+          role: 'user',
+          parts: [
             {
-              role: 'user',
-              parts: [
-                {
-                  text: `You are an objective AI search visibility auditor. Analyze ONLY the provided AI response text and web citations below for query "${promptText}".
+              text: `You are an objective AI search visibility auditor. Analyze ONLY the provided AI response text and web citations below for query "${promptText}".
 Target Domain: "${targetDomainName}"
 
 CRITICAL INSTRUCTIONS:
@@ -199,31 +213,25 @@ ${rawText}
 
 REAL CITATIONS:
 ${citationSummary || 'None'}`,
-                },
-              ],
             },
           ],
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema: analysisResponseSchema,
-          },
-        });
-        outputText = response.text || '';
-      } catch (err) {
-        console.warn('Gemini Call 2 analysis failed, generating grounded metrics:', err);
-      }
-    }
+        },
+      ],
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: analysisResponseSchema,
+      },
+    });
 
+    const outputText = response.text || '';
     let parsed: Record<string, unknown> = {};
-    if (outputText) {
-      try {
-        parsed = JSON.parse(outputText);
-      } catch {
-        parsed = {};
-      }
+    try {
+      parsed = JSON.parse(outputText);
+    } catch {
+      parsed = {};
     }
 
-    const mentioned = Boolean(parsed.mentioned) || rankPosition !== null || rawText.toLowerCase().includes(normalizedTarget);
+    const mentioned = Boolean(parsed.mentioned) || rankPosition !== null;
     const mentionFrequency =
       typeof parsed.mentionFrequency === 'number' ? parsed.mentionFrequency : mentioned ? 1 : 0;
     const validSentiments = ['positive', 'neutral', 'negative', 'mixed'];
@@ -242,14 +250,7 @@ ${citationSummary || 'None'}`,
           snippet: e.snippet,
           sentiment: e.sentiment,
         }))
-      : [
-          {
-            name: targetDomainName,
-            entityType: 'brand',
-            snippet: rawText,
-            sentiment: sentiment || 'neutral',
-          },
-        ];
+      : [];
 
     return {
       mentioned,
@@ -258,7 +259,7 @@ ${citationSummary || 'None'}`,
       rankPosition,
       entitiesDetected,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.85,
-      summary: typeof parsed.summary === 'string' ? parsed.summary : `AI search evaluation completed for prompt: "${promptText}".`,
+      summary: typeof parsed.summary === 'string' ? parsed.summary : 'Query executed successfully.',
     };
   }
 }
