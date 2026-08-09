@@ -1,9 +1,10 @@
 import { task } from '@trigger.dev/sdk/v3';
 import { runVisibilityScanPipeline } from '@ai-visibility-os/scanner';
-import { createServerClient } from '@ai-visibility-os/database';
+import { createServerClient, createTokenClient } from '@ai-visibility-os/database';
 
 export interface VisibilityScanTaskPayload {
   projectId: string;
+  accessToken?: string;
   targetDomainName?: string;
 }
 
@@ -16,9 +17,9 @@ export const visibilityScanTask = task({
     maxAttempts: 1,
   },
   run: async (payload: VisibilityScanTaskPayload) => {
-    const supabase = createServerClient({
-      getAll: () => [],
-    });
+    const supabase = payload.accessToken
+      ? createTokenClient(payload.accessToken)
+      : createServerClient({ getAll: () => [] });
 
     const result = await runVisibilityScanPipeline(supabase, {
       projectId: payload.projectId,

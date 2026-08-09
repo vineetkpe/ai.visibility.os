@@ -248,8 +248,8 @@ export async function getProjectRecommendations(
 
   // Fetch URLs for affected page IDs
   const allPageIds = new Set<string>();
-  recRows.forEach((r) => {
-    (r.recommendation_evidence || []).forEach((e) => {
+  (recRows as any[]).forEach((r: any) => {
+    ((r.recommendation_evidence || []) as any[]).forEach((e: any) => {
       if (e.page_id) allPageIds.add(e.page_id);
     });
   });
@@ -264,8 +264,8 @@ export async function getProjectRecommendations(
     (pages || []).forEach((p) => pageUrlMap.set(p.id, p.url));
   }
 
-  return recRows.map((r) => {
-    const evidenceList = (r.recommendation_evidence || []).map((e) => ({
+  return (recRows as any[]).map((r: any) => {
+    const evidenceList = ((r.recommendation_evidence || []) as any[]).map((e: any) => ({
       id: e.id,
       pageId: e.page_id,
       scanId: e.scan_id,

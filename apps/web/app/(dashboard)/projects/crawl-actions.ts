@@ -16,15 +16,16 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
   try {
     const supabase = await createClient();
 
-    // 1. Authenticate User
+    // 1. Authenticate User & Fetch Session Token
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (authError || !user) {
-      return { success: false, error: 'Authentication required. Please sign in.' };
+    if (!session || !session.user) {
+      return { success: false, error: 'Session expired, please log in again.' };
     }
+
+    const user = session.user;
 
     // 2. Server-Side Domain Ownership Verification (scoped via auth.uid())
     const { data: userProjects, error: fetchProjectsError } = await supabase
@@ -41,7 +42,7 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
 
     const { data: domain, error: domainFetchError } = await supabase
       .from('domains')
-      .select('id, domain_name, project_id')
+      .select('id, host, project_id')
       .eq('id', domainId)
       .in('project_id', projectIds)
       .is('deleted_at', null)
@@ -51,14 +52,15 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
       return { success: false, error: 'Domain not found or access denied.' };
     }
 
-    // 3. Create job record in pending state
+    // 3. Create job record in queued state
     const { data: job, error: jobInsertError } = await supabase
       .from('jobs')
       .insert({
         project_id: domain.project_id,
         job_type: 'site_crawl',
-        status: 'pending',
-        payload: { domain_id: domain.id, domain_name: domain.domain_name },
+        status: 'queued',
+        resource_type: 'domain',
+        resource_id: domain.id,
       })
       .select('id')
       .single();
@@ -71,8 +73,9 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
     try {
       const handle = await siteCrawlTask.trigger({
         domainId: domain.id,
-        domainName: domain.domain_name,
+        domainName: domain.host,
         jobId: job.id,
+        accessToken: session.access_token,
       });
       await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
     } catch (triggerErr: unknown) {

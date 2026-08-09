@@ -1,9 +1,10 @@
 import { task } from '@trigger.dev/sdk/v3';
 import { runBusinessContextPipeline } from '@ai-visibility-os/context';
-import { createServerClient } from '@ai-visibility-os/database';
+import { createServerClient, createTokenClient } from '@ai-visibility-os/database';
 
 export interface BusinessContextTaskPayload {
   projectId: string;
+  accessToken?: string;
 }
 
 /**
@@ -15,9 +16,9 @@ export const businessContextTask = task({
     maxAttempts: 1,
   },
   run: async (payload: BusinessContextTaskPayload) => {
-    const supabase = createServerClient({
-      getAll: () => [],
-    });
+    const supabase = payload.accessToken
+      ? createTokenClient(payload.accessToken)
+      : createServerClient({ getAll: () => [] });
 
     const result = await runBusinessContextPipeline(supabase, {
       projectId: payload.projectId,

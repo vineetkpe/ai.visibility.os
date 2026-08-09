@@ -6,7 +6,7 @@
  */
 
 import { createServerClient as createSsrServerClient, type CookieOptions } from '@supabase/ssr';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getSupabaseEnv } from './env';
 import type { Database } from './types';
 
@@ -40,3 +40,24 @@ export function createServerClient<T = Database>(cookieMethods: CookieMethods): 
     },
   });
 }
+
+/**
+ * Creates a token-authenticated Supabase client for background tasks where cookies are not available.
+ * Attaches the access token via Authorization header so auth.uid() resolves correctly in RLS.
+ */
+export function createTokenClient<T = Database>(accessToken: string): SupabaseClient<T> {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
+
+  return createClient<T>(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  });
+}
+

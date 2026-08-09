@@ -18,15 +18,16 @@ export async function startVisibilityScanAction(
   try {
     const supabase = await createClient();
 
-    // 1. Authenticate user
+    // 1. Authenticate user & Fetch Session Token
     const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+      data: { session },
+    } = await supabase.auth.getSession();
 
-    if (authError || !user) {
-      return { success: false, error: 'Authentication required. Please sign in.' };
+    if (!session || !session.user) {
+      return { success: false, error: 'Session expired, please log in again.' };
     }
+
+    const user = session.user;
 
     // 2. Verify project ownership scoped via auth.uid()
     const { data: project, error: projectError } = await supabase
@@ -67,6 +68,8 @@ export async function startVisibilityScanAction(
         project_id: project.id,
         job_type: 'visibility_scan',
         status: 'queued',
+        resource_type: 'project',
+        resource_id: project.id,
       })
       .select('id')
       .single();
@@ -82,6 +85,7 @@ export async function startVisibilityScanAction(
     try {
       const handle = await visibilityScanTask.trigger({
         projectId: project.id,
+        accessToken: session.access_token,
       });
       await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
     } catch (triggerErr: unknown) {

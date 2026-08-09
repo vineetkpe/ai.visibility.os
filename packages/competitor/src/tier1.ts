@@ -283,8 +283,8 @@ export async function getCompetitorProfile(
           if (p.title) {
             const words = p.title
               .split(/[\s|,\-:]+/)
-              .map((w) => w.trim())
-              .filter((w) => w.length > 3);
+              .map((w: string) => w.trim())
+              .filter((w: string) => w.length > 3);
             for (const w of words) topicSet.add(w.toLowerCase());
           }
         }

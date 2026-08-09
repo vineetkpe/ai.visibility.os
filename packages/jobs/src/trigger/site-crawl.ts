@@ -1,11 +1,12 @@
 import { task } from '@trigger.dev/sdk/v3';
 import { runDiscoveryPipeline } from '@ai-visibility-os/crawler';
-import { createServerClient } from '@ai-visibility-os/database';
+import { createServerClient, createTokenClient } from '@ai-visibility-os/database';
 
 export interface SiteCrawlTaskPayload {
   domainId: string;
   domainName: string;
   jobId: string;
+  accessToken?: string;
 }
 
 /**
@@ -21,10 +22,10 @@ export const siteCrawlTask = task({
     randomize: true,
   },
   run: async (payload: SiteCrawlTaskPayload) => {
-    // Instantiate server Supabase client with empty cookie context for background task
-    const supabase = createServerClient({
-      getAll: () => [],
-    });
+    // Instantiate token-authenticated Supabase client (or cookieless fallback) for background task
+    const supabase = payload.accessToken
+      ? createTokenClient(payload.accessToken)
+      : createServerClient({ getAll: () => [] });
 
     const result = await runDiscoveryPipeline(supabase, {
       domainId: payload.domainId,

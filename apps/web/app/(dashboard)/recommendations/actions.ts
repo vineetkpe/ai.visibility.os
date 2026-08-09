@@ -91,8 +91,16 @@ export async function generateRecommendationsAction(
     }
 
     // 3. Dispatch Trigger.dev task in background
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session) {
+      return { success: false, error: 'Session expired, please log in again.' };
+    }
+
     try {
-      await recommendationsTask.trigger({ projectId });
+      await recommendationsTask.trigger({ projectId, accessToken: session.access_token });
     } catch (triggerErr: unknown) {
       const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
       const errorMessage = `Failed to start background job: ${message}`;
@@ -101,7 +109,7 @@ export async function generateRecommendationsAction(
         .from('jobs')
         .update({ status: 'failed', error_message: errorMessage })
         .eq('project_id', projectId)
-        .eq('status', 'pending');
+        .eq('status', 'queued');
       return { success: false, error: errorMessage };
     }
 

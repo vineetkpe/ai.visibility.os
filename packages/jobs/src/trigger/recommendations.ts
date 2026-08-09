@@ -1,9 +1,10 @@
 import { task } from '@trigger.dev/sdk/v3';
 import { runRecommendationEngine } from '@ai-visibility-os/recommendations';
-import { createServerClient } from '@ai-visibility-os/database';
+import { createServerClient, createTokenClient } from '@ai-visibility-os/database';
 
 export interface RecommendationsTaskPayload {
   projectId: string;
+  accessToken?: string;
 }
 
 /**
@@ -16,9 +17,9 @@ export const recommendationsTask = task({
     maxAttempts: 1,
   },
   run: async (payload: RecommendationsTaskPayload) => {
-    const supabase = createServerClient({
-      getAll: () => [],
-    });
+    const supabase = payload.accessToken
+      ? createTokenClient(payload.accessToken)
+      : createServerClient({ getAll: () => [] });
 
     // 1. Verify project has at least 1 completed scan
     const { data: completedScans, error: scanErr } = await supabase
