@@ -276,7 +276,7 @@ export async function triggerCompetitorCrawl(
     .insert({
       project_id: projectId,
       job_type: 'site_crawl',
-      status: 'pending',
+      status: 'queued',
       resource_type: 'competitor',
       resource_id: competitorId,
       progress: {
