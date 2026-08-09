@@ -75,8 +75,6 @@ export async function persistPageResult(
     schema_json: (structuredData?.jsonLd as unknown as Json) ?? null,
     open_graph: (metadata?.openGraph as unknown as Json) ?? null,
     twitter_cards: (metadata?.twitterCard as unknown as Json) ?? null,
-    headings: (metadata?.headings as unknown as Json) ?? null,
-    word_count: crawlResult.wordCount ?? null,
   });
 
   // 4. Route crawl errors to crawl_errors table if present
@@ -90,17 +88,7 @@ export async function persistPageResult(
     });
   }
 
-  // 5. Insert page_links edges
-  if (links && links.length > 0) {
-    const pageLinkRows = links.map((link) => ({
-      source_page_id: page.id,
-      target_url: link.targetUrl,
-      link_type: link.linkType,
-      anchor_text: link.anchorText,
-    }));
-
-    await supabase.from('page_links').insert(pageLinkRows);
-  }
+  // Note: extracted page links (links) are uncaptured in the current DB-04 schema.
 
   return page.id;
 }
@@ -130,7 +118,7 @@ export async function updateJobStatus(
   }
 
   if (resultPayload) {
-    updateData.result = resultPayload as Json;
+    updateData.progress = resultPayload as Json;
   }
 
   if (errorMessage) {
