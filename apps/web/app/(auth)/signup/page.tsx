@@ -19,6 +19,30 @@ import { OAuthButton } from '@/components/auth/oauth-button';
 import { UserPlus, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function formatAuthError(err: unknown): string {
+  if (!err) return 'An unexpected authentication error occurred.';
+  if (typeof err === 'string') return err;
+
+  if (typeof err === 'object' && err !== null) {
+    const e = err as { message?: string; code?: string; status?: number | string };
+    if (e.message && typeof e.message === 'string' && e.message.trim() !== '' && e.message !== '{}') {
+      return e.message;
+    }
+    const details: string[] = [];
+    if (e.code) details.push(`code: ${e.code}`);
+    if (e.status) details.push(`status: ${e.status}`);
+    if (details.length > 0) {
+      return `Authentication error (${details.join(', ')}).`;
+    }
+  }
+
+  if (err instanceof Error && err.message && err.message !== '{}') {
+    return err.message;
+  }
+
+  return 'An unexpected error occurred during registration.';
+}
+
 function SignupForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -50,8 +74,15 @@ function SignupForm() {
       });
 
       if (signUpError) {
-        setError(signUpError.message);
-        toast.error(signUpError.message);
+        console.error('[Auth Signup Error]', {
+          message: signUpError.message,
+          code: signUpError.code,
+          status: signUpError.status,
+          name: signUpError.name,
+        });
+        const msg = formatAuthError(signUpError);
+        setError(msg);
+        toast.error(msg);
         setLoading(false);
         return;
       }
@@ -67,7 +98,10 @@ function SignupForm() {
         setSignedUp(true);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'An error occurred during registration';
+      console.error('[Auth Signup Exception]', {
+        message: err instanceof Error ? err.message : String(err),
+      });
+      const msg = formatAuthError(err);
       setError(msg);
       toast.error(msg);
       setLoading(false);
