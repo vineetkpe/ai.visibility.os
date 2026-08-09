@@ -110,6 +110,7 @@ export async function runDiscoveryPipeline(
         await persistPageResult(supabase, {
           domainId,
           crawlResult,
+          crawlSessionId: options.crawlSessionId || jobId,
         });
         continue;
       }
@@ -128,6 +129,7 @@ export async function runDiscoveryPipeline(
         structuredData,
         links,
         socialProfiles,
+        crawlSessionId: options.crawlSessionId || jobId,
       });
 
       if (pageId) {

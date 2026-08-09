@@ -75,6 +75,7 @@ export interface CrawlPipelineOptions {
   domainId: string;
   domainName: string;
   jobId: string;
+  crawlSessionId?: string;
   maxPages?: number;
   maxPlaywrightPages?: number;
 }
