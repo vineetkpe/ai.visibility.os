@@ -14,9 +14,6 @@ import {
 
 export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
 
-/**
- * Constant-time string comparison to prevent timing side-channel attacks.
- */
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a, 'utf-8');
   const bufB = Buffer.from(b, 'utf-8');
@@ -27,9 +24,6 @@ function safeCompare(a: string, b: string): boolean {
   return crypto.timingSafeEqual(bufA, bufB);
 }
 
-/**
- * Extracts client IP address from standard serverless request headers.
- */
 function getClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   if (forwarded) {
@@ -41,29 +35,18 @@ function getClientIp(request: NextRequest): string {
   return '127.0.0.1';
 }
 
-/**
- * Worker Authorization Helper
- * Validates request against JOB_WORKER_SECRET using timing-safe comparison.
- * Fails closed immediately if JOB_WORKER_SECRET is missing or empty.
- */
 function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: string; token?: string } {
   const secret = process.env.JOB_WORKER_SECRET;
   if (!secret || !secret.trim()) {
     console.error('[SECURITY ERROR] JOB_WORKER_SECRET environment variable is not configured on server.');
-    return {
-      authorized: false,
-      error: 'Server configuration error: Worker authorization secret is not configured.',
-    };
+    return { authorized: false, error: 'Server configuration error: Worker authorization secret is not configured.' };
   }
 
   const trimmedSecret = secret.trim();
-
   const authHeader = request.headers.get('authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7).trim();
-    if (safeCompare(token, trimmedSecret)) {
-      return { authorized: true, token };
-    }
+    if (safeCompare(token, trimmedSecret)) return { authorized: true, token };
   }
 
   const customHeader = request.headers.get('x-job-worker-secret') || '';
@@ -82,9 +65,7 @@ function cleanErrorMessage(err: unknown): string {
   if (msg.startsWith('{') && msg.includes('"message"')) {
     try {
       const parsed = JSON.parse(msg);
-      if (parsed.error?.message && typeof parsed.error.message === 'string') {
-        msg = parsed.error.message;
-      }
+      if (parsed.error?.message && typeof parsed.error.message === 'string') msg = parsed.error.message;
     } catch {
       // Keep original string if JSON parsing fails.
     }
@@ -92,10 +73,6 @@ function cleanErrorMessage(err: unknown): string {
   return msg || 'Job execution failed with an unknown error.';
 }
 
-/**
- * Distributed rate limiter backed by an atomic PostgreSQL RPC.
- * Rate-limit infrastructure failure fails closed so protection cannot silently disappear.
- */
 async function checkDistributedRateLimit(
   supabase: SupabaseClient<Database>,
   ip: string,
@@ -113,9 +90,7 @@ async function checkDistributedRateLimit(
     });
 
     if (error || !data || !Array.isArray(data) || data.length === 0) {
-      if (error) {
-        console.error('[SECURITY ERROR] Worker rate-limit RPC failed:', error.message);
-      }
+      if (error) console.error('[SECURITY ERROR] Worker rate-limit RPC failed:', error.message);
       return { allowed: false, limit: maxAllowed, currentCount: maxAllowed + 1 };
     }
 
@@ -131,10 +106,6 @@ async function checkDistributedRateLimit(
   }
 }
 
-/**
- * Internal Worker API Handler (POST Only).
- * Claims and executes queued jobs atomically using FOR UPDATE SKIP LOCKED via RPC.
- */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request);
   const authCheck = checkWorkerAuth(request);
@@ -176,16 +147,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (body && typeof body === 'object') {
       if (typeof body.jobType === 'string' && body.jobType.trim()) {
         const allowedJobTypes = ['site_crawl', 'competitor_sync', 'business_context', 'visibility_scan', 'recommendations'];
-        if (allowedJobTypes.includes(body.jobType.trim())) {
-          options.jobType = body.jobType.trim();
-        }
+        if (allowedJobTypes.includes(body.jobType.trim())) options.jobType = body.jobType.trim();
       }
-      if (typeof body.projectId === 'string' && body.projectId.trim()) {
-        options.projectId = body.projectId.trim();
-      }
+      if (typeof body.projectId === 'string' && body.projectId.trim()) options.projectId = body.projectId.trim();
     }
   } catch {
-    // Body parsing is optional.
+    // Body parsing optional.
   }
 
   let job;
@@ -199,22 +166,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, error: `Failed to claim job: ${errMessage}` }, { status: 500 });
   }
 
-  if (!job) {
-    return NextResponse.json({ success: true, claimed: false, message: 'No queued job available.' }, { status: 200 });
-  }
+  if (!job) return NextResponse.json({ success: true, claimed: false, message: 'No queued job available.' }, { status: 200 });
 
   console.log(`[WORKER] Claimed job ${job.id} (type: ${job.job_type}, project: ${job.project_id})`);
 
   try {
     switch (job.job_type) {
-      case 'site_crawl': {
-        if (job.resource_type === 'competitor') {
-          await runCompetitorJob(supabase, job);
-        } else {
-          await runCrawlerJob(supabase, job);
-        }
+      case 'site_crawl':
+        if (job.resource_type === 'competitor') await runCompetitorJob(supabase, job);
+        else await runCrawlerJob(supabase, job);
         break;
-      }
       case 'competitor_sync':
         await runCompetitorJob(supabase, job);
         break;
@@ -228,22 +189,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         await runRecommendationsJob(supabase, job);
         break;
       default:
-        throw new Error(`Unsupported job type: ${job.job_type}`);
+        throw new Error(`Unsupported job_type: '${job.job_type}'.`);
     }
 
-    await completeJob(supabase, job.id);
-    return NextResponse.json({ success: true, claimed: true, jobId: job.id, status: 'completed' }, { status: 200 });
-  } catch (executionErr: unknown) {
-    const errorMessage = cleanErrorMessage(executionErr);
-    try {
-      await retryJob(supabase, job.id, errorMessage);
-    } catch (retryErr: unknown) {
-      console.error(`[WORKER] Failed to persist retry state for job ${job.id}:`, cleanErrorMessage(retryErr));
-    }
-    return NextResponse.json({ success: false, claimed: true, jobId: job.id, error: errorMessage }, { status: 500 });
+    const completedJob = await completeJob(supabase, job.id);
+    return NextResponse.json(
+      { success: true, claimed: true, jobId: completedJob.id, jobType: completedJob.job_type, status: completedJob.status },
+      { status: 200 }
+    );
+  } catch (execErr: unknown) {
+    const errorMessage = cleanErrorMessage(execErr);
+    console.error(`[WORKER] Job ${job.id} execution failed:`, errorMessage);
+    const updatedJob = await retryJob(supabase, job.id, errorMessage);
+    return NextResponse.json(
+      { success: false, claimed: true, jobId: updatedJob.id, jobType: updatedJob.job_type, status: updatedJob.status, error: errorMessage },
+      { status: 500 }
+    );
   }
 }
 
-export function GET(): NextResponse {
-  return NextResponse.json({ success: false, error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } });
+function methodNotAllowed(): NextResponse {
+  return NextResponse.json(
+    { success: false, error: 'Method Not Allowed. Worker endpoint accepts POST only.' },
+    { status: 405, headers: { Allow: 'POST' } }
+  );
 }
+
+export async function GET(): Promise<NextResponse> { return methodNotAllowed(); }
+export async function PUT(): Promise<NextResponse> { return methodNotAllowed(); }
+export async function DELETE(): Promise<NextResponse> { return methodNotAllowed(); }
+export async function PATCH(): Promise<NextResponse> { return methodNotAllowed(); }
