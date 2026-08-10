@@ -79,7 +79,6 @@ export interface DashboardOverviewData {
       status: string;
       createdAt: string;
       errorMessage: string | null;
-      triggerRunId: string | null;
       progress: { completed: number; total: number } | null;
     }>;
     recentChanges: Array<{
@@ -358,7 +357,7 @@ export async function getDashboardOverviewData(
     // 6. Recent Jobs & Activity
     const { data: jobsList } = await supabase
       .from('jobs')
-      .select('id, job_type, status, error_message, trigger_run_id, progress, created_at')
+      .select('id, job_type, status, error_message, progress, created_at')
       .eq('project_id', currentProjectId)
       .order('created_at', { ascending: false })
       .limit(5);
@@ -376,7 +375,6 @@ export async function getDashboardOverviewData(
         status: j.status,
         createdAt: j.created_at,
         errorMessage: j.error_message,
-        triggerRunId: j.trigger_run_id,
         progress,
       };
     });
@@ -516,7 +514,7 @@ export async function cancelJobAction(
 
     const { data: job, error: jobErr } = await supabase
       .from('jobs')
-      .select('id, project_id, status, trigger_run_id')
+      .select('id, project_id, status')
       .eq('id', jobId)
       .maybeSingle();
 

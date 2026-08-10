@@ -565,7 +565,6 @@ export type Database = {
           status: Database["public"]["Enums"]["crawl_status"]
           resource_type: string | null
           resource_id: string | null
-          trigger_run_id: string | null
           progress: Json | null
           retry_count: number
           max_retries: number
@@ -582,7 +581,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["crawl_status"]
           resource_type?: string | null
           resource_id?: string | null
-          trigger_run_id?: string | null
           progress?: Json | null
           retry_count?: number
           max_retries?: number
@@ -599,7 +597,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["crawl_status"]
           resource_type?: string | null
           resource_id?: string | null
-          trigger_run_id?: string | null
           progress?: Json | null
           retry_count?: number
           max_retries?: number
