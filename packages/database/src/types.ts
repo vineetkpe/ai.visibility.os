@@ -1410,11 +1410,44 @@ export type Database = {
         Relationships: [
         ]
       }
+      worker_rate_limits: {
+        Row: {
+          rate_key: string
+          request_count: number
+          window_start: string
+          updated_at: string
+        }
+        Insert: {
+          rate_key: string
+          request_count?: number
+          window_start?: string
+          updated_at?: string
+        }
+        Update: {
+          rate_key?: string
+          request_count?: number
+          window_start?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_worker_rate_limit: {
+        Args: {
+          p_rate_key: string
+          p_max_requests: number
+          p_window_seconds?: number
+        }
+        Returns: {
+          allowed: boolean
+          current_count: number
+          reset_seconds: number
+        }[]
+      }
       claim_next_job: {
         Args: {
           p_job_type?: string | null

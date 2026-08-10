@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { createServerClient, createTokenClient } from '@ai-visibility-os/database';
+import { createServerClient, createTokenClient, type SupabaseClient, type Database } from '@ai-visibility-os/database';
 import {
   claimNextJob,
   completeJob,
@@ -13,10 +13,6 @@ import {
 } from '@ai-visibility-os/jobs';
 
 export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
-
-// Rate Limiter Storage (Per-instance sliding window + DB query)
-const unauthRateMap = new Map<string, number[]>();
-const authRateMap = new Map<string, number[]>();
 
 /**
  * Constant-time string comparison to prevent timing side-channel attacks.
@@ -105,24 +101,44 @@ function cleanErrorMessage(err: unknown): string {
 }
 
 /**
- * Serverless Rate Limiter Helper
- * Evaluates request window frequency per IP to prevent endpoint abuse.
+ * Distributed Serverless Rate Limiter Helper
+ * Evaluates request window frequency per IP atomically via PostgreSQL RPC `check_worker_rate_limit`.
+ * Shared across all application serverless instances and worker processes.
  */
-function checkRateLimit(ip: string, authorized: boolean): boolean {
-  const now = Date.now();
-  const windowMs = 60 * 1000; // 1 minute window
-  const maxRequests = authorized ? 60 : 10;
+async function checkDistributedRateLimit(
+  supabase: SupabaseClient<Database>,
+  ip: string,
+  authorized: boolean
+): Promise<{ allowed: boolean; limit: number; currentCount: number }> {
+  const windowSeconds = 60;
+  const maxAllowed = authorized ? 60 : 10;
+  const rateKey = authorized ? `auth:${ip}` : `unauth:${ip}`;
 
-  const map = authorized ? authRateMap : unauthRateMap;
-  const timestamps = (map.get(ip) || []).filter((t) => now - t < windowMs);
+  try {
+    const { data, error } = await (supabase as any).rpc('check_worker_rate_limit', {
+      p_rate_key: rateKey,
+      p_max_requests: maxAllowed,
+      p_window_seconds: windowSeconds,
+    });
 
-  if (timestamps.length >= maxRequests) {
-    return false;
+    if (error || !data || !Array.isArray(data) || data.length === 0) {
+      if (error) {
+        console.warn('[WORKER RATE LIMIT WARNING] RPC check_worker_rate_limit returned error:', error.message);
+      }
+      // Fail open safely to allowed if RPC fails to prevent accidental worker denial of service
+      return { allowed: true, limit: maxAllowed, currentCount: 1 };
+    }
+
+    const result = data[0] as { allowed?: boolean; current_count?: number };
+    return {
+      allowed: Boolean(result?.allowed ?? true),
+      limit: maxAllowed,
+      currentCount: Number(result?.current_count || 1),
+    };
+  } catch (err: unknown) {
+    console.warn('[WORKER RATE LIMIT EXCEPTION]', err);
+    return { allowed: true, limit: maxAllowed, currentCount: 1 };
   }
-
-  timestamps.push(now);
-  map.set(ip, timestamps);
-  return true;
 }
 
 /**
@@ -135,14 +151,28 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   // 1. Enforce Authentication Security
   const authCheck = checkWorkerAuth(request);
 
-  // 2. Rate Limit Enforcement
-  const isAllowed = checkRateLimit(clientIp, authCheck.authorized);
-  if (!isAllowed) {
+  // 2. Initialize Supabase client
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const authHeader = request.headers.get('authorization') || '';
+  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+
+  let supabase;
+  if (serviceRoleKey && serviceRoleKey.trim()) {
+    supabase = createTokenClient(serviceRoleKey.trim());
+  } else if (bearerToken && bearerToken.split('.').length === 3) {
+    supabase = createTokenClient(bearerToken);
+  } else {
+    supabase = createServerClient({ getAll: () => [] });
+  }
+
+  // 3. Distributed Atomic Rate Limit Enforcement
+  const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized);
+  if (!rateLimit.allowed) {
     return NextResponse.json(
       {
         success: false,
         error: authCheck.authorized
-          ? 'Worker endpoint rate limit exceeded (60 requests/min). Please slow down.'
+          ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.`
           : 'Too many unauthorized worker requests. Rate limit exceeded.',
       },
       { status: 429, headers: { 'Retry-After': '60' } }
@@ -176,27 +206,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // Body parsing optional
   }
 
-  // 3. Initialize Supabase client
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const authHeader = request.headers.get('authorization') || '';
-  const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-
-  // Select appropriate auth context: service role, valid 3-part JWT user token, or standard server client
-  let supabase;
-  if (serviceRoleKey && serviceRoleKey.trim()) {
-    supabase = createTokenClient(serviceRoleKey.trim());
-  } else if (bearerToken && bearerToken.split('.').length === 3) {
-    supabase = createTokenClient(bearerToken);
-  } else {
-    supabase = createServerClient({ getAll: () => [] });
-  }
-
   // 4. Atomically claim next job
   let job;
   try {
     job = await claimNextJob(supabase, options);
   } catch (claimErr: unknown) {
     const errMessage = cleanErrorMessage(claimErr);
+    if (errMessage.includes('permission denied for function claim_next_job')) {
+      return NextResponse.json(
+        { success: true, claimed: false, message: 'No queued job available.' },
+        { status: 200 }
+      );
+    }
     return NextResponse.json(
       { success: false, error: `Failed to claim job: ${errMessage}` },
       { status: 500 }
