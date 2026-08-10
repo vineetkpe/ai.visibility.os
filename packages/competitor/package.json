@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@ai-visibility-os/database": "workspace:*",
-    "@ai-visibility-os/jobs": "workspace:*",
     "@ai-visibility-os/shared": "workspace:*"
   },
   "devDependencies": {

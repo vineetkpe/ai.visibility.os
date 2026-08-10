@@ -292,26 +292,6 @@ export async function triggerCompetitorCrawl(
     throw new Error(jobInsertErr?.message || 'Failed to create crawl job for competitor.');
   }
 
-  // Trigger Trigger.dev crawl task
-  try {
-    const { siteCrawlTask } = await import('@ai-visibility-os/jobs');
-    const handle = await siteCrawlTask.trigger({
-      domainId,
-      domainName: domainHost,
-      jobId: job.id,
-    });
-    await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
-  } catch (triggerErr: unknown) {
-    const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
-    const errorMessage = `Failed to start background job: ${message}`;
-    console.warn('Trigger.dev dispatch warning for competitor crawl:', triggerErr);
-    await supabase
-      .from('jobs')
-      .update({ status: 'failed', error_message: errorMessage })
-      .eq('id', job.id);
-    return { success: false, error: errorMessage };
-  }
-
   return {
     success: true,
     jobId: job.id,

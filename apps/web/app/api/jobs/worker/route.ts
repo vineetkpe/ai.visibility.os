@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@ai-visibility-os/database';
-import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob } from '@ai-visibility-os/jobs';
+import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob } from '@ai-visibility-os/jobs';
 import { runDiscoveryPipeline } from '@ai-visibility-os/crawler';
 import { runVisibilityScanPipeline } from '@ai-visibility-os/scanner';
 
@@ -114,7 +114,15 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     switch (job.job_type) {
       case 'site_crawl': {
-        const domainId = job.resource_id;
+        if (job.resource_type === 'competitor') {
+          await runCompetitorJob(supabase, job);
+          break;
+        }
+
+        const progressObj = (job.progress as Record<string, unknown>) || {};
+        const domainId =
+          (typeof progressObj.domain_id === 'string' ? progressObj.domain_id : undefined) || job.resource_id;
+
         if (!domainId) {
           throw new Error('site_crawl job requires resource_id (domainId).');
         }
@@ -132,6 +140,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           domainName,
           jobId: job.id,
         });
+        break;
+      }
+
+      case 'competitor_sync': {
+        await runCompetitorJob(supabase, job);
         break;
       }
 

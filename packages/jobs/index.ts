@@ -20,3 +20,4 @@ export {
 } from './src/management';
 export { runRecommendationsJob } from './src/recommendations-job';
 export { runBusinessContextJob } from './src/business-context-job';
+export { runCompetitorJob, type CompetitorJobResult } from './src/competitor-job';
