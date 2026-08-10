@@ -58,7 +58,6 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
 
   const trimmedSecret = secret.trim();
 
-  // 1. Check Bearer Authorization header
   const authHeader = request.headers.get('authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7).trim();
@@ -67,7 +66,6 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
     }
   }
 
-  // 2. Check x-job-worker-secret header
   const customHeader = request.headers.get('x-job-worker-secret') || '';
   if (customHeader && safeCompare(customHeader.trim(), trimmedSecret)) {
     return { authorized: true, token: customHeader.trim() };
@@ -76,15 +74,10 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
   return { authorized: false, error: 'Unauthorized worker request.' };
 }
 
-/**
- * Clean Error Formatting Helper
- * Guarantees a non-empty human-readable error message without raw JSON artifacts.
- */
 function cleanErrorMessage(err: unknown): string {
   if (!err) return 'Job execution failed with an unknown error.';
   let msg = err instanceof Error ? err.message : String(err);
   if (!msg || !msg.trim()) return 'Job execution failed with an unknown error.';
-
   msg = msg.trim();
   if (msg.startsWith('{') && msg.includes('"message"')) {
     try {
@@ -93,17 +86,15 @@ function cleanErrorMessage(err: unknown): string {
         msg = parsed.error.message;
       }
     } catch {
-      // Keep original string if JSON parsing fails
+      // Keep original string if JSON parsing fails.
     }
   }
-
   return msg || 'Job execution failed with an unknown error.';
 }
 
 /**
- * Distributed Serverless Rate Limiter Helper
- * Evaluates request window frequency per IP atomically via PostgreSQL RPC `check_worker_rate_limit`.
- * Shared across all application serverless instances and worker processes.
+ * Distributed rate limiter backed by an atomic PostgreSQL RPC.
+ * Rate-limit infrastructure failure fails closed so protection cannot silently disappear.
  */
 async function checkDistributedRateLimit(
   supabase: SupabaseClient<Database>,
@@ -115,7 +106,7 @@ async function checkDistributedRateLimit(
   const rateKey = authorized ? `auth:${ip}` : `unauth:${ip}`;
 
   try {
-    const { data, error } = await (supabase as any).rpc('check_worker_rate_limit', {
+    const { data, error } = await supabase.rpc('check_worker_rate_limit', {
       p_rate_key: rateKey,
       p_max_requests: maxAllowed,
       p_window_seconds: windowSeconds,
@@ -123,40 +114,36 @@ async function checkDistributedRateLimit(
 
     if (error || !data || !Array.isArray(data) || data.length === 0) {
       if (error) {
-        console.warn('[WORKER RATE LIMIT WARNING] RPC check_worker_rate_limit returned error:', error.message);
+        console.error('[SECURITY ERROR] Worker rate-limit RPC failed:', error.message);
       }
-      // Fail open safely to allowed if RPC fails to prevent accidental worker denial of service
-      return { allowed: true, limit: maxAllowed, currentCount: 1 };
+      return { allowed: false, limit: maxAllowed, currentCount: maxAllowed + 1 };
     }
 
-    const result = data[0] as { allowed?: boolean; current_count?: number };
+    const result = data[0];
     return {
-      allowed: Boolean(result?.allowed ?? true),
+      allowed: result.allowed === true,
       limit: maxAllowed,
-      currentCount: Number(result?.current_count || 1),
+      currentCount: Number(result.current_count ?? maxAllowed + 1),
     };
   } catch (err: unknown) {
-    console.warn('[WORKER RATE LIMIT EXCEPTION]', err);
-    return { allowed: true, limit: maxAllowed, currentCount: 1 };
+    console.error('[SECURITY ERROR] Worker rate-limit check failed:', cleanErrorMessage(err));
+    return { allowed: false, limit: maxAllowed, currentCount: maxAllowed + 1 };
   }
 }
 
 /**
- * Internal Worker API Handler (POST Only)
+ * Internal Worker API Handler (POST Only).
  * Claims and executes queued jobs atomically using FOR UPDATE SKIP LOCKED via RPC.
  */
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request);
-
-  // 1. Enforce Authentication Security
   const authCheck = checkWorkerAuth(request);
 
-  // 2. Initialize Supabase client
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const authHeader = request.headers.get('authorization') || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
 
-  let supabase;
+  let supabase: SupabaseClient<Database>;
   if (serviceRoleKey && serviceRoleKey.trim()) {
     supabase = createTokenClient(serviceRoleKey.trim());
   } else if (bearerToken && bearerToken.split('.').length === 3) {
@@ -165,7 +152,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     supabase = createServerClient({ getAll: () => [] });
   }
 
-  // 3. Distributed Atomic Rate Limit Enforcement
   const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized);
   if (!rateLimit.allowed) {
     return NextResponse.json(
@@ -173,7 +159,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         success: false,
         error: authCheck.authorized
           ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.`
-          : 'Too many unauthorized worker requests. Rate limit exceeded.',
+          : 'Too many worker requests or rate-limit service unavailable.',
       },
       { status: 429, headers: { 'Retry-After': '60' } }
     );
@@ -181,13 +167,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   if (!authCheck.authorized) {
     const status = authCheck.error?.startsWith('Server configuration error') ? 500 : 401;
-    return NextResponse.json(
-      { success: false, error: authCheck.error },
-      { status }
-    );
+    return NextResponse.json({ success: false, error: authCheck.error }, { status });
   }
 
-  // Parse optional jobType or projectId filter from request body
   const options: { jobType?: string; projectId?: string } = {};
   try {
     const body = await request.json();
@@ -203,114 +185,65 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
     }
   } catch {
-    // Body parsing optional
+    // Body parsing is optional.
   }
 
-  // 4. Atomically claim next job
   let job;
   try {
     job = await claimNextJob(supabase, options);
   } catch (claimErr: unknown) {
     const errMessage = cleanErrorMessage(claimErr);
     if (errMessage.includes('permission denied for function claim_next_job')) {
-      return NextResponse.json(
-        { success: true, claimed: false, message: 'No queued job available.' },
-        { status: 200 }
-      );
+      return NextResponse.json({ success: true, claimed: false, message: 'No queued job available.' }, { status: 200 });
     }
-    return NextResponse.json(
-      { success: false, error: `Failed to claim job: ${errMessage}` },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: `Failed to claim job: ${errMessage}` }, { status: 500 });
   }
 
   if (!job) {
-    return NextResponse.json(
-      { success: true, claimed: false, message: 'No queued job available.' },
-      { status: 200 }
-    );
+    return NextResponse.json({ success: true, claimed: false, message: 'No queued job available.' }, { status: 200 });
   }
 
   console.log(`[WORKER] Claimed job ${job.id} (type: ${job.job_type}, project: ${job.project_id})`);
 
-  // 5. Dispatch job execution by job_type
   try {
     switch (job.job_type) {
       case 'site_crawl': {
         if (job.resource_type === 'competitor') {
           await runCompetitorJob(supabase, job);
-          break;
+        } else {
+          await runCrawlerJob(supabase, job);
         }
-
-        await runCrawlerJob(supabase, job);
         break;
       }
-
-      case 'competitor_sync': {
+      case 'competitor_sync':
         await runCompetitorJob(supabase, job);
         break;
-      }
-
-      case 'business_context': {
+      case 'business_context':
         await runBusinessContextJob(supabase, job);
         break;
-      }
-
-      case 'visibility_scan': {
+      case 'visibility_scan':
         await runScannerJob(supabase, job);
         break;
-      }
-
-      case 'recommendations': {
+      case 'recommendations':
         await runRecommendationsJob(supabase, job);
         break;
-      }
-
-      default: {
-        throw new Error(`Unsupported job_type: '${job.job_type}'.`);
-      }
+      default:
+        throw new Error(`Unsupported job type: ${job.job_type}`);
     }
 
-    // 6. Complete Job upon clean execution
-    const completedJob = await completeJob(supabase, job.id);
-    return NextResponse.json(
-      {
-        success: true,
-        claimed: true,
-        jobId: completedJob.id,
-        jobType: completedJob.job_type,
-        status: completedJob.status,
-      },
-      { status: 200 }
-    );
-  } catch (execErr: unknown) {
-    const errorMessage = cleanErrorMessage(execErr);
-    console.error(`[WORKER] Job ${job.id} execution failed:`, errorMessage);
-
-    // Retry or fail job
-    const updatedJob = await retryJob(supabase, job.id, errorMessage);
-    return NextResponse.json(
-      {
-        success: false,
-        claimed: true,
-        jobId: updatedJob.id,
-        jobType: updatedJob.job_type,
-        status: updatedJob.status,
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
+    await completeJob(supabase, job.id);
+    return NextResponse.json({ success: true, claimed: true, jobId: job.id, status: 'completed' }, { status: 200 });
+  } catch (executionErr: unknown) {
+    const errorMessage = cleanErrorMessage(executionErr);
+    try {
+      await retryJob(supabase, job.id, errorMessage);
+    } catch (retryErr: unknown) {
+      console.error(`[WORKER] Failed to persist retry state for job ${job.id}:`, cleanErrorMessage(retryErr));
+    }
+    return NextResponse.json({ success: false, claimed: true, jobId: job.id, error: errorMessage }, { status: 500 });
   }
 }
 
-function methodNotAllowed(): NextResponse {
-  return NextResponse.json(
-    { success: false, error: 'Method Not Allowed. Worker endpoint accepts POST only.' },
-    { status: 405, headers: { Allow: 'POST' } }
-  );
+export function GET(): NextResponse {
+  return NextResponse.json({ success: false, error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } });
 }
-
-export async function GET(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function PUT(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function DELETE(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function PATCH(): Promise<NextResponse> { return methodNotAllowed(); }
