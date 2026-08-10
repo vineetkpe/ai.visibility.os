@@ -87,6 +87,28 @@ export async function validateUrl(urlStr: string): Promise<ValidateUrlResult> {
     };
   }
 
+  const hostLower = parsedUrl.hostname.toLowerCase();
+  if (
+    hostLower === 'localhost' ||
+    hostLower.endsWith('.localhost') ||
+    hostLower.endsWith('.local')
+  ) {
+    return {
+      valid: false,
+      url: urlStr,
+      error: `SSRF Protection: Hostname '${parsedUrl.hostname}' is prohibited.`,
+    };
+  }
+
+  if (net.isIP(parsedUrl.hostname) && isPrivateIp(parsedUrl.hostname)) {
+    return {
+      valid: false,
+      url: urlStr,
+      resolvedIp: parsedUrl.hostname,
+      error: `SSRF Protection: IP ${parsedUrl.hostname} is in a private, loopback, or reserved range.`,
+    };
+  }
+
   try {
     const addresses = await dns.promises.lookup(parsedUrl.hostname, { all: true });
     if (!addresses || addresses.length === 0) {

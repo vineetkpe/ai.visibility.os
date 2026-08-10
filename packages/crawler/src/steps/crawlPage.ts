@@ -60,21 +60,47 @@ export async function fetchWithSsrfProtection(
         await new Promise((r) => setTimeout(r, boundedDelay));
       }
 
-      // Handle Redirects
+      // Handle Redirects with SSRF Re-Validation
       if (res.status >= 300 && res.status < 400) {
         const location = res.headers.get('Location');
-        if (!location) {
+        if (!location || !location.trim()) {
           return {
             ok: false,
             status: res.status,
             html: '',
             finalUrl: currentUrl,
-            error: 'Redirect missing Location header.',
+            error: `HTTP ${res.status} redirect missing valid Location header.`,
           };
         }
 
-        const nextUrlObj = new URL(location, currentUrl);
-        currentUrl = nextUrlObj.toString();
+        let nextUrlObj: URL;
+        try {
+          nextUrlObj = new URL(location.trim(), currentUrl);
+        } catch {
+          return {
+            ok: false,
+            status: res.status,
+            html: '',
+            finalUrl: currentUrl,
+            error: `Invalid redirect Location header format: '${location}'.`,
+          };
+        }
+
+        const nextUrlStr = nextUrlObj.toString();
+
+        // Immediate SSRF re-validation on redirect destination before next hop
+        const redirectValidation = await validateUrl(nextUrlStr);
+        if (!redirectValidation.valid) {
+          return {
+            ok: false,
+            status: res.status,
+            html: '',
+            finalUrl: nextUrlStr,
+            error: `SSRF Protection: Redirect to '${nextUrlStr}' rejected. ${redirectValidation.error || 'Private/reserved IP address.'}`,
+          };
+        }
+
+        currentUrl = nextUrlStr;
         redirectCount++;
         continue;
       }
