@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@ai-visibility-os/database';
-import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob } from '@ai-visibility-os/jobs';
+import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob, runScannerJob } from '@ai-visibility-os/jobs';
 import { runDiscoveryPipeline } from '@ai-visibility-os/crawler';
-import { runVisibilityScanPipeline } from '@ai-visibility-os/scanner';
 
 export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
 
@@ -154,10 +153,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
 
       case 'visibility_scan': {
-        await runVisibilityScanPipeline(supabase, {
-          projectId: job.project_id,
-          jobId: job.id,
-        });
+        await runScannerJob(supabase, job);
         break;
       }
 

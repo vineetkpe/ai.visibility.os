@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { visibilityScanTask } from '@ai-visibility-os/jobs';
 
 export interface VisibilityScanActionResult {
   success: boolean;
@@ -104,25 +103,6 @@ export async function startVisibilityScanAction(
         success: false,
         error: jobInsertError?.message || 'Failed to create scan job record.',
       };
-    }
-
-    // 5. Dispatch Trigger.dev task on background infrastructure
-    try {
-      const handle = await visibilityScanTask.trigger({
-        projectId: project.id,
-        jobId: job.id,
-        accessToken: session.access_token,
-      });
-      await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
-    } catch (triggerErr: unknown) {
-      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
-      const errorMessage = `Failed to start background job: ${message}`;
-      console.warn('Trigger.dev visibility scan task dispatch warning:', triggerErr);
-      await supabase
-        .from('jobs')
-        .update({ status: 'failed', error_message: errorMessage })
-        .eq('id', job.id);
-      return { success: false, error: errorMessage };
     }
 
     return { success: true };
