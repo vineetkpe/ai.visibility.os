@@ -19,3 +19,4 @@ export {
   type ClaimJobOptions,
 } from './src/management';
 export { runRecommendationsJob } from './src/recommendations-job';
+export { runBusinessContextJob } from './src/business-context-job';
