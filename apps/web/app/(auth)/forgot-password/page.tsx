@@ -15,6 +15,26 @@ import {
 import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+function getAuthErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message.trim()) return error.message;
+
+  if (typeof error === 'object' && error !== null) {
+    const candidate = error as { message?: unknown; error_description?: unknown; msg?: unknown };
+    for (const value of [candidate.message, candidate.error_description, candidate.msg]) {
+      if (typeof value === 'string' && value.trim()) return value;
+    }
+
+    try {
+      const serialized = JSON.stringify(error);
+      if (serialized && serialized !== '{}') return serialized;
+    } catch {
+      // Keep the safe fallback below.
+    }
+  }
+
+  return fallback;
+}
+
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,19 +54,19 @@ export default function ForgotPasswordPage() {
       });
 
       if (resetError) {
-        setError(resetError.message);
-        toast.error(resetError.message);
-        setLoading(false);
+        const message = getAuthErrorMessage(resetError, 'Unable to send password reset email. Please try again.');
+        setError(message);
+        toast.error(message);
         return;
       }
 
       toast.success('Password reset link sent to your email.');
-
       setSubmitted(true);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send reset email';
-      setError(msg);
-      toast.error(msg);
+      const message = getAuthErrorMessage(err, 'Unable to send password reset email. Please try again.');
+      setError(message);
+      toast.error(message);
+    } finally {
       setLoading(false);
     }
   };
