@@ -18,3 +18,4 @@ export {
   type JobRow,
   type ClaimJobOptions,
 } from './src/management';
+export { runRecommendationsJob } from './src/recommendations-job';

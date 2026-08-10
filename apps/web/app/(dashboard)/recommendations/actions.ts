@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
-import { recommendationsTask } from '@ai-visibility-os/jobs';
 import {
   runRecommendationEngine,
   getProjectRecommendations,
@@ -89,26 +88,20 @@ export async function generateRecommendationsAction(
       };
     }
 
-    // 3. Dispatch Trigger.dev task in background
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+    // 3. Enqueue job into internal jobs queue for worker processing
+    const { data: jobRow, error: jobErr } = await supabase
+      .from('jobs')
+      .insert({
+        project_id: projectId,
+        job_type: 'recommendations',
+        status: 'queued',
+      })
+      .select('*')
+      .single();
 
-    if (!session) {
-      return { success: false, error: 'Session expired, please log in again.' };
-    }
-
-    try {
-      await recommendationsTask.trigger({ projectId, accessToken: session.access_token });
-    } catch (triggerErr: unknown) {
-      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
-      const errorMessage = `Failed to start background job: ${message}`;
-      console.warn('Trigger.dev task dispatch warning:', triggerErr);
-      await supabase
-        .from('jobs')
-        .update({ status: 'failed', error_message: errorMessage })
-        .eq('project_id', projectId)
-        .eq('status', 'queued');
+    if (jobErr || !jobRow) {
+      const errorMessage = `Failed to enqueue recommendation job: ${jobErr?.message || 'Unknown database error'}`;
+      console.error(errorMessage);
       return { success: false, error: errorMessage };
     }
 
