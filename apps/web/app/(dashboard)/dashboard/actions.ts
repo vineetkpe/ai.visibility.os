@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server';
 import type { SupabaseClient, Database } from '@ai-visibility-os/database';
-import { runs } from '@ai-visibility-os/jobs';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -538,17 +537,6 @@ export async function cancelJobAction(
 
     if (job.status === 'completed' || job.status === 'failed') {
       return { success: true, data: { jobId, alreadyFinished: true } };
-    }
-
-    if (job.trigger_run_id) {
-      try {
-        await runs.cancel(job.trigger_run_id);
-      } catch (triggerCancelErr) {
-        console.warn(
-          `Trigger.dev runs.cancel warning for run ${job.trigger_run_id}:`,
-          triggerCancelErr
-        );
-      }
     }
 
     const { error: updateErr } = await supabase

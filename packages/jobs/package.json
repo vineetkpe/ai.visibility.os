@@ -15,8 +15,7 @@
     "@ai-visibility-os/crawler": "workspace:*",
     "@ai-visibility-os/database": "workspace:*",
     "@ai-visibility-os/recommendations": "workspace:*",
-    "@ai-visibility-os/scanner": "workspace:*",
-    "@trigger.dev/sdk": "^3.3.17"
+    "@ai-visibility-os/scanner": "workspace:*"
   },
   "devDependencies": {
     "@ai-visibility-os/config": "workspace:*",

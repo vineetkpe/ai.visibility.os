@@ -247,7 +247,7 @@ export async function getCompetitiveVisibilityComparison(
 
 /**
  * Opt-in action to trigger website discovery crawl for a competitor domain (Tier 2).
- * Reuses the existing siteCrawlTask Trigger.dev task.
+ * Reuses the internal site_crawl job system.
  */
 export async function triggerCompetitorCrawl(
   supabase: SupabaseClient<Database>,
