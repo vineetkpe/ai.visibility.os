@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@ai-visibility-os/database';
-import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob, runScannerJob } from '@ai-visibility-os/jobs';
-import { runDiscoveryPipeline } from '@ai-visibility-os/crawler';
+import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob, runScannerJob, runCrawlerJob } from '@ai-visibility-os/jobs';
 
 export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
 
@@ -118,27 +117,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           break;
         }
 
-        const progressObj = (job.progress as Record<string, unknown>) || {};
-        const domainId =
-          (typeof progressObj.domain_id === 'string' ? progressObj.domain_id : undefined) || job.resource_id;
-
-        if (!domainId) {
-          throw new Error('site_crawl job requires resource_id (domainId).');
-        }
-
-        // Fetch domain host
-        const { data: domain } = await supabase
-          .from('domains')
-          .select('host')
-          .eq('id', domainId)
-          .single();
-
-        const domainName = domain?.host || 'example.com';
-        await runDiscoveryPipeline(supabase, {
-          domainId,
-          domainName,
-          jobId: job.id,
-        });
+        await runCrawlerJob(supabase, job);
         break;
       }
 

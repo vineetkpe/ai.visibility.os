@@ -1,7 +1,6 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { siteCrawlTask } from '@ai-visibility-os/jobs';
 
 export interface CrawlActionResult {
   success: boolean;
@@ -67,26 +66,6 @@ export async function startSiteCrawlAction(domainId: string): Promise<CrawlActio
 
     if (jobInsertError || !job) {
       return { success: false, error: jobInsertError?.message || 'Failed to create crawl job.' };
-    }
-
-    // 4. Trigger Trigger.dev task on background infrastructure
-    try {
-      const handle = await siteCrawlTask.trigger({
-        domainId: domain.id,
-        domainName: domain.host,
-        jobId: job.id,
-        accessToken: session.access_token,
-      });
-      await supabase.from('jobs').update({ trigger_run_id: handle.id }).eq('id', job.id);
-    } catch (triggerErr: unknown) {
-      const message = triggerErr instanceof Error ? triggerErr.message : String(triggerErr);
-      const errorMessage = `Failed to start background job: ${message}`;
-      console.warn('Trigger.dev dispatch warning:', triggerErr);
-      await supabase
-        .from('jobs')
-        .update({ status: 'failed', error_message: errorMessage })
-        .eq('id', job.id);
-      return { success: false, error: errorMessage };
     }
 
     return {
