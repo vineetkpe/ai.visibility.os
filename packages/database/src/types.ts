@@ -1427,8 +1427,8 @@ export type Database = {
       }
       create_project_with_domain: {
         Args: {
-          p_name: string
-          p_host: string
+          p_name: string | null
+          p_host: string | null
         }
         Returns: string
       }

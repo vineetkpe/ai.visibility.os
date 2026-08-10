@@ -72,9 +72,6 @@ async function generate() {
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
         CREATE ROLE anon;
       END IF;
-      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'service_role') THEN
-        CREATE ROLE service_role;
-      END IF;
     END $$;
   `);
 
@@ -87,6 +84,11 @@ async function generate() {
     let sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
     sql = sql.replace(/CREATE EXTENSION[^\n;]+;/gi, '-- CREATE EXTENSION skipped');
     sql = sql.replace(/ALTER EXTENSION[^\n;]+;/gi, '-- ALTER EXTENSION skipped');
+    sql = sql.replace(/(GRANT|REVOKE)\s+([^\n;]+?)\s+(TO|FROM)\s+([^\n;]+);/gi, (match, stmt, privs, direction, targets) => {
+      const roles = targets.split(',').map((r: string) => r.trim()).filter((r: string) => r && r.toLowerCase() !== 'service_role');
+      if (roles.length === 0) return `-- ${match} (skipped service_role)`;
+      return `${stmt} ${privs} ${direction} ${roles.join(', ')};`;
+    });
     await db.exec(sql);
   }
 
@@ -267,14 +269,23 @@ export type Database = {
           let tsType = 'string';
           if (argType.includes('int') || argType.includes('numeric')) tsType = 'number';
           if (argType.includes('bool')) tsType = 'boolean';
-          code += `          ${argName}: ${tsType}\n`;
+          const isOptional = argType.toLowerCase().includes('default') || argType.includes('=');
+          code += `          ${argName}${isOptional ? '?' : ''}: ${tsType} | null\n`;
         }
       }
     }
     code += `        }\n`;
 
     let returnTsType = 'unknown';
-    if (fn.returns.includes('uuid') || fn.returns.includes('text') || fn.returns.includes('varchar')) {
+    const setofMatch = fn.returns.match(/SETOF\s+(?:public\.)?([a-z0-9_]+)/i);
+    if (setofMatch && setofMatch[1]) {
+      const targetTable = setofMatch[1];
+      if (tablesMap.has(targetTable)) {
+        returnTsType = `Database["public"]["Tables"]["${targetTable}"]["Row"][]`;
+      } else {
+        returnTsType = `Database["public"]["Tables"]["jobs"]["Row"][]`;
+      }
+    } else if (fn.returns.includes('uuid') || fn.returns.includes('text') || fn.returns.includes('varchar')) {
       returnTsType = 'string';
     } else if (fn.returns.includes('int') || fn.returns.includes('numeric')) {
       returnTsType = 'number';
