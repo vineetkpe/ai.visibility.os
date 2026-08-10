@@ -620,7 +620,7 @@ export function RecentActivityWidget({
                     <div className="font-semibold text-slate-900 font-mono text-[11px]">
                       {j.jobType}
                     </div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-[10px] text-slate-400" suppressHydrationWarning>
                       {new Date(j.createdAt).toLocaleTimeString()}
                     </div>
                   </div>

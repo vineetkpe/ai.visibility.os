@@ -137,7 +137,7 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             <div className="flex items-center gap-3 text-xs text-slate-300 font-mono pt-1">
               <span>Engine: {scan.aiModel}</span>
               <span>•</span>
-              <span>Executed: {new Date(scan.createdAt).toLocaleString()}</span>
+              <span suppressHydrationWarning>Executed: {new Date(scan.createdAt).toLocaleString()}</span>
               {scan.durationSeconds !== null && (
                 <>
                   <span>•</span>

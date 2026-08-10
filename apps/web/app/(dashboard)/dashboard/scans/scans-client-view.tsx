@@ -221,10 +221,10 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
                         <span className="text-slate-400 font-normal italic">N/A</span>
                       )}
                     </td>
-                    <td className="p-4 text-slate-500">
+                    <td className="p-4 text-slate-500" suppressHydrationWarning>
                       {new Date(scan.createdAt).toLocaleString()}
                     </td>
-                    <td className="p-4 text-slate-500">
+                    <td className="p-4 text-slate-500" suppressHydrationWarning>
                       {scan.completedAt ? new Date(scan.completedAt).toLocaleString() : '—'}
                     </td>
                   </tr>
