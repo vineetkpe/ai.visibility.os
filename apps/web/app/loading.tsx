@@ -3,8 +3,15 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export default function Loading() {
   return (
-    <div className="flex min-h-[60vh] w-full items-center justify-center p-8">
-      <LoadingSpinner size="lg" label="Loading application..." />
+    <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading page"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-50/70 p-8 backdrop-blur-[2px]"
+    >
+      <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <LoadingSpinner size="lg" label="Loading..." />
+      </div>
     </div>
   );
 }
