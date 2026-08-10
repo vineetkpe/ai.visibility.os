@@ -12,7 +12,7 @@ import {
   runCrawlerJob,
 } from '@ai-visibility-os/jobs';
 
-export const maxDuration = 300; // Vercel maximum execution limit (5 minutes)
+export const maxDuration = 300;
 
 function safeCompare(a: string, b: string): boolean {
   const bufA = Buffer.from(a, 'utf-8');
@@ -41,19 +41,16 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
     console.error('[SECURITY ERROR] JOB_WORKER_SECRET environment variable is not configured on server.');
     return { authorized: false, error: 'Server configuration error: Worker authorization secret is not configured.' };
   }
-
   const trimmedSecret = secret.trim();
   const authHeader = request.headers.get('authorization') || '';
   if (authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7).trim();
     if (safeCompare(token, trimmedSecret)) return { authorized: true, token };
   }
-
   const customHeader = request.headers.get('x-job-worker-secret') || '';
   if (customHeader && safeCompare(customHeader.trim(), trimmedSecret)) {
     return { authorized: true, token: customHeader.trim() };
   }
-
   return { authorized: false, error: 'Unauthorized worker request.' };
 }
 
@@ -95,6 +92,11 @@ async function checkDistributedRateLimit(
     }
 
     const result = data[0];
+    if (!result) {
+      console.error('[SECURITY ERROR] Worker rate-limit RPC returned no result.');
+      return { allowed: false, limit: maxAllowed, currentCount: maxAllowed + 1 };
+    }
+
     return {
       allowed: result.allowed === true,
       limit: maxAllowed,
@@ -109,7 +111,6 @@ async function checkDistributedRateLimit(
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request);
   const authCheck = checkWorkerAuth(request);
-
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const authHeader = request.headers.get('authorization') || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
@@ -126,12 +127,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized);
   if (!rateLimit.allowed) {
     return NextResponse.json(
-      {
-        success: false,
-        error: authCheck.authorized
-          ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.`
-          : 'Too many worker requests or rate-limit service unavailable.',
-      },
+      { success: false, error: authCheck.authorized ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.` : 'Too many worker requests or rate-limit service unavailable.' },
       { status: 429, headers: { 'Retry-After': '60' } }
     );
   }
@@ -152,7 +148,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       if (typeof body.projectId === 'string' && body.projectId.trim()) options.projectId = body.projectId.trim();
     }
   } catch {
-    // Body parsing optional.
+    // Body parsing is optional.
   }
 
   let job;
@@ -176,46 +172,25 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         if (job.resource_type === 'competitor') await runCompetitorJob(supabase, job);
         else await runCrawlerJob(supabase, job);
         break;
-      case 'competitor_sync':
-        await runCompetitorJob(supabase, job);
-        break;
-      case 'business_context':
-        await runBusinessContextJob(supabase, job);
-        break;
-      case 'visibility_scan':
-        await runScannerJob(supabase, job);
-        break;
-      case 'recommendations':
-        await runRecommendationsJob(supabase, job);
-        break;
-      default:
-        throw new Error(`Unsupported job_type: '${job.job_type}'.`);
+      case 'competitor_sync': await runCompetitorJob(supabase, job); break;
+      case 'business_context': await runBusinessContextJob(supabase, job); break;
+      case 'visibility_scan': await runScannerJob(supabase, job); break;
+      case 'recommendations': await runRecommendationsJob(supabase, job); break;
+      default: throw new Error(`Unsupported job type: ${job.job_type}`);
     }
-
-    const completedJob = await completeJob(supabase, job.id);
-    return NextResponse.json(
-      { success: true, claimed: true, jobId: completedJob.id, jobType: completedJob.job_type, status: completedJob.status },
-      { status: 200 }
-    );
-  } catch (execErr: unknown) {
-    const errorMessage = cleanErrorMessage(execErr);
-    console.error(`[WORKER] Job ${job.id} execution failed:`, errorMessage);
-    const updatedJob = await retryJob(supabase, job.id, errorMessage);
-    return NextResponse.json(
-      { success: false, claimed: true, jobId: updatedJob.id, jobType: updatedJob.job_type, status: updatedJob.status, error: errorMessage },
-      { status: 500 }
-    );
+    await completeJob(supabase, job.id);
+    return NextResponse.json({ success: true, claimed: true, jobId: job.id, status: 'completed' }, { status: 200 });
+  } catch (executionErr: unknown) {
+    const errorMessage = cleanErrorMessage(executionErr);
+    try {
+      await retryJob(supabase, job.id, errorMessage);
+    } catch (retryErr: unknown) {
+      console.error(`[WORKER] Failed to persist retry state for job ${job.id}:`, cleanErrorMessage(retryErr));
+    }
+    return NextResponse.json({ success: false, claimed: true, jobId: job.id, error: errorMessage }, { status: 500 });
   }
 }
 
-function methodNotAllowed(): NextResponse {
-  return NextResponse.json(
-    { success: false, error: 'Method Not Allowed. Worker endpoint accepts POST only.' },
-    { status: 405, headers: { Allow: 'POST' } }
-  );
+export function GET(): NextResponse {
+  return NextResponse.json({ success: false, error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } });
 }
-
-export async function GET(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function PUT(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function DELETE(): Promise<NextResponse> { return methodNotAllowed(); }
-export async function PATCH(): Promise<NextResponse> { return methodNotAllowed(); }
