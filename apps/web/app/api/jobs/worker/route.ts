@@ -115,14 +115,14 @@ async function checkDistributedRateLimit(
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request);
   const authCheck = checkWorkerAuth(request);
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   const authHeader = request.headers.get('authorization') || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
   const supabaseCron = request.headers.get('x-supabase-worker') === '1';
 
   let supabase: SupabaseClient<Database>;
-  if (serviceRoleKey && serviceRoleKey.trim()) {
-    supabase = createTokenClient(serviceRoleKey.trim());
+  if (serviceRoleKey) {
+    supabase = createTokenClient(serviceRoleKey);
   } else if (bearerToken && bearerToken.split('.').length === 3) {
     supabase = createTokenClient(bearerToken);
   } else {
