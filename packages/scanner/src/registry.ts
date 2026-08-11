@@ -24,7 +24,7 @@ export interface ProviderConfig {
 }
 
 const GEMINI_PRIMARY_MODEL = 'gemini-3.6-flash';
-const GEMINI_FALLBACK_MODELS = ['gemini-2.5-flash', 'gemini-1.5-flash'];
+const GEMINI_FALLBACK_MODELS = ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   gemini: {
@@ -77,10 +77,6 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   },
 };
 
-/**
- * Factory function to retrieve an AI Visibility Provider instance by slug.
- * Allows passing custom provider configuration options for model selection and fallbacks.
- */
 export function getProvider(
   slug: string,
   options?: {
@@ -99,27 +95,21 @@ export function getProvider(
         primaryModel: options?.primaryModel || GEMINI_PRIMARY_MODEL,
         fallbackModels: options?.fallbackModels || GEMINI_FALLBACK_MODELS,
       });
-
     case 'chatgpt':
     case 'openai':
     case 'openai-chatgpt':
       return new ChatGPTProvider();
-
     case 'claude':
     case 'anthropic':
     case 'anthropic-claude':
       return new ClaudeProvider();
-
     case 'perplexity':
     case 'perplexity-ai':
       return new PerplexityProvider();
-
     case 'deepseek':
       return new DeepSeekProvider();
-
     case 'grok':
       return new GrokProvider();
-
     default:
       throw new Error(`Unsupported AI engine provider: '${slug}'.`);
   }
