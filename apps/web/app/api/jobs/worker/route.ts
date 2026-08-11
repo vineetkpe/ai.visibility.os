@@ -74,8 +74,11 @@ function cleanErrorMessage(err: unknown): string {
 async function checkDistributedRateLimit(
   supabase: SupabaseClient<Database>,
   ip: string,
-  authorized: boolean
+  authorized: boolean,
+  skipRateLimit = false
 ): Promise<{ allowed: boolean; limit: number; currentCount: number }> {
+  if (skipRateLimit && authorized) return { allowed: true, limit: Number.MAX_SAFE_INTEGER, currentCount: 0 };
+
   const windowSeconds = 60;
   const maxAllowed = authorized ? 60 : 10;
   const rateKey = authorized ? `auth:${ip}` : `unauth:${ip}`;
@@ -115,6 +118,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const authHeader = request.headers.get('authorization') || '';
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  const supabaseCron = request.headers.get('x-supabase-worker') === '1';
 
   let supabase: SupabaseClient<Database>;
   if (serviceRoleKey && serviceRoleKey.trim()) {
@@ -125,7 +129,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     supabase = createServerClient({ getAll: () => [] });
   }
 
-  const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized);
+  const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized, supabaseCron);
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { success: false, error: authCheck.authorized ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.` : 'Too many worker requests or rate-limit service unavailable.' },
