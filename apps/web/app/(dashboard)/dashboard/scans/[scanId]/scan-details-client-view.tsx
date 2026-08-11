@@ -8,6 +8,7 @@ import { RecommendationCard } from '@/components/recommendations/recommendation-
 import { RecommendationDetailDialog } from '@/components/recommendations/recommendation-detail-dialog';
 import { updateRecommendationStatusAction } from '@/app/(dashboard)/recommendations/actions';
 import { Button } from '@/components/ui/button';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cancelJobAction } from '@/app/(dashboard)/dashboard/actions';
 import {
   Scan,
@@ -26,6 +27,14 @@ import {
   Tag,
   XCircle,
   Loader2,
+  CheckCircle2,
+  Layers,
+  Copy,
+  Check,
+  Search,
+  Bot,
+  Globe2,
+  Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -48,11 +57,15 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
   const [selectedRec, setSelectedRec] = useState<Recommendation | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Expandable Evidence Section Controls
-  const [isRawResponseExpanded, setIsRawResponseExpanded] = useState(false);
-  const [isCitationsExpanded, setIsCitationsExpanded] = useState(false);
+  // Expandable Evidence Section Controls (Collapsed by default for clean SaaS UX)
+  const [isCompetitorsExpanded, setIsCompetitorsExpanded] = useState(false);
+  const [isCrawlExpanded, setIsCrawlExpanded] = useState(false);
   const [isSourcePagesExpanded, setIsSourcePagesExpanded] = useState(false);
+  const [isCitationsExpanded, setIsCitationsExpanded] = useState(false);
+  const [isRawResponseExpanded, setIsRawResponseExpanded] = useState(false);
+
   const [isCancellingScan, setIsCancellingScan] = useState(false);
+  const [copiedRawResponse, setCopiedRawResponse] = useState(false);
 
   const handleCancelScan = async () => {
     try {
@@ -98,126 +111,379 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
     }
   };
 
+  const handleCopyRawResponse = () => {
+    if (!evidence.rawResponse) return;
+    navigator.clipboard.writeText(evidence.rawResponse);
+    setCopiedRawResponse(true);
+    toast.success('Raw response copied to clipboard');
+    setTimeout(() => setCopiedRawResponse(false), 2000);
+  };
+
   // Filter recommendations by category
   const filteredRecs = recommendations.filter((r) => {
     if (selectedCategory !== 'all' && r.category !== selectedCategory) return false;
     return true;
   });
 
+  const isMentioned = scan.visibilityScore !== null && scan.visibilityScore > 0;
+
   return (
-    <div className="space-y-8">
-      {/* Back Button */}
-      <div>
+    <div className="space-y-8 max-w-7xl mx-auto pb-12">
+      {/* -------------------------------------------------------------------------
+          NAVIGATION BREADCRUMB
+          ------------------------------------------------------------------------- */}
+      <div className="flex items-center justify-between">
         <Button
           asChild
           variant="ghost"
           size="sm"
-          className="text-xs text-slate-500 hover:text-slate-900 gap-1.5"
+          className="text-xs text-slate-500 hover:text-slate-900 gap-1.5 font-medium -ml-2"
         >
           <Link href="/dashboard/scans">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Scan History</span>
           </Link>
         </Button>
+        <div className="text-xs text-slate-400 font-mono">Scan ID: {scan.id.slice(0, 8)}</div>
       </div>
 
       {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 1: SCAN SUMMARY
+          SECTION 1: SCAN SUMMARY & SCORE HERO ("What happened?")
           ------------------------------------------------------------------------- */}
-      <div className="bg-linear-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-800 rounded-xl p-6 text-white shadow-md space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-semibold text-amber-400 uppercase tracking-wider">
-              <Scan className="w-4 h-4" />
-              <span>Prompt Evaluation Deliverable</span>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
+        {/* Subtle decorative background blur */}
+        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          {/* Query Info & Metadata */}
+          <div className="space-y-3 max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-400 text-xs font-semibold uppercase tracking-wider">
+              <Scan className="w-3.5 h-3.5" />
+              <span>Prompt Evaluation Report</span>
             </div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-snug tracking-tight">
               &quot;{scan.queryPrompt}&quot;
             </h1>
-            <div className="flex items-center gap-3 text-xs text-slate-300 font-mono pt-1">
-              <span>Engine: {scan.aiModel}</span>
-              <span>•</span>
-              <span suppressHydrationWarning>Executed: {new Date(scan.createdAt).toLocaleString()}</span>
+
+            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-300 font-medium pt-1">
+              <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
+                <Bot className="w-3.5 h-3.5 text-amber-400" />
+                <span>Engine: {scan.aiModel}</span>
+              </span>
+
+              <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60" suppressHydrationWarning>
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>Executed: {new Date(scan.createdAt).toLocaleString()}</span>
+              </span>
+
               {scan.durationSeconds !== null && (
-                <>
-                  <span>•</span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    Runtime: {scan.durationSeconds}s
-                  </span>
-                </>
+                <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
+                  <Zap className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Duration: {scan.durationSeconds}s</span>
+                </span>
               )}
             </div>
           </div>
 
-          {/* Visibility Score Pill */}
-          <div className="bg-slate-950/70 p-4 rounded-xl border border-slate-800/80 flex items-center gap-4 shrink-0">
-            <div className="space-y-0.5">
-              <div className="text-[11px] text-slate-400 uppercase font-semibold">
+          {/* Visibility Score & Status Card */}
+          <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800/90 flex flex-col sm:flex-row items-center gap-5 shrink-0 shadow-inner">
+            <div className="text-center sm:text-left space-y-1">
+              <div className="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">
                 Visibility Score
               </div>
-              <div className="text-3xl font-extrabold text-amber-400">
-                {scan.visibilityScore !== null ? `${scan.visibilityScore}/100` : 'N/A'}
+              <div className="flex items-baseline justify-center sm:justify-start gap-1">
+                <span className={`text-4xl sm:text-5xl font-extrabold ${
+                  scan.visibilityScore !== null && scan.visibilityScore > 0
+                    ? 'text-emerald-400'
+                    : 'text-amber-400'
+                }`}>
+                  {scan.visibilityScore !== null ? scan.visibilityScore : '--'}
+                </span>
+                <span className="text-sm font-semibold text-slate-500">/100</span>
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">
+                {isMentioned ? 'Brand Mentioned in Response' : 'No Brand Mentions Detected'}
               </div>
             </div>
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                scan.status === 'completed'
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                  : scan.status === 'failed'
-                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                    : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-              }`}
-            >
-              {scan.status}
-            </span>
 
-            {(scan.status === 'pending' || scan.status === 'running') && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={isCancellingScan}
-                onClick={handleCancelScan}
-                className="bg-red-950/40 text-red-400 border-red-800 hover:bg-red-900/60 hover:text-red-300 text-xs shrink-0"
+            <div className="flex flex-col items-center sm:items-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-800 pt-4 sm:pt-0 sm:pl-5 w-full sm:w-auto">
+              <span
+                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${
+                  scan.status === 'completed'
+                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                    : scan.status === 'failed'
+                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                }`}
               >
-                {isCancellingScan ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                {scan.status === 'completed' ? (
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                ) : scan.status === 'failed' ? (
+                  <XCircle className="w-3.5 h-3.5" />
                 ) : (
-                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 )}
-                Cancel Scan
-              </Button>
-            )}
+                <span>{scan.status}</span>
+              </span>
+
+              {(scan.status === 'pending' || scan.status === 'running') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isCancellingScan}
+                  onClick={handleCancelScan}
+                  className="bg-red-950/40 text-red-400 border-red-800 hover:bg-red-900/60 hover:text-red-300 text-xs mt-1 w-full"
+                >
+                  {isCancellingScan ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  ) : (
+                    <XCircle className="w-3.5 h-3.5 mr-1" />
+                  )}
+                  Cancel Scan
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 2: RECOMMENDATIONS (ACTIONABLE PAYOFF)
+          SECTION 2: KEY AI VISIBILITY FINDINGS ("What did we find?")
           ------------------------------------------------------------------------- */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="border-b border-slate-100 pb-4 space-y-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-500" />
+              <span>Key AI Visibility Findings</span>
+            </h2>
+            <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+              Primary Analysis
+            </span>
+          </div>
+          <p className="text-xs text-slate-500">
+            What AI search engines synthesized for this prompt, brand mention results, and citation sources.
+          </p>
+        </div>
+
+        {/* AI Synthesis Summary Box */}
+        <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-2">
+              <Bot className="w-4 h-4 text-amber-600" />
+              <span>Executive Synthesis ({scan.aiModel})</span>
+            </h3>
+            {isMentioned ? (
+              <span className="text-[11px] font-bold uppercase bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                Brand Mention Detected
+              </span>
+            ) : (
+              <span className="text-[11px] font-semibold uppercase bg-slate-200 text-slate-700 px-2.5 py-0.5 rounded-full">
+                No Direct Brand Mention
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-800 leading-relaxed font-sans font-normal">
+            {scan.summary || 'No summary generated for this scan.'}
+          </p>
+        </div>
+
+        {/* 3-Column Visual Metrics Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* 1. Entity Mentions Card */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                <span>Brand Mentions</span>
+                <Search className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {aiVisibility.mentionSummary.length > 0 ? (
+                <div className="space-y-2 pt-1 max-h-36 overflow-y-auto">
+                  {aiVisibility.mentionSummary.map((m) => (
+                    <div
+                      key={m.id}
+                      className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-slate-900">{m.entityName}</span>
+                        <span className="text-[10px] uppercase font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded">
+                          {m.sentiment}
+                        </span>
+                      </div>
+                      {m.snippet && (
+                        <p className="text-[11px] text-slate-600 italic leading-snug">
+                          &quot;{m.snippet}&quot;
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="pt-2 text-xs text-slate-500 leading-relaxed">
+                  {isMentioned
+                    ? 'Brand mentioned in Gemini response synthesis.'
+                    : 'Your brand domain was not directly named in the primary AI output for this query prompt.'}
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+              <span>Status</span>
+              <span className="font-semibold text-slate-800">
+                {isMentioned ? 'Mentioned' : 'Not Mentioned'}
+              </span>
+            </div>
+          </div>
+
+          {/* 2. Citation Distribution Card */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                <span>Citation Breakdown</span>
+                <Globe2 className="w-4 h-4 text-slate-400" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="text-slate-500 text-[11px]">Your Domain</div>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {aiVisibility.citationSummary.ownCount}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Direct links</div>
+                </div>
+
+                <div className="bg-white p-3 rounded-lg border border-slate-200">
+                  <div className="text-slate-500 text-[11px]">External Sources</div>
+                  <div className="text-2xl font-bold text-blue-600">
+                    {aiVisibility.citationSummary.externalCount}
+                  </div>
+                  <div className="text-[10px] text-slate-400">Third-party sites</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+              <span>Total Citations</span>
+              <span className="font-semibold text-slate-800">
+                {aiVisibility.citationSummary.totalCount} source(s)
+              </span>
+            </div>
+          </div>
+
+          {/* 3. Top Source Domains Card */}
+          <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 flex flex-col justify-between space-y-3">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                <span>Top Citing Domains</span>
+                <Layers className="w-4 h-4 text-slate-400" />
+              </div>
+
+              {aiVisibility.citationSummary.topDomains.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {aiVisibility.citationSummary.topDomains.map((dom, idx) => (
+                    <span
+                      key={idx}
+                      className="bg-white px-2.5 py-1 rounded-md border border-slate-200 font-mono text-[11px] text-slate-700 shadow-2xs"
+                    >
+                      {dom}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 italic pt-2">
+                  No source domains cited for this prompt scan.
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-500">
+              <span>Unique Sources</span>
+              <span className="font-semibold text-slate-800">
+                {aiVisibility.citationSummary.topDomains.length} domain(s)
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Engine & Provider Readiness Grid */}
+        <div className="space-y-3 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600">
+              AI Search Engine Availability
+            </h3>
+            <span className="text-[11px] text-slate-400">
+              Multi-LLM engine analysis coverage
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {aiVisibility.platformBreakdown.map((p) => (
+              <div
+                key={p.provider}
+                className={`p-4 rounded-xl border text-xs flex flex-col justify-between gap-2.5 transition-all ${
+                  p.isAvailable
+                    ? 'bg-amber-500/5 border-amber-500/30 text-slate-900 shadow-2xs'
+                    : 'bg-slate-50/70 border-slate-200 text-slate-400'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-900">{p.displayName}</span>
+                  {p.isAvailable ? (
+                    <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-800 border border-amber-400/30 px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="text-[10px] uppercase font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
+                      Waitlisted
+                    </span>
+                  )}
+                </div>
+                {p.isAvailable ? (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-2xl font-bold text-slate-900">{p.score !== null ? p.score : 0}</span>
+                    <span className="text-slate-500 text-xs">/100</span>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-slate-400 italic">
+                    Engine support launching soon
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* -------------------------------------------------------------------------
+          SECTION 3: ACTIONABLE RECOMMENDATIONS ("What should I do next?")
+          ------------------------------------------------------------------------- */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
           <div className="space-y-1">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-amber-500" />
               <span>Recommended Optimization Tasks</span>
+              <span className="text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-full border border-amber-200">
+                {recommendations.length} total
+              </span>
             </h2>
             <p className="text-xs text-slate-500">
-              Tasks generated specifically for this scan prompt or linked evidence (
-              {recommendations.length} total)
+              Prioritized, actionable steps to resolve visibility gaps and boost citations for this scan prompt.
             </p>
           </div>
 
           {/* Category Filter */}
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 text-xs">
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 text-xs">
             <Tag className="w-3.5 h-3.5 text-slate-400" />
-            <span className="text-slate-500 font-medium">Filter Category:</span>
+            <span className="text-slate-500 font-medium">Category:</span>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="bg-transparent font-medium text-slate-800 focus:outline-none capitalize"
+              className="bg-transparent font-semibold text-slate-800 focus:outline-none capitalize cursor-pointer"
             >
-              <option value="all">All Categories</option>
+              <option value="all">All Categories ({recommendations.length})</option>
               <option value="citation_opportunity">Citation Opportunity</option>
               <option value="schema">Schema</option>
               <option value="content">Content</option>
@@ -242,468 +508,391 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
             ))}
           </div>
         ) : (
-          <div className="bg-slate-50 border border-dashed border-slate-300 rounded-lg p-8 text-center text-xs text-slate-500">
-            No recommendations linked to this scan match the selected category filter.
-          </div>
+          <EmptyState
+            icon={<Lightbulb className="w-8 h-8 text-slate-400" />}
+            title="No recommendations match filter"
+            description={`No actionable tasks found under the "${selectedCategory.replace('_', ' ')}" category for this scan.`}
+            action={
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedCategory('all')}
+                className="text-xs"
+              >
+                Reset Category Filter
+              </Button>
+            }
+          />
         )}
       </div>
 
       {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 3: AI VISIBILITY (WHAT THE LLM SAID)
+          SECTION 4: SUPPORTING EVIDENCE & TECHNICAL AUDITS (COLLAPSED BY DEFAULT)
           ------------------------------------------------------------------------- */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-500" />
-            <span>AI Model Response Analysis</span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            Verbatim mention details and citation sources extracted during prompt analysis
-          </p>
-        </div>
-
-        {/* Gemini Response Summary */}
-        <div className="bg-amber-500/5 border border-amber-500/20 p-4 rounded-xl space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-amber-700">
-            Google Gemini Synthesis Summary
-          </h3>
-          <p className="text-xs text-slate-800 leading-relaxed font-sans">
-            {scan.summary || 'No summary generated for this scan.'}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Entity Mentions Summary */}
-          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Detected Entity Mentions ({aiVisibility.mentionSummary.length})
-            </h3>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {aiVisibility.mentionSummary.length > 0 ? (
-                aiVisibility.mentionSummary.map((m) => (
-                  <div
-                    key={m.id}
-                    className="bg-white p-3 rounded-lg border border-slate-200 text-xs space-y-1"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">{m.entityName}</span>
-                      <span className="text-[10px] uppercase font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
-                        {m.sentiment}
-                      </span>
-                    </div>
-                    {m.snippet && (
-                      <p className="text-[11px] text-slate-600 italic leading-snug">
-                        &quot;{m.snippet}&quot;
-                      </p>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-xs text-slate-400 italic">
-                  No entity mentions detected for this scan prompt.
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Citations Summary */}
-          <div className="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-700">
-              Citations Summary ({aiVisibility.citationSummary.totalCount})
-            </h3>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <div className="text-slate-500 text-[11px]">Own Domain Citations</div>
-                <div className="text-lg font-bold text-emerald-600">
-                  {aiVisibility.citationSummary.ownCount}
-                </div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-slate-200">
-                <div className="text-slate-500 text-[11px]">External Citations</div>
-                <div className="text-lg font-bold text-blue-600">
-                  {aiVisibility.citationSummary.externalCount}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1 pt-1 text-xs">
-              <div className="text-[11px] font-semibold text-slate-500 uppercase">
-                Top Source Domains:
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {aiVisibility.citationSummary.topDomains.map((dom, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-white px-2.5 py-1 rounded border border-slate-200 font-mono text-[11px] text-slate-700"
-                  >
-                    {dom}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Provider Breakdown Grid */}
-        <div className="space-y-2 pt-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-            AI Provider Availability
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {aiVisibility.platformBreakdown.map((p) => (
-              <div
-                key={p.provider}
-                className={`p-3.5 rounded-xl border text-xs flex flex-col justify-between gap-2 ${
-                  p.isAvailable
-                    ? 'bg-amber-500/5 border-amber-500/30 text-slate-900'
-                    : 'bg-slate-50/80 border-slate-200 text-slate-400'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold">{p.displayName}</span>
-                  {p.isAvailable ? (
-                    <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-700 px-2 py-0.5 rounded-full">
-                      Executed
-                    </span>
-                  ) : (
-                    <span className="text-[10px] uppercase font-semibold bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">
-                      Unavailable
-                    </span>
-                  )}
-                </div>
-                {p.isAvailable ? (
-                  <div className="text-base font-bold text-slate-900">{p.score}/100</div>
-                ) : (
-                  <div className="text-[11px] text-slate-400 italic">
-                    Not yet available for this provider
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 4: COMPETITOR ANALYSIS (TIER 1 VS TIER 2 SPLIT)
-          ------------------------------------------------------------------------- */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Building className="w-5 h-5 text-slate-700" />
-              <span>Competitor Analysis</span>
+      <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 shadow-xs space-y-6">
+        <div className="border-b border-slate-100 pb-4 space-y-1">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-slate-700" />
+              <span>Supporting Evidence & Technical Audits</span>
             </h2>
-            <p className="text-xs text-slate-500">
-              Distinguishing scan-level competitor performance from domain profile benchmarks
-            </p>
+            <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-full">
+              Advanced Details
+            </span>
           </div>
-
-          <Button asChild variant="outline" size="sm" className="text-xs gap-1">
-            <Link href="/competitors">
-              <span>View All Competitors</span>
-              <ExternalLink className="w-3 h-3" />
-            </Link>
-          </Button>
+          <p className="text-xs text-slate-500">
+            In-depth competitor analysis, website crawl coverage, matched source pages, citations list, and verbatim raw AI payloads.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* TIER 1: In This Scan (Scan-Specific) */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
-                In This Scan (Tier 1 Scan-Specific)
-              </h3>
-              <span className="text-[10px] font-semibold uppercase bg-amber-500/10 text-amber-700 px-2 py-0.5 rounded">
-                Prompt Grounded
+        <div className="space-y-3">
+          {/* 1. Competitor Analysis Accordion */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <button
+              onClick={() => setIsCompetitorsExpanded((prev) => !prev)}
+              aria-expanded={isCompetitorsExpanded}
+              aria-controls="competitors-sec"
+              className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Building className="w-4 h-4 text-slate-600" />
+                <span>Competitor Benchmarking ({competitorAnalysis.tier1ScanCompetitors.length} in scan, {competitorAnalysis.tier2Profiles.length} tracked)</span>
               </span>
-            </div>
+              {isCompetitorsExpanded ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
 
-            {competitorAnalysis.tier1ScanCompetitors.length > 0 ? (
-              <div className="space-y-2">
-                {competitorAnalysis.tier1ScanCompetitors.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-slate-900">{c.name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
+            {isCompetitorsExpanded && (
+              <div id="competitors-sec" className="p-5 bg-white border-t border-slate-200 space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* TIER 1: In This Scan (Scan-Specific) */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        In This Scan (Tier 1 Prompt-Grounded)
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase bg-amber-100 text-amber-800 px-2 py-0.5 rounded border border-amber-200">
+                        Scan Specific
+                      </span>
                     </div>
-                    <div className="text-right">
-                      <div className="font-bold text-amber-600">
-                        {c.visibilityScore !== null ? `${c.visibilityScore}/100` : 'N/A'}
+
+                    {competitorAnalysis.tier1ScanCompetitors.length > 0 ? (
+                      <div className="space-y-2">
+                        {competitorAnalysis.tier1ScanCompetitors.map((c) => (
+                          <div
+                            key={c.id}
+                            className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-900">{c.name}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-amber-600">
+                                {c.visibilityScore !== null ? `${c.visibilityScore}/100` : 'N/A'}
+                              </div>
+                              <div className="text-[10px] text-slate-400">{c.mentionCount} mention(s)</div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="text-[10px] text-slate-400">{c.mentionCount} mention(s)</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-400 italic bg-white p-4 rounded-lg text-center border border-slate-200">
-                No competitor mentions detected in this specific scan response.
-              </div>
-            )}
-          </div>
-
-          {/* TIER 2: Competitor Profile (Domain-Level, Not Scan-Specific) */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-800">
-                Tracked Competitor Profiles (Tier 2 Domain-Level)
-              </h3>
-              <span className="text-[10px] font-semibold uppercase bg-blue-500/10 text-blue-700 px-2 py-0.5 rounded">
-                Domain Benchmark
-              </span>
-            </div>
-
-            {competitorAnalysis.tier2Profiles.length > 0 ? (
-              <div className="space-y-2">
-                {competitorAnalysis.tier2Profiles.map((c) => (
-                  <div
-                    key={c.id}
-                    className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-slate-900">{c.name}</div>
-                      <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
-                    </div>
-                    {c.tier2Crawled ? (
-                      <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
-                        Tier 2 Crawled
-                      </span>
                     ) : (
-                      <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
-                        not crawled yet
-                      </span>
+                      <div className="text-xs text-slate-400 italic bg-white p-4 rounded-lg text-center border border-slate-200">
+                        No competitor mentions detected in this specific scan response.
+                      </div>
                     )}
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-xs text-slate-400 italic bg-white p-4 rounded-lg text-center border border-slate-200">
-                No domain-level competitors tracked for this project.
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
-      {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 5: WEBSITE DISCOVERY
-          ------------------------------------------------------------------------- */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            <span>Website Discovery & Crawl Coverage</span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            Source domain readiness, sitemap indexing, and robots.txt constraints
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-            <div className="text-xs text-slate-500">Pages Crawled</div>
-            <div className="text-2xl font-bold text-slate-900">{websiteDiscovery.totalPages}</div>
-            <div className="text-[11px] text-slate-400">Indexed for context synthesis</div>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-            <div className="text-xs text-slate-500">Schema.org Coverage</div>
-            <div className="text-2xl font-bold text-amber-600">
-              {websiteDiscovery.schemaCoveragePct}%
-            </div>
-            <div className="text-[11px] text-slate-400">JSON-LD structured data</div>
-          </div>
-
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
-            <div className="text-xs text-slate-500">Metadata Completeness</div>
-            <div className="text-2xl font-bold text-blue-600">
-              {websiteDiscovery.metadataCoveragePct}%
-            </div>
-            <div className="text-[11px] text-slate-400">Title & description filled</div>
-          </div>
-
-          {/* Robots & Sitemap Summary */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1 text-xs">
-            <div className="text-slate-500 font-medium">Robots & Sitemap</div>
-            {websiteDiscovery.sitemapUrl !== null ? (
-              <div className="space-y-0.5 pt-1">
-                <div
-                  className="text-[11px] font-mono text-slate-800 truncate"
-                  title={websiteDiscovery.sitemapUrl}
-                >
-                  Sitemap: {websiteDiscovery.sitemapUrl}
-                </div>
-                <div className="text-[11px] text-slate-500">
-                  {websiteDiscovery.sitemapUrlsFound} URL(s) found •{' '}
-                  {websiteDiscovery.pagesSkippedRobots} skipped
-                </div>
-              </div>
-            ) : (
-              <div className="text-slate-400 italic pt-1">Not available for this scan</div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* -------------------------------------------------------------------------
-          NARRATIVE SECTION 6: EVIDENCE & PROOF (POSITIONED LAST AS SUPPORTING DETAILS)
-          ------------------------------------------------------------------------- */}
-      <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-xs space-y-6">
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <FileText className="w-5 h-5 text-slate-700" />
-            <span>Underlying Evidence & Verbatim Proof</span>
-          </h2>
-          <p className="text-xs text-slate-500">
-            Expandable source pages, full citation lists, and raw AI response text
-          </p>
-        </div>
-
-        {/* 1. Expandable Source Pages */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setIsSourcePagesExpanded((prev) => !prev)}
-            aria-expanded={isSourcePagesExpanded}
-            aria-controls="source-pages-sec"
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
-          >
-            <span className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-slate-600" />
-              <span>Source Pages Matched ({evidence.sourcePages.length})</span>
-            </span>
-            {isSourcePagesExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-          {isSourcePagesExpanded && (
-            <div id="source-pages-sec" className="p-4 space-y-2 bg-white text-xs">
-              {evidence.sourcePages.length > 0 ? (
-                evidence.sourcePages.map((sp) => (
-                  <div
-                    key={sp.id}
-                    className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1"
-                  >
+                  {/* TIER 2: Competitor Profile (Domain-Level) */}
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-center justify-between">
-                      <a
-                        href={sp.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-mono text-cyan-700 hover:underline truncate max-w-lg"
-                      >
-                        {sp.url}
-                      </a>
-                      <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                        Tracked Competitors (Tier 2 Domain Benchmarks)
+                      </h3>
+                      <span className="text-[10px] font-bold uppercase bg-blue-100 text-blue-800 px-2 py-0.5 rounded border border-blue-200">
+                        Domain Profiles
+                      </span>
+                    </div>
+
+                    {competitorAnalysis.tier2Profiles.length > 0 ? (
+                      <div className="space-y-2">
+                        {competitorAnalysis.tier2Profiles.map((c) => (
+                          <div
+                            key={c.id}
+                            className="bg-white p-3 rounded-lg border border-slate-200 flex items-center justify-between text-xs"
+                          >
+                            <div>
+                              <div className="font-bold text-slate-900">{c.name}</div>
+                              <div className="text-[11px] text-slate-500 font-mono">{c.domainName}</div>
+                            </div>
+                            {c.tier2Crawled ? (
+                              <span className="text-[10px] font-semibold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">
+                                Tier 2 Crawled
+                              </span>
+                            ) : (
+                              <span className="text-[10px] font-medium bg-slate-100 text-slate-500 px-2 py-0.5 rounded">
+                                Tracked Profile
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-400 italic bg-white p-4 rounded-lg text-center border border-slate-200">
+                        No domain-level competitors tracked for this project.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <Button asChild variant="outline" size="sm" className="text-xs gap-1.5">
+                    <Link href="/competitors">
+                      <span>Manage All Competitors</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Website Discovery & Crawl Coverage Accordion */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <button
+              onClick={() => setIsCrawlExpanded((prev) => !prev)}
+              aria-expanded={isCrawlExpanded}
+              aria-controls="crawl-sec"
+              className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Website Discovery & Crawl Coverage ({websiteDiscovery.totalPages} pages indexed)</span>
+              </span>
+              {isCrawlExpanded ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+
+            {isCrawlExpanded && (
+              <div id="crawl-sec" className="p-5 bg-white border-t border-slate-200 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                    <div className="text-xs text-slate-500 font-medium">Pages Crawled</div>
+                    <div className="text-2xl font-bold text-slate-900">{websiteDiscovery.totalPages}</div>
+                    <div className="text-[11px] text-slate-400">Indexed for LLM context</div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                    <div className="text-xs text-slate-500 font-medium">Schema.org Coverage</div>
+                    <div className="text-2xl font-bold text-amber-600">
+                      {websiteDiscovery.schemaCoveragePct}%
+                    </div>
+                    <div className="text-[11px] text-slate-400">JSON-LD structured data</div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1">
+                    <div className="text-xs text-slate-500 font-medium">Metadata Completeness</div>
+                    <div className="text-2xl font-bold text-blue-600">
+                      {websiteDiscovery.metadataCoveragePct}%
+                    </div>
+                    <div className="text-[11px] text-slate-400">Title & meta description</div>
+                  </div>
+
+                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-1 text-xs">
+                    <div className="text-slate-500 font-medium">Robots & Sitemap</div>
+                    {websiteDiscovery.sitemapUrl !== null ? (
+                      <div className="space-y-0.5 pt-1">
+                        <div
+                          className="text-[11px] font-mono text-slate-800 truncate"
+                          title={websiteDiscovery.sitemapUrl}
+                        >
+                          Sitemap: {websiteDiscovery.sitemapUrl}
+                        </div>
+                        <div className="text-[11px] text-slate-500">
+                          {websiteDiscovery.sitemapUrlsFound} URL(s) found •{' '}
+                          {websiteDiscovery.pagesSkippedRobots} skipped
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-slate-400 italic pt-1">Default indexing configuration</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. Matched Source Pages Accordion */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <button
+              onClick={() => setIsSourcePagesExpanded((prev) => !prev)}
+              aria-expanded={isSourcePagesExpanded}
+              aria-controls="source-pages-sec"
+              className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-slate-600" />
+                <span>Source Pages Matched ({evidence.sourcePages.length})</span>
+              </span>
+              {isSourcePagesExpanded ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+            {isSourcePagesExpanded && (
+              <div id="source-pages-sec" className="p-4 space-y-2 bg-white border-t border-slate-200 text-xs">
+                {evidence.sourcePages.length > 0 ? (
+                  evidence.sourcePages.map((sp) => (
+                    <div
+                      key={sp.id}
+                      className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                    >
+                      <div className="space-y-0.5 truncate max-w-2xl">
+                        {sp.title && (
+                          <p className="text-slate-900 text-xs font-semibold">{sp.title}</p>
+                        )}
+                        <a
+                          href={sp.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-mono text-cyan-700 hover:underline text-[11px] truncate block"
+                        >
+                          {sp.url}
+                        </a>
+                      </div>
+                      <span className="text-[10px] font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded self-start sm:self-auto">
                         HTTP {sp.httpStatus}
                       </span>
                     </div>
-                    {sp.title && (
-                      <p className="text-slate-600 text-[11px] font-medium">{sp.title}</p>
-                    )}
+                  ))
+                ) : (
+                  <div className="text-slate-400 italic p-4 text-center">
+                    No source pages directly matched to this scan prompt.
                   </div>
-                ))
-              ) : (
-                <div className="text-slate-400 italic">
-                  No source pages directly matched to this scan prompt.
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 2. Expandable Full Citations Table */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setIsCitationsExpanded((prev) => !prev)}
-            aria-expanded={isCitationsExpanded}
-            aria-controls="citations-sec"
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
-          >
-            <span className="flex items-center gap-2">
-              <ExternalLink className="w-4 h-4 text-blue-600" />
-              <span>Full Citations List ({evidence.citations.length})</span>
-            </span>
-            {isCitationsExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
+                )}
+              </div>
             )}
-          </button>
-          {isCitationsExpanded && (
-            <div id="citations-sec" className="p-4 bg-white text-xs overflow-x-auto">
-              {evidence.citations.length > 0 ? (
-                <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
-                    <tr>
-                      <th className="p-2">#</th>
-                      <th className="p-2">Domain</th>
-                      <th className="p-2">URL</th>
-                      <th className="p-2">Type</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {evidence.citations.map((c) => (
-                      <tr key={c.id}>
-                        <td className="p-2 font-mono text-slate-400">#{c.citationOrder}</td>
-                        <td className="p-2 font-mono text-slate-800">{c.sourceDomain}</td>
-                        <td className="p-2 font-mono text-cyan-700 truncate max-w-xs">
-                          {c.sourceUrl}
-                        </td>
-                        <td className="p-2">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
-                              c.isOwnDomain
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-blue-100 text-blue-800'
-                            }`}
-                          >
-                            {c.isOwnDomain ? 'Own Domain' : 'External'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : (
-                <div className="text-slate-400 italic">No citations recorded for this scan.</div>
-              )}
-            </div>
-          )}
-        </div>
+          </div>
 
-        {/* 3. Expandable Raw AI Response */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden">
-          <button
-            onClick={() => setIsRawResponseExpanded((prev) => !prev)}
-            aria-expanded={isRawResponseExpanded}
-            aria-controls="raw-response-sec"
-            className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-slate-900"
-          >
-            <span className="flex items-center gap-2">
-              <Code className="w-4 h-4 text-amber-600" />
-              <span>Verbatim Raw AI Response</span>
-            </span>
-            {isRawResponseExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
-          </button>
-          {isRawResponseExpanded && (
-            <div
-              id="raw-response-sec"
-              className="p-4 bg-slate-900 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed border-t border-slate-800"
+          {/* 4. Full Citations List Accordion */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <button
+              onClick={() => setIsCitationsExpanded((prev) => !prev)}
+              aria-expanded={isCitationsExpanded}
+              aria-controls="citations-sec"
+              className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
             >
-              {evidence.rawResponse && evidence.rawResponse.trim().length > 0
-                ? evidence.rawResponse
-                : 'Not available for this scan'}
-            </div>
-          )}
+              <span className="flex items-center gap-2">
+                <ExternalLink className="w-4 h-4 text-blue-600" />
+                <span>Full Citations List ({evidence.citations.length})</span>
+              </span>
+              {isCitationsExpanded ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+            {isCitationsExpanded && (
+              <div id="citations-sec" className="p-4 bg-white border-t border-slate-200 text-xs overflow-x-auto">
+                {evidence.citations.length > 0 ? (
+                  <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-50 text-slate-500 uppercase text-[10px]">
+                      <tr>
+                        <th className="p-2.5">#</th>
+                        <th className="p-2.5">Domain</th>
+                        <th className="p-2.5">Citation URL</th>
+                        <th className="p-2.5">Type</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {evidence.citations.map((c) => (
+                        <tr key={c.id} className="hover:bg-slate-50/60">
+                          <td className="p-2.5 font-mono text-slate-400">#{c.citationOrder}</td>
+                          <td className="p-2.5 font-mono font-semibold text-slate-800">{c.sourceDomain}</td>
+                          <td className="p-2.5 font-mono text-cyan-700 truncate max-w-md">
+                            <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                              {c.sourceUrl}
+                            </a>
+                          </td>
+                          <td className="p-2.5">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                                c.isOwnDomain
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}
+                            >
+                              {c.isOwnDomain ? 'Own Domain' : 'External'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="text-slate-400 italic p-4 text-center">No citations recorded for this scan.</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 5. Verbatim Raw AI Response Accordion */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <button
+              onClick={() => setIsRawResponseExpanded((prev) => !prev)}
+              aria-expanded={isRawResponseExpanded}
+              aria-controls="raw-response-sec"
+              className="w-full p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-xs font-semibold text-slate-800 transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-2">
+                <Code className="w-4 h-4 text-amber-600" />
+                <span>Verbatim Raw AI Response</span>
+              </span>
+              {isRawResponseExpanded ? (
+                <ChevronUp className="w-4 h-4 text-slate-500" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-500" />
+              )}
+            </button>
+            {isRawResponseExpanded && (
+              <div id="raw-response-sec" className="bg-slate-900 border-t border-slate-800">
+                <div className="flex items-center justify-between px-4 py-2 bg-slate-950 text-slate-400 text-xs border-b border-slate-800">
+                  <span className="font-mono text-[11px]">Raw AI Engine Response Text</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyRawResponse}
+                    disabled={!evidence.rawResponse}
+                    className="h-7 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 gap-1"
+                  >
+                    {copiedRawResponse ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy Response</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+                <div className="p-4 text-slate-100 font-mono text-xs whitespace-pre-wrap max-h-96 overflow-y-auto leading-relaxed">
+                  {evidence.rawResponse && evidence.rawResponse.trim().length > 0
+                    ? evidence.rawResponse
+                    : 'Not available for this scan'}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
