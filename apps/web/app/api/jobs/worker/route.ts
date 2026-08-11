@@ -36,21 +36,22 @@ function getClientIp(request: NextRequest): string {
 }
 
 function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: string; token?: string } {
-  const secret = process.env.JOB_WORKER_SECRET;
-  if (!secret || !secret.trim()) {
-    console.error('[SECURITY ERROR] JOB_WORKER_SECRET environment variable is not configured on server.');
+  const workerSecret = process.env.JOB_WORKER_SECRET?.trim();
+  const cronSecret = process.env.CRON_SECRET?.trim();
+  const authHeader = request.headers.get('authorization') || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
+  const customHeader = request.headers.get('x-job-worker-secret')?.trim() || '';
+  const supabaseCron = request.headers.get('x-supabase-worker') === '1';
+
+  if (workerSecret && token && safeCompare(token, workerSecret)) return { authorized: true, token };
+  if (workerSecret && customHeader && safeCompare(customHeader, workerSecret)) return { authorized: true, token: customHeader };
+  if (supabaseCron && cronSecret && token && safeCompare(token, cronSecret)) return { authorized: true, token };
+
+  if (!workerSecret && !cronSecret) {
+    console.error('[SECURITY ERROR] Neither JOB_WORKER_SECRET nor CRON_SECRET is configured on the server.');
     return { authorized: false, error: 'Server configuration error: Worker authorization secret is not configured.' };
   }
-  const trimmedSecret = secret.trim();
-  const authHeader = request.headers.get('authorization') || '';
-  if (authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7).trim();
-    if (safeCompare(token, trimmedSecret)) return { authorized: true, token };
-  }
-  const customHeader = request.headers.get('x-job-worker-secret') || '';
-  if (customHeader && safeCompare(customHeader.trim(), trimmedSecret)) {
-    return { authorized: true, token: customHeader.trim() };
-  }
+
   return { authorized: false, error: 'Unauthorized worker request.' };
 }
 
