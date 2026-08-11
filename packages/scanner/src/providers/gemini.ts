@@ -51,10 +51,10 @@ export class GeminiProvider implements AIVisibilityProvider {
 
   constructor(options?: GeminiProviderOptions) {
     this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || '';
-    this.modelName = options?.primaryModel || 'gemini-3.6-flash';
-    // Only use currently supported production models. Gemini 2.5 Flash and 1.5 Flash
-    // were returning model-unavailable errors for this API project.
-    this.fallbackModels = options?.fallbackModels || ['gemini-3.5-flash-lite', 'gemini-3.5-flash'];
+    // Pin production to the stable Gemini 2.5 generation. Do not silently
+    // move existing scans to newer 3.x models.
+    this.modelName = options?.primaryModel || 'gemini-2.5-flash';
+    this.fallbackModels = options?.fallbackModels || ['gemini-2.5-flash-lite', 'gemini-2.5-pro'];
   }
 
   private formatError(err: unknown): string {
