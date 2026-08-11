@@ -7,7 +7,7 @@ import { getScanHistoryData, type ScanHistoryItem } from '../actions';
 import { startVisibilityScanAction } from '@/app/(dashboard)/projects/scan-actions';
 import { useDashboardRealtime } from '@/hooks/use-dashboard-realtime';
 import { Button } from '@/components/ui/button';
-import { Scan, Play, Loader2, RefreshCw, Search, CheckCircle2, XCircle, Clock, Globe2, BrainCircuit, FileCheck2 } from 'lucide-react';
+import { Scan, Play, Loader2, RefreshCw, Search, CheckCircle2, XCircle, Clock, FileCheck2, Building, Sparkles, Bot, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ScansClientViewProps {
@@ -162,7 +162,7 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
           <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-amber-100">
             <div className="h-full w-1/3 animate-[scan-progress_1.6s_ease-in-out_infinite] rounded-full bg-amber-500" />
           </div>
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
@@ -172,10 +172,12 @@ export function ScansClientView({ projectId, initialScans }: ScansClientViewProp
               </div>
               <p className="mt-1.5 text-xs text-slate-600">Live status is checked automatically. Keep this page open to watch it finish.</p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600">
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center"><Globe2 className="mx-auto mb-1 h-4 w-4" />Crawl</div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center"><BrainCircuit className="mx-auto mb-1 h-4 w-4" />Analyze</div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center"><FileCheck2 className="mx-auto mb-1 h-4 w-4" />Report</div>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] text-slate-700">
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium"><Building className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" /> 1. Business Profile</div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium"><Sparkles className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" /> 2. Search Queries</div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium"><Bot className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" /> 3. AI Engines</div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium"><Activity className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" /> 4. Analyzing</div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium"><FileCheck2 className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" /> 5. Building Report</div>
             </div>
           </div>
         </section>

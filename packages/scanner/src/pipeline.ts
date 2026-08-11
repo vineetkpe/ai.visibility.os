@@ -66,21 +66,44 @@ export async function runVisibilityScanPipeline(
   };
 
   try {
-    // 1. Require a valid current business_context_versions row (resolved via created_at DESC)
-    const { data: currentVersions, error: versionError } = await supabase
-      .from('business_context_versions')
-      .select('id, industry, description, value_proposition, target_audience')
-      .eq('project_id', projectId)
-      .order('created_at', { ascending: false })
-      .limit(1);
+    // 1. Resolve current business_context_versions row (or auto-generate if missing)
+    let currentVersions = (
+      await supabase
+        .from('business_context_versions')
+        .select('id, industry, description, value_proposition, target_audience')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+    ).data;
 
-    if (versionError || !currentVersions || currentVersions.length === 0) {
+    if (!currentVersions || currentVersions.length === 0) {
+      const { runBusinessContextPipeline } = await import('@ai-visibility-os/context');
+      const contextResult = await runBusinessContextPipeline(supabase, { projectId });
+      if (contextResult.status === 'failed' || !contextResult.contextVersionId) {
+        return finish({
+          projectId,
+          scansExecuted: 0,
+          status: 'failed',
+          error: contextResult.error || 'Failed to prepare business profile for scan execution.',
+        });
+      }
+
+      currentVersions = (
+        await supabase
+          .from('business_context_versions')
+          .select('id, industry, description, value_proposition, target_audience')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+      ).data;
+    }
+
+    if (!currentVersions || currentVersions.length === 0) {
       return finish({
         projectId,
         scansExecuted: 0,
         status: 'failed',
-        error:
-          'Scan generation requires a current business context version. Please generate business context first.',
+        error: 'Failed to retrieve business profile version.',
       });
     }
 

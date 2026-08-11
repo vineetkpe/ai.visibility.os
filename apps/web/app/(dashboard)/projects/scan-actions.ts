@@ -40,49 +40,26 @@ export async function startVisibilityScanAction(
       return { success: false, error: 'Project not found or access denied.' };
     }
 
-    // 3. Gate check: Verify project has a current business context version
-    const { data: currentVersions, error: versionCheckError } = await supabase
+    // 3. Resolve or auto-generate business context version
+    const { data: currentVersions } = await supabase
       .from('business_context_versions')
       .select('id')
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
       .limit(1);
 
-    if (versionCheckError) {
-      return { success: false, error: versionCheckError.message };
-    }
-
     if (!currentVersions || currentVersions.length === 0) {
-      // Check status of recent business_context job for this project to report exact status/error
-      const { data: recentContextJobs } = await supabase
-        .from('jobs')
-        .select('id, status, error_message')
-        .eq('project_id', projectId)
-        .eq('job_type', 'business_context')
-        .order('created_at', { ascending: false })
-        .limit(1);
+      const { runBusinessContextPipeline } = await import('@ai-visibility-os/context');
+      const contextResult = await runBusinessContextPipeline(supabase, { projectId });
 
-      const latestContextJob = recentContextJobs?.[0];
-      if (latestContextJob?.status === 'failed') {
-        const errorDetail = latestContextJob.error_message ? `: ${latestContextJob.error_message}` : '.';
+      if (contextResult.status === 'failed' || !contextResult.contextVersionId) {
         return {
           success: false,
-          error: `Business context generation failed because AI synthesis is unavailable${errorDetail}`,
+          error:
+            contextResult.error ||
+            'Unable to prepare business profile for this website. Please check site configuration or retry.',
         };
       }
-
-      if (latestContextJob?.status === 'running' || latestContextJob?.status === 'queued') {
-        return {
-          success: false,
-          error: 'Business context generation is currently in progress. Please wait for it to complete.',
-        };
-      }
-
-      return {
-        success: false,
-        error:
-          'Scan generation requires a current business context. Please generate business context first.',
-      };
     }
 
     // 4. Create pending job record

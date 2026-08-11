@@ -16,7 +16,7 @@ import {
 } from '@/components/dashboard/dashboard-widgets';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, Sparkles, FolderPlus, Globe2, BrainCircuit, FileCheck2 } from 'lucide-react';
+import { Play, Loader2, Sparkles, FolderPlus, FileCheck2, Building, Bot, Activity } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardClientViewProps {
@@ -136,37 +136,45 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
 
       {isScanRunning && (
         <section
-          className="relative overflow-hidden rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-slate-50 p-6 shadow-sm"
+          className="relative overflow-hidden rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-slate-50 p-6 shadow-xs"
           role="status"
           aria-live="polite"
         >
           <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-amber-100">
             <div className="h-full w-1/3 animate-pulse rounded-full bg-amber-500" />
           </div>
-          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
                 <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
                   <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
                 </span>
-                AI Visibility Scan in progress
+                <span>AI Visibility Scan in Progress</span>
               </div>
               <p className="mt-2 text-xs text-slate-600">
-                We&apos;re collecting your site signals and evaluating AI visibility. This page will update automatically.
+                Evaluating your brand&apos;s AI search presence and generating visibility analytics. This page will update automatically.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600">
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
-                <Globe2 className="mx-auto mb-1 h-4 w-4 text-slate-500" />
-                Crawl
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-[11px] text-slate-700">
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium">
+                <Building className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" />
+                <span>1. Business Profile</span>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
-                <BrainCircuit className="mx-auto mb-1 h-4 w-4 text-slate-500" />
-                Analyze
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium">
+                <Sparkles className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" />
+                <span>2. Search Queries</span>
               </div>
-              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
-                <FileCheck2 className="mx-auto mb-1 h-4 w-4 text-slate-500" />
-                Report
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium">
+                <Bot className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" />
+                <span>3. AI Engines</span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium">
+                <Activity className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" />
+                <span>4. Analyzing</span>
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-center shadow-2xs font-medium">
+                <FileCheck2 className="mx-auto mb-1 h-3.5 w-3.5 text-amber-500" />
+                <span>5. Building Report</span>
               </div>
             </div>
           </div>

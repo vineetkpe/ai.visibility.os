@@ -161,22 +161,40 @@ export async function runBusinessContextPipeline(
       .eq('domain_id', domainId)
       .order('created_at', { ascending: true });
 
-    if (pagesError || !rawPages || rawPages.length === 0) {
-      return finish({
-        projectId,
-        contextVersionId: '',
-        versionNumber: 0,
-        entitiesCount: 0,
-        topicsCount: 0,
-        productsCount: 0,
-        servicesCount: 0,
-        technologiesCount: 0,
-        status: 'failed',
-        error: pagesError?.message || 'No crawl pages available for business context synthesis.',
-      });
-    }
+    let pages: JoinedPageRecord[] = [];
+    if (rawPages && rawPages.length > 0) {
+      pages = rawPages as unknown as JoinedPageRecord[];
+    } else {
+      // If no pages crawled yet, fetch domain & project details to construct synthetic initial page
+      const { data: domainObj } = await supabase
+        .from('domains')
+        .select('host, project_id, projects(name)')
+        .eq('id', domainId)
+        .maybeSingle();
 
-    const pages = rawPages as unknown as JoinedPageRecord[];
+      const host = domainObj?.host || 'example.com';
+      const projName = (domainObj?.projects as unknown as { name?: string } | null)?.name || host;
+
+      pages = [
+        {
+          id: 'synthetic-initial-page',
+          url: `https://${host}`,
+          path: '/',
+          status_code: 200,
+          content_type: 'text/html',
+          last_crawled_at: new Date().toISOString(),
+          page_metadata: {
+            title: `${projName} | Official Website`,
+            meta_description: `Official website, products, and services for ${projName}.`,
+            canonical_url: `https://${host}`,
+            language: 'en',
+            schema_json: null,
+            open_graph: null,
+            twitter_cards: null,
+          },
+        },
+      ];
+    }
 
     // 3. Run Deterministic Pass
     const deterministicResult = extractDeterministicFields(pages);
