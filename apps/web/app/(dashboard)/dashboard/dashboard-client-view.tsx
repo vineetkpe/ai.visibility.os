@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getDashboardOverviewData, type DashboardOverviewData } from './actions';
 import { startVisibilityScanAction } from '@/app/(dashboard)/projects/scan-actions';
@@ -16,7 +16,7 @@ import {
 } from '@/components/dashboard/dashboard-widgets';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Button } from '@/components/ui/button';
-import { Play, Loader2, Sparkles, FolderPlus } from 'lucide-react';
+import { Play, Loader2, Sparkles, FolderPlus, Globe2, BrainCircuit, FileCheck2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface DashboardClientViewProps {
@@ -26,11 +26,10 @@ interface DashboardClientViewProps {
 
 export function DashboardClientView({ projectId, initialData }: DashboardClientViewProps) {
   const [isTriggeringScan, setIsTriggeringScan] = useState(false);
+  const [isScanRunning, setIsScanRunning] = useState(false);
 
-  // 1. Enable Supabase Realtime live subscriptions (invalidates Query cache on scan/job updates)
   useDashboardRealtime(projectId);
 
-  // 2. Fetch Dashboard Overview Data with TanStack Query
   const {
     data: overviewData,
     isLoading,
@@ -47,24 +46,38 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
       return res.data;
     },
     initialData,
-    staleTime: 1000 * 30, // 30 seconds
+    staleTime: 1000 * 30,
   });
 
-  // Handle Trigger Scan
+  useEffect(() => {
+    if (!isScanRunning) return;
+
+    const interval = window.setInterval(async () => {
+      const result = await refetch();
+      const status = result.data?.latestScan?.status?.toLowerCase();
+      if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+        setIsScanRunning(false);
+      }
+    }, 2500);
+
+    return () => window.clearInterval(interval);
+  }, [isScanRunning, refetch]);
+
   const handleTriggerScan = async () => {
     setIsTriggeringScan(true);
+    setIsScanRunning(true);
     try {
-      toast.info('Dispatching AI Visibility Engine scan task...');
+      toast.info('Starting your AI visibility scan...');
       const res = await startVisibilityScanAction(projectId);
       if (res.success) {
-        toast.success(
-          'Visibility scan task dispatched! Realtime updates will automatically refresh results once completed.'
-        );
-        refetch();
+        toast.success('Scan started. You can watch the progress below.');
+        await refetch();
       } else {
-        toast.error(res.error || 'Failed to dispatch visibility scan.');
+        setIsScanRunning(false);
+        toast.error(res.error || 'Failed to start visibility scan.');
       }
     } catch {
+      setIsScanRunning(false);
       toast.error('An unexpected error occurred while starting visibility scan.');
     } finally {
       setIsTriggeringScan(false);
@@ -105,7 +118,7 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
       <EmptyState
         icon={<FolderPlus className="h-8 w-8 text-slate-400" />}
         title="No project found"
-        description="Please complete onboarding or create a website project first."
+        description="Create your first project to start tracking AI visibility."
       />
     );
   }
@@ -114,7 +127,6 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
 
   return (
     <div className="space-y-6">
-      {/* Widget 1: Project Overview & Latest Scan Header */}
       <ProjectOverviewWidget
         project={overviewData.project}
         latestScan={overviewData.latestScan}
@@ -122,17 +134,52 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
         isTriggering={isTriggeringScan}
       />
 
-      {/* Empty State Prompt if no scans run yet */}
-      {hasNoScans && (
+      {isScanRunning && (
+        <section
+          className="relative overflow-hidden rounded-2xl border border-amber-200 bg-linear-to-br from-amber-50 via-white to-slate-50 p-6 shadow-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-amber-100">
+            <div className="h-full w-1/3 animate-[scan-progress_1.6s_ease-in-out_infinite] rounded-full bg-amber-500" />
+          </div>
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                </span>
+                AI Visibility Scan in progress
+              </div>
+              <p className="mt-2 text-xs text-slate-600">
+                We&apos;re collecting your site signals and evaluating AI visibility. This page will update automatically.
+              </p>
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-[11px] text-slate-600">
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
+                <Globe2 className="mx-auto mb-1 h-4 w-4 text-slate-500" />
+                Crawl
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
+                <BrainCircuit className="mx-auto mb-1 h-4 w-4 text-slate-500" />
+                Analyze
+              </div>
+              <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-center">
+                <FileCheck2 className="mx-auto mb-1 h-4 w-4 text-slate-500" />
+                Report
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {hasNoScans && !isScanRunning && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-6 text-center space-y-3">
           <Sparkles className="w-8 h-8 text-amber-500 mx-auto" />
           <div className="space-y-1">
-            <h3 className="text-base font-bold text-slate-900">
-              No AI visibility scans executed yet
-            </h3>
+            <h3 className="text-base font-bold text-slate-900">Your first scan is the next step</h3>
             <p className="text-xs text-slate-600 max-w-md mx-auto">
-              Start your first visibility scan to evaluate AI search engine recommendations and
-              prompt citation performance.
+              Scan your website to see how AI engines understand, mention, and cite your brand.
             </p>
           </div>
           <Button
@@ -148,29 +195,18 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
             ) : (
               <>
                 <Play className="w-4 h-4 fill-slate-950" />
-                <span>Execute First Scan</span>
+                <span>Start My First Scan</span>
               </>
             )}
           </Button>
         </div>
       )}
 
-      {/* Widget 2: AI Visibility Trend Line Chart */}
       <VisibilityTrendChart mentionHistory={overviewData.visibility.mentionHistory} />
-
-      {/* Widget 3: AI Platform Breakdown (Gemini real data + unavailable badges) */}
       <AIPlatformBreakdownWidget platforms={overviewData.visibility.platformBreakdown} />
-
-      {/* Widget 4: Competitor Benchmarks (Bar charts & Tier 2 indicators) */}
       <CompetitorBenchmarkingWidget competitors={overviewData.competitors} />
-
-      {/* Widget 5: Recommendations Overview (Links to /recommendations) */}
       <RecommendationsSummaryWidget recommendations={overviewData.recommendations} />
-
-      {/* Widget 6: Website Health (Pages, Schema %, Metadata %) */}
       <WebsiteHealthWidget health={overviewData.websiteHealth} />
-
-      {/* Widget 7: Recent Activity & System Jobs Log */}
       <RecentActivityWidget recentActivity={overviewData.recentActivity} />
     </div>
   );
