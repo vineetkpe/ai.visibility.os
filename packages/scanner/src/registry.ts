@@ -23,10 +23,9 @@ export interface ProviderConfig {
   capabilities: ProviderCapabilities;
 }
 
-// Keep production on the stable Gemini 2.5 generation. Do not silently move
-// existing scans to newer 3.x models.
-const GEMINI_PRIMARY_MODEL = 'gemini-2.5-flash';
-const GEMINI_FALLBACK_MODELS = ['gemini-2.5-pro'];
+// Use a supported, non-latest Gemini generation for production. Keep 3.6 out of production.
+const GEMINI_PRIMARY_MODEL = 'gemini-3.5-flash';
+const GEMINI_FALLBACK_MODELS = ['gemini-3.1-flash-lite'];
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   gemini: {
