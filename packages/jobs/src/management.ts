@@ -10,7 +10,8 @@ export interface ClaimJobOptions {
 /**
  * Atomically claims the next queued job using the PostgreSQL claim_next_job RPC function.
  * Uses FOR UPDATE SKIP LOCKED via RPC to prevent double execution.
- * Authoritative: If the RPC call fails, throws the exact database error.
+ * Exhausted queued jobs are marked failed and skipped so one broken job cannot
+ * starve the entire production queue.
  */
 export async function claimNextJob(
   supabase: SupabaseClient<Database>,
@@ -19,21 +20,35 @@ export async function claimNextJob(
   const p_job_type = options?.jobType ?? null;
   const p_project_id = options?.projectId ?? null;
 
-  const { data, error } = await supabase.rpc('claim_next_job', {
-    p_job_type,
-    p_project_id,
-  });
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const { data, error } = await supabase.rpc('claim_next_job', {
+      p_job_type,
+      p_project_id,
+    });
 
-  if (error) {
-    console.error('Failed to claim next job:', error.message);
-    throw new Error(`claimNextJob RPC error: ${error.message}`);
+    if (error) {
+      console.error('Failed to claim next job:', error.message);
+      throw new Error(`claimNextJob RPC error: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) return null;
+
+    const job = data[0];
+    if (!job) return null;
+
+    if (job.retry_count >= job.max_retries) {
+      await failJob(
+        supabase,
+        job.id,
+        job.error_message || 'Job exceeded maximum retries and was skipped.'
+      );
+      continue;
+    }
+
+    return job;
   }
 
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  return data[0] ?? null;
+  return null;
 }
 
 /**
