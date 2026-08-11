@@ -118,15 +118,28 @@ export function ProjectOverviewWidget({
           )}
         </div>
 
-        <Button
-          size="sm"
-          onClick={onTriggerScan}
-          disabled={isTriggering}
-          className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs gap-1.5 shrink-0"
-        >
-          <Play className="w-3.5 h-3.5 fill-slate-950" />
-          <span>{isTriggering ? 'Dispatching...' : 'Start New Scan'}</span>
-        </Button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={onTriggerScan}
+            disabled={isTriggering}
+            className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold text-xs gap-1.5 shrink-0"
+          >
+            <Play className="w-3.5 h-3.5 fill-slate-950" />
+            <span>{isTriggering ? 'Dispatching...' : 'Start New Scan'}</span>
+          </Button>
+
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="text-xs bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800 hover:text-white shrink-0"
+          >
+            <Link href="/dashboard/scans">
+              <span>View Scan History & Reports</span>
+            </Link>
+          </Button>
+        </div>
       </div>
     </div>
   );

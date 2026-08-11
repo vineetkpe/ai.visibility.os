@@ -8,5 +8,6 @@ export {
   DeepSeekProvider,
   GrokProvider,
 } from './src/providers/stubs';
+export * from './src/registry';
 export { generatePromptsFromContext, syncPromptLibrary } from './src/prompts/generator';
 export { runVisibilityScanPipeline } from './src/pipeline';

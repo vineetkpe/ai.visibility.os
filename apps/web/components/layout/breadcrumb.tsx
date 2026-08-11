@@ -25,7 +25,7 @@ export function Breadcrumb({ items, className, ...props }: BreadcrumbProps) {
 
     const segments = pathname.split('/').filter(Boolean);
     return [
-      { label: 'Dashboard', href: '/' },
+      { label: 'Dashboard', href: '/dashboard' },
       ...segments.map((segment, index) => {
         const href = `/${segments.slice(0, index + 1).join('/')}`;
         const label = segment.replace(/-/g, ' ').replace(/^\w/, (c) => c.toUpperCase());
@@ -43,7 +43,7 @@ export function Breadcrumb({ items, className, ...props }: BreadcrumbProps) {
       <ol className="flex items-center space-x-2">
         <li className="inline-flex items-center">
           <Link
-            href="/"
+            href="/dashboard"
             className="inline-flex items-center text-slate-500 hover:text-slate-900 transition-colors"
           >
             <Home className="h-4 w-4" />

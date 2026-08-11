@@ -4,7 +4,7 @@ import type {
   VisibilityScanPipelineResult,
   BusinessContextFieldRecord,
 } from './types';
-import { GeminiProvider } from './providers/gemini';
+import { getProvider } from './registry';
 import { generatePromptsFromContext, syncPromptLibrary } from './prompts/generator';
 
 type ValidEntityType = 'organization' | 'person' | 'brand' | 'location' | 'other';
@@ -161,7 +161,7 @@ export async function runVisibilityScanPipeline(
       });
     }
 
-    const provider = new GeminiProvider();
+    const provider = getProvider('gemini');
     let scansExecuted = 0;
     let lastScanErrorMessage: string | undefined = undefined;
     const normalizedTargetDomain = targetDomainName.toLowerCase().replace(/^www\./, '');

@@ -11,6 +11,12 @@ interface GroundingChunk {
   web?: GroundingChunkWeb;
 }
 
+export interface GeminiProviderOptions {
+  apiKey?: string;
+  primaryModel?: string;
+  fallbackModels?: string[];
+}
+
 const analysisResponseSchema: Schema = {
   type: Type.OBJECT,
   properties: {
@@ -62,16 +68,63 @@ const analysisResponseSchema: Schema = {
 
 export class GeminiProvider implements AIVisibilityProvider {
   readonly providerName = 'gemini';
-  readonly modelName = 'gemini-3.6-flash';
+  readonly modelName: string;
+  readonly fallbackModels: string[];
   private apiKey: string;
 
-  constructor(apiKey?: string) {
-    this.apiKey = apiKey || process.env.GEMINI_API_KEY || '';
+  constructor(options?: GeminiProviderOptions) {
+    this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || '';
+    this.modelName = options?.primaryModel || 'gemini-3.6-flash';
+    this.fallbackModels = options?.fallbackModels || ['gemini-2.5-flash', 'gemini-1.5-flash'];
   }
 
   /**
-   * Call 1: Executes Google Search grounded query using gemini-3.6-flash with google_search tool.
-   * Model fallback is allowed ONLY for valid models that actually exist and successfully return real data.
+   * Helper to format raw error objects into clean, diagnostic error strings.
+   */
+  private formatError(err: unknown): string {
+    if (!err) return 'Unknown error occurred.';
+    let message = err instanceof Error ? err.message : String(err);
+
+    // Try parsing JSON error strings returned by GCP / Google SDK
+    if (message.startsWith('{') && message.includes('"message"')) {
+      try {
+        const parsed = JSON.parse(message);
+        if (parsed.error?.message) {
+          message = parsed.error.message;
+        }
+      } catch {
+        // Keep original if parse fails
+      }
+    }
+
+    if (
+      message.includes('RESOURCE_EXHAUSTED') ||
+      message.includes('429') ||
+      message.includes('Quota exceeded')
+    ) {
+      return `Quota exceeded for Gemini model (${message.trim()})`;
+    }
+    if (
+      message.includes('API_KEY_INVALID') ||
+      message.includes('API key not valid') ||
+      message.includes('401') ||
+      message.includes('403')
+    ) {
+      return `Google Gemini API Authentication Failed: ${message.trim()}`;
+    }
+    if (
+      message.includes('NOT_FOUND') ||
+      message.includes('404') ||
+      message.includes('is not found')
+    ) {
+      return `Gemini Model Unavailable: ${message.trim()}`;
+    }
+
+    return message;
+  }
+
+  /**
+   * Call 1: Executes Google Search grounded query using primary model with fallbacks.
    */
   async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> {
     if (!this.apiKey) {
@@ -79,9 +132,9 @@ export class GeminiProvider implements AIVisibilityProvider {
     }
 
     const ai = new GoogleGenAI({ apiKey: this.apiKey });
-    const modelsToTry = [this.modelName, 'gemini-2.0-flash'];
+    const modelsToTry = Array.from(new Set([this.modelName, ...this.fallbackModels]));
     let response: GenerateContentResponse | null = null;
-    let lastError: unknown = null;
+    const attemptedErrors: string[] = [];
 
     for (const model of modelsToTry) {
       try {
@@ -99,33 +152,25 @@ export class GeminiProvider implements AIVisibilityProvider {
         });
         if (response) break;
       } catch (err: unknown) {
-        lastError = err;
-        const errString = err instanceof Error ? err.message : String(err);
-        console.warn(`Gemini model ${model} grounded query failed:`, errString);
-        if (errString.includes('429') || errString.includes('RESOURCE_EXHAUSTED')) {
+        const formatted = this.formatError(err);
+        attemptedErrors.push(`[${model}]: ${formatted}`);
+        console.warn(`Gemini model ${model} grounded query failed:`, formatted);
+
+        // If rate limited or quota error, pause briefly before attempting fallback model
+        if (
+          formatted.includes('Quota') ||
+          formatted.includes('RESOURCE_EXHAUSTED') ||
+          formatted.includes('429')
+        ) {
           await new Promise((resolve) => setTimeout(resolve, 1500));
         }
       }
     }
 
     if (!response) {
-      let errMsg = 'Gemini AI query failed.';
-      if (lastError instanceof Error) {
-        errMsg = lastError.message;
-      } else if (typeof lastError === 'string') {
-        errMsg = lastError;
-      }
-      if (errMsg.startsWith('{') && errMsg.includes('"message"')) {
-        try {
-          const parsed = JSON.parse(errMsg);
-          if (parsed.error?.message) {
-            errMsg = parsed.error.message;
-          }
-        } catch {
-          // Keep original
-        }
-      }
-      throw new Error(errMsg);
+      throw new Error(
+        `Gemini AI query failed across models (${modelsToTry.join(', ')}). Errors: ${attemptedErrors.join(' | ')}`
+      );
     }
 
     const rawText = response.text || '';
@@ -194,14 +239,20 @@ export class GeminiProvider implements AIVisibilityProvider {
       .join('\n');
 
     const ai = new GoogleGenAI({ apiKey: this.apiKey });
-    const response = await ai.models.generateContent({
-      model: this.modelName,
-      contents: [
-        {
-          role: 'user',
-          parts: [
+    const modelsToTry = Array.from(new Set([this.modelName, ...this.fallbackModels]));
+    let response: GenerateContentResponse | null = null;
+    const attemptedErrors: string[] = [];
+
+    for (const model of modelsToTry) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: [
             {
-              text: `You are an objective AI search visibility auditor. Analyze ONLY the provided AI response text and web citations below for query "${promptText}".
+              role: 'user',
+              parts: [
+                {
+                  text: `You are an objective AI search visibility auditor. Analyze ONLY the provided AI response text and web citations below for query "${promptText}".
 Target Domain: "${targetDomainName}"
 
 CRITICAL INSTRUCTIONS:
@@ -213,15 +264,27 @@ ${rawText}
 
 REAL CITATIONS:
 ${citationSummary || 'None'}`,
+                },
+              ],
             },
           ],
-        },
-      ],
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisResponseSchema,
-      },
-    });
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: analysisResponseSchema,
+          },
+        });
+        if (response) break;
+      } catch (err: unknown) {
+        const formatted = this.formatError(err);
+        attemptedErrors.push(`[${model}]: ${formatted}`);
+      }
+    }
+
+    if (!response) {
+      throw new Error(
+        `Gemini analysis failed across models (${modelsToTry.join(', ')}). Errors: ${attemptedErrors.join(' | ')}`
+      );
+    }
 
     const outputText = response.text || '';
     let parsed: Record<string, unknown> = {};

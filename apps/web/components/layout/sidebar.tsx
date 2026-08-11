@@ -5,8 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
-  BarChart3,
-  Activity,
   Scan,
   Building,
   Lightbulb,
@@ -26,11 +24,9 @@ export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Competitors', href: '/competitors', icon: Building },
+  { label: 'Scan History & Reports', href: '/dashboard/scans', icon: Scan },
   { label: 'Recommendations', href: '/recommendations', icon: Lightbulb },
-  { label: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { label: 'Monitors', href: '/monitors', icon: Activity },
-  { label: 'AI Scans', href: '/dashboard/scans', icon: Scan },
+  { label: 'Competitors', href: '/competitors', icon: Building },
   { label: 'Settings', href: '/settings', icon: Settings },
 ];
 
@@ -98,7 +94,7 @@ export function Sidebar({ isOpen = false, onClose, className, ...props }: Sideba
                 const Icon = item.icon;
                 const isActive =
                   item.href === '/dashboard'
-                    ? pathname === '/dashboard' || pathname.startsWith('/dashboard/')
+                    ? pathname === '/dashboard'
                     : pathname.startsWith(item.href);
 
                 return (
