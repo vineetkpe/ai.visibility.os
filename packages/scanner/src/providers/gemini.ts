@@ -51,10 +51,9 @@ export class GeminiProvider implements AIVisibilityProvider {
 
   constructor(options?: GeminiProviderOptions) {
     this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || '';
-    // Pin production to the stable Gemini 2.5 generation. Do not silently
-    // move existing scans to newer 3.x models.
+    // Pin production to Gemini 2.5. Do not silently move existing scans to 3.x.
     this.modelName = options?.primaryModel || 'gemini-2.5-flash';
-    this.fallbackModels = options?.fallbackModels || ['gemini-2.5-flash-lite', 'gemini-2.5-pro'];
+    this.fallbackModels = options?.fallbackModels || ['gemini-2.5-pro'];
   }
 
   private formatError(err: unknown): string {
