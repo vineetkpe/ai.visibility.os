@@ -21,43 +21,33 @@ export interface CookieMethods {
   ) => void | Promise<void>;
 }
 
-/**
- * Creates a server-side Supabase client for Server Components, Actions, and Route Handlers.
- */
 export function createServerClient<T = Database>(cookieMethods: CookieMethods): SupabaseClient<T> {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
   return createSsrServerClient<T>(supabaseUrl, supabaseAnonKey, {
     cookies: {
-      getAll() {
-        return cookieMethods.getAll();
-      },
+      getAll() { return cookieMethods.getAll(); },
       setAll(cookiesToSet) {
-        if (cookieMethods.setAll) {
-          cookieMethods.setAll(cookiesToSet);
-        }
+        if (cookieMethods.setAll) cookieMethods.setAll(cookiesToSet);
       },
     },
   });
 }
 
-/**
- * Creates a token-authenticated Supabase client for background tasks where cookies are not available.
- * Attaches the access token via Authorization header so auth.uid() resolves correctly in RLS.
- */
 export function createTokenClient<T = Database>(accessToken: string): SupabaseClient<T> {
   const { supabaseUrl, supabaseAnonKey } = getSupabaseEnv();
 
   return createClient<T>(supabaseUrl, supabaseAnonKey, {
-    global: {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    },
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    auth: { persistSession: false, autoRefreshToken: false },
   });
 }
 
+/** Creates a trusted server-side client using a modern Supabase secret API key. */
+export function createServiceClient<T = Database>(secretKey: string): SupabaseClient<T> {
+  const { supabaseUrl } = getSupabaseEnv();
+
+  return createClient<T>(supabaseUrl, secretKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+}
