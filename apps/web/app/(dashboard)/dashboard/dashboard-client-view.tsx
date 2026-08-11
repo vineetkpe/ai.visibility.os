@@ -141,7 +141,7 @@ export function DashboardClientView({ projectId, initialData }: DashboardClientV
           aria-live="polite"
         >
           <div className="absolute inset-x-0 top-0 h-1 overflow-hidden bg-amber-100">
-            <div className="h-full w-1/3 animate-[scan-progress_1.6s_ease-in-out_infinite] rounded-full bg-amber-500" />
+            <div className="h-full w-1/3 animate-pulse rounded-full bg-amber-500" />
           </div>
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
             <div>
