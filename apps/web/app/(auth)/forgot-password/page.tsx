@@ -49,8 +49,14 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient();
       const origin = window.location.origin;
+
+      // Send the Supabase recovery link directly to the reset-password page.
+      // Supabase's browser client consumes the recovery session from the URL
+      // and keeps it available for auth.updateUser({ password }). Avoiding an
+      // intermediate server callback also avoids losing the recovery token
+      // when Supabase delivers it in the URL fragment.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/auth/callback?next=/reset-password`,
+        redirectTo: `${origin}/reset-password`,
       });
 
       if (resetError) {
