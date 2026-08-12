@@ -16,7 +16,9 @@ export function sanitizeRedirectUrl(url: string | null, fallback = '/dashboard')
 }
 
 const PROTECTED_PREFIXES = ['/dashboard', '/projects', '/settings', '/billing', '/onboarding'];
-const AUTH_ROUTES = ['/login', '/signup', '/forgot-password', '/reset-password'];
+// /reset-password must remain accessible after recovery because the callback
+// establishes an authenticated recovery session before redirecting here.
+const AUTH_ROUTES = ['/login', '/signup', '/forgot-password'];
 
 /**
  * Refreshes the Supabase auth session cookie on incoming network requests
@@ -78,7 +80,9 @@ export async function updateSession(request: NextRequest): Promise<NextResponse>
     return NextResponse.redirect(loginUrl);
   }
 
-  // 2. Auth page bypass: Authenticated user accessing auth routes
+  // 2. Auth page bypass: Authenticated user accessing auth routes.
+  // Password recovery is intentionally excluded so an authenticated recovery
+  // session can reach /reset-password and set the new password.
   const isAuthRoute = AUTH_ROUTES.some((route) => pathname.startsWith(route));
   if (isAuthRoute && user) {
     const rawRedirect = request.nextUrl.searchParams.get('redirect');
