@@ -17,33 +17,27 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   perplexity: { slug: 'perplexity', displayName: 'Perplexity', isActive: false, primaryModel: 'sonar-pro', fallbackModels: ['sonar'], capabilities: { searchGrounded: true, structuredOutput: true, supportedModels: ['sonar-pro', 'sonar'] } },
 };
 
-type ConfiguredProviderRow = {
-  id: string;
-  slug: string;
-  display_name: string;
-  adapter: string;
-  primary_model: string | null;
-  fallback_models: string[] | null;
-  base_url: string | null;
-  is_active: boolean;
-  is_default: boolean;
-};
+type ConfiguredProviderRow = { id: string; slug: string; display_name: string; adapter: string; primary_model: string | null; fallback_models: string[] | null; base_url: string | null; is_active: boolean; is_default: boolean; };
 
 async function loadConfiguredProvider(slug: string) {
   const secret = process.env.SUPABASE_SECRET_KEY;
   if (!secret || !process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error('Supabase worker configuration is missing.');
   const db = createServiceClient(secret) as any;
-  const { data: config, error } = await db.from('providers').select('id,slug,display_name,adapter,primary_model,fallback_models,base_url,is_active,is_default').eq('slug', slug).maybeSingle() as { data: ConfiguredProviderRow | null; error: any };
+  const query = db.from('providers').select('id,slug,display_name,adapter,primary_model,fallback_models,base_url,is_active,is_default');
+  const { data: config, error } = slug === 'gemini'
+    ? await query.eq('is_default', true).eq('is_active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    : await query.eq('slug', slug).maybeSingle();
   if (error) throw new Error(`Failed to load AI engine configuration: ${error.message}`);
-  if (!config || !config.is_active) throw new Error(`AI engine '${slug}' is not active. Enable it in Admin → AI Engines.`);
-  const { data: secretRow, error: secretError } = await db.from('provider_secrets').select('api_key').eq('provider_id', config.id).maybeSingle();
-  if (secretError || !secretRow?.api_key) throw new Error(`API key is not configured for AI engine '${config.display_name}'. Configure it in Admin → AI Engines.`);
+  if (!config || !config.is_active) throw new Error(`No active default AI engine is configured. Open Admin → AI Engines.`);
+  const row = config as ConfiguredProviderRow;
+  const { data: secretRow, error: secretError } = await db.from('provider_secrets').select('api_key').eq('provider_id', row.id).maybeSingle();
+  if (secretError || !secretRow?.api_key) throw new Error(`API key is not configured for AI engine '${row.display_name}'. Configure it in Admin → AI Engines.`);
 
-  const primaryModel = config.primary_model || DEFAULT_PROVIDER_CONFIGS[slug]?.primaryModel || 'gpt-4o-mini';
-  const fallbackModels = Array.isArray(config.fallback_models) ? config.fallback_models : [];
-  if (config.adapter === 'openai_compatible') return new OpenAICompatibleProvider({ apiKey: secretRow.api_key, primaryModel, baseUrl: config.base_url || undefined, providerName: config.display_name });
-  if (config.adapter === 'gemini') return new GeminiProvider({ apiKey: secretRow.api_key, primaryModel, fallbackModels });
-  throw new Error(`Unsupported adapter '${config.adapter}' for AI engine '${config.display_name}'.`);
+  const primaryModel = row.primary_model || DEFAULT_PROVIDER_CONFIGS[row.slug]?.primaryModel || 'gpt-4o-mini';
+  const fallbackModels = Array.isArray(row.fallback_models) ? row.fallback_models : [];
+  if (row.adapter === 'openai_compatible') return new OpenAICompatibleProvider({ apiKey: secretRow.api_key, primaryModel, baseUrl: row.base_url || undefined, providerName: row.display_name });
+  if (row.adapter === 'gemini') return new GeminiProvider({ apiKey: secretRow.api_key, primaryModel, fallbackModels });
+  throw new Error(`Unsupported adapter '${row.adapter}' for AI engine '${row.display_name}'.`);
 }
 
 class ConfiguredProvider implements AIVisibilityProvider {
