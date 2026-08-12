@@ -17,13 +17,11 @@ import { toast } from 'sonner';
 
 function getAuthErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message;
-
   if (typeof error === 'object' && error !== null) {
     const candidate = error as { message?: unknown; error_description?: unknown; msg?: unknown };
     for (const value of [candidate.message, candidate.error_description, candidate.msg]) {
       if (typeof value === 'string' && value.trim()) return value;
     }
-
     try {
       const serialized = JSON.stringify(error);
       if (serialized && serialized !== '{}') return serialized;
@@ -31,7 +29,6 @@ function getAuthErrorMessage(error: unknown, fallback: string): string {
       // Keep the safe fallback below.
     }
   }
-
   return fallback;
 }
 
@@ -49,14 +46,8 @@ export default function ForgotPasswordPage() {
     try {
       const supabase = createClient();
       const origin = window.location.origin;
-
-      // Send the Supabase recovery link directly to the reset-password page.
-      // Supabase's browser client consumes the recovery session from the URL
-      // and keeps it available for auth.updateUser({ password }). Avoiding an
-      // intermediate server callback also avoids losing the recovery token
-      // when Supabase delivers it in the URL fragment.
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${origin}/reset-password`,
+        redirectTo: `${origin}/auth/recovery?next=/reset-password`,
       });
 
       if (resetError) {
@@ -108,12 +99,9 @@ export default function ForgotPasswordPage() {
             {error}
           </div>
         )}
-
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1.5">
-            <label htmlFor="forgot-email" className="text-xs font-medium text-slate-700">
-              Email address
-            </label>
+            <label htmlFor="forgot-email" className="text-xs font-medium text-slate-700">Email address</label>
             <input
               id="forgot-email"
               type="email"
@@ -124,7 +112,6 @@ export default function ForgotPasswordPage() {
               className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-slate-950"
             />
           </div>
-
           <Button type="submit" className="w-full text-xs gap-2" disabled={loading}>
             <KeyRound className="h-4 w-4" />
             {loading ? 'Sending link...' : 'Send Reset Link'}
@@ -132,10 +119,7 @@ export default function ForgotPasswordPage() {
         </form>
       </CardContent>
       <CardFooter className="justify-center border-t border-slate-100 pt-4">
-        <Link
-          href="/login"
-          className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors"
-        >
+        <Link href="/login" className="inline-flex items-center text-xs font-medium text-slate-600 hover:text-slate-900 transition-colors">
           <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
           Back to sign in
         </Link>
