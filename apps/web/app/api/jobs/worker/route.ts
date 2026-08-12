@@ -28,7 +28,7 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
 }
 function cleanErrorMessage(err: unknown): string {
   if (!err) return 'Job execution failed with an unknown error.'; let msg = err instanceof Error ? err.message : String(err); if (!msg?.trim()) return 'Job execution failed with an unknown error.';
-  msg = msg.trim(); if (msg.startsWith('{') && msg.includes('"message"')) { try { const parsed = JSON.parse(msg); if (parsed.error?.message && typeof parsed.error.message === 'string') msg = parsed.error.message; } catch {} }
+  msg = msg.trim(); if (msg.startsWith('{') && msg.includes('"message"')) { try { const parsed = JSON.parse(msg); if (parsed.error?.message && typeof parsed.error.message === 'string') msg = parsed.error.message; } catch { /* ignore */ } }
   return msg || 'Job execution failed with an unknown error.';
 }
 async function checkDistributedRateLimit(supabase: SupabaseClient<Database>, ip: string, authorized: boolean, skipRateLimit = false): Promise<{ allowed: boolean; limit: number; currentCount: number }> {
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (!authCheck.authorized) return NextResponse.json({ success: false, error: authCheck.error }, { status: authCheck.error?.startsWith('Server configuration error') ? 500 : 401 });
 
   const options: { jobType?: string; projectId?: string } = {};
-  try { const body = await request.json(); if (body && typeof body === 'object') { const allowed = ['site_crawl', 'competitor_sync', 'business_context', 'visibility_scan', 'recommendations']; if (typeof body.jobType === 'string' && allowed.includes(body.jobType.trim())) options.jobType = body.jobType.trim(); if (typeof body.projectId === 'string' && body.projectId.trim()) options.projectId = body.projectId.trim(); } } catch {}
+  try { const body = await request.json(); if (body && typeof body === 'object') { const allowed = ['site_crawl', 'competitor_sync', 'business_context', 'visibility_scan', 'recommendations']; if (typeof body.jobType === 'string' && allowed.includes(body.jobType.trim())) options.jobType = body.jobType.trim(); if (typeof body.projectId === 'string' && body.projectId.trim()) options.projectId = body.projectId.trim(); } } catch { /* ignore */ }
 
   let job;
   try { job = await claimNextJob(supabase, options); } catch (claimErr) { return NextResponse.json({ success: false, error: `Failed to claim job: ${cleanErrorMessage(claimErr)}` }, { status: 500 }); }

@@ -60,12 +60,24 @@ export function ProvidersClientView({ providers }: { providers: Provider[] }) {
   );
 }
 
+type ProviderFormState = {
+  slug: string;
+  displayName: string;
+  adapter: 'gemini' | 'openai_compatible';
+  primaryModel: string;
+  fallbackModels: string;
+  baseUrl: string;
+  apiKey: string;
+  isActive: boolean;
+  isDefault: boolean;
+};
+
 function ProviderForm({ provider, onClose }: { provider: Provider | null; onClose: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProviderFormState>({
     slug: provider?.slug || '',
     displayName: provider?.display_name || '',
-    adapter: provider?.adapter || 'gemini',
+    adapter: provider?.adapter ?? 'gemini',
     primaryModel: provider?.primary_model || '',
     fallbackModels: provider?.fallback_models?.join(', ') || '',
     baseUrl: provider?.base_url || '',
@@ -81,7 +93,7 @@ function ProviderForm({ provider, onClose }: { provider: Provider | null; onClos
       await saveProvider({
         id: provider?.id,
         ...form,
-        adapter: form.adapter as 'gemini' | 'openai_compatible',
+        adapter: form.adapter,
         fallbackModels: form.fallbackModels.split(',').map((v) => v.trim()).filter(Boolean),
       });
       window.location.reload();
@@ -95,7 +107,7 @@ function ProviderForm({ provider, onClose }: { provider: Provider | null; onClos
         <form onSubmit={submit} className="grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium">Display name<Input value={form.displayName} onChange={(e) => setForm({ ...form, displayName: e.target.value })} placeholder="Gemini" /></label>
           <label className="text-sm font-medium">Slug<Input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} placeholder="gemini" disabled={!!provider} /></label>
-          <label className="text-sm font-medium">Adapter<select className="mt-1 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={form.adapter} onChange={(e) => setForm({ ...form, adapter: e.target.value })}><option value="gemini">Google Gemini</option><option value="openai_compatible">OpenAI-compatible API</option></select></label>
+          <label className="text-sm font-medium">Adapter<select className="mt-1 flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm" value={form.adapter} onChange={(e) => setForm({ ...form, adapter: e.target.value as ProviderFormState['adapter'] })}><option value="gemini">Google Gemini</option><option value="openai_compatible">OpenAI-compatible API</option></select></label>
           <label className="text-sm font-medium">Primary model<Input value={form.primaryModel} onChange={(e) => setForm({ ...form, primaryModel: e.target.value })} placeholder="gemini-flash-latest" /></label>
           <label className="text-sm font-medium md:col-span-2">Fallback models<Input value={form.fallbackModels} onChange={(e) => setForm({ ...form, fallbackModels: e.target.value })} placeholder="model-a, model-b" /></label>
           <label className="text-sm font-medium md:col-span-2">API base URL <span className="font-normal text-slate-400">(optional for Gemini)</span><Input value={form.baseUrl} onChange={(e) => setForm({ ...form, baseUrl: e.target.value })} placeholder="https://api.example.com/v1" /></label>

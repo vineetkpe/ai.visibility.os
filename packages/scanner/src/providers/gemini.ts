@@ -44,7 +44,7 @@ export class GeminiProvider implements AIVisibilityProvider {
     if (!err) return 'Unknown error occurred.';
     let message = err instanceof Error ? err.message : String(err);
     if (message.startsWith('{') && message.includes('"message"')) {
-      try { const parsed = JSON.parse(message); if (parsed.error?.message) message = parsed.error.message; } catch {}
+      try { const parsed = JSON.parse(message); if (parsed.error?.message) message = parsed.error.message; } catch { /* ignore */ }
     }
     if (message.includes('RESOURCE_EXHAUSTED') || message.includes('429') || message.includes('Quota exceeded')) return `Quota exceeded for Gemini model (${message.trim()})`;
     if (message.includes('API_KEY_INVALID') || message.includes('API key not valid') || message.includes('401') || message.includes('403')) return `Google Gemini API Authentication Failed: ${message.trim()}`;
@@ -75,7 +75,7 @@ export class GeminiProvider implements AIVisibilityProvider {
       let orderCounter = 1;
       (groundingMetadata.groundingChunks as GroundingChunk[]).forEach((chunk) => {
         if (!chunk.web?.uri) return;
-        try { const uri = chunk.web.uri; const parsedUrl = new URL(uri); citations.push({ sourceUrl: uri, sourceDomain: parsedUrl.hostname.toLowerCase().replace(/^www\./, ''), anchorText: chunk.web.title || undefined, order: orderCounter++ }); } catch {}
+        try { const uri = chunk.web.uri; const parsedUrl = new URL(uri); citations.push({ sourceUrl: uri, sourceDomain: parsedUrl.hostname.toLowerCase().replace(/^www\./, ''), anchorText: chunk.web.title || undefined, order: orderCounter++ }); } catch { /* ignore */ }
       });
     }
     return { rawText, citations, groundingAvailable: citations.length > 0 };
@@ -100,7 +100,7 @@ export class GeminiProvider implements AIVisibilityProvider {
     }
     if (!response) throw new Error(`Gemini analysis failed across models (${modelsToTry.join(', ')}). Errors: ${attemptedErrors.join(' | ')}`);
     const outputText = response.text || ''; let parsed: Record<string, unknown> = {};
-    try { parsed = JSON.parse(outputText); } catch {}
+    try { parsed = JSON.parse(outputText); } catch { /* ignore */ }
     const mentioned = Boolean(parsed.mentioned) || rankPosition !== null;
     const mentionFrequency = typeof parsed.mentionFrequency === 'number' ? parsed.mentionFrequency : mentioned ? 1 : 0;
     const validSentiments = ['positive', 'neutral', 'negative', 'mixed'];
