@@ -11,7 +11,8 @@ export default async function AdminProvidersPage() {
   const { data: profile } = await supabase.from('users').select('role').eq('id', user.id).maybeSingle();
   if (!profile || !['admin', 'owner'].includes(profile.role)) redirect('/dashboard');
 
-  const { data: providers } = await supabase
+  const db = supabase as any;
+  const { data: providers } = await db
     .from('providers')
     .select('id, slug, display_name, is_active, adapter, primary_model, fallback_models, base_url, is_default, updated_at')
     .order('display_name');
