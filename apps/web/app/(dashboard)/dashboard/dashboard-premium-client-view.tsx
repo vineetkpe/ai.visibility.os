@@ -33,8 +33,8 @@ export function DashboardPremiumClientView({ projectId, initialData }: Props) {
 
   const score = data.latestScan?.visibilityScore ?? data.visibility.currentScore ?? 0;
   const points = data.visibility.mentionHistory.map((x) => x.score);
-  const latest = points.length ? points[points.length - 1] : 0;
-  const previous = points.length > 1 ? points[points.length - 2] : latest;
+  const latest = points.at(-1) ?? 0;
+  const previous = points.at(-2) ?? latest;
   const delta = previous ? `${(((latest - previous) / previous) * 100).toFixed(1)}%` : undefined;
   const recommendations = [...data.recommendations.criticalList, ...data.recommendations.highPriorityList];
   const activities = data.recentActivity.recentJobs;
