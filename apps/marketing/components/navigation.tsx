@@ -28,7 +28,7 @@ export function Navigation() {
           </div>
           <div className="hidden items-center gap-4 text-[11px] text-slate-500 md:flex">
             <span className="flex items-center gap-1">
-              <Shield className="h-3 w-3 text-slate-600" /> SOC2 Type II Certified
+              <Shield className="h-3 w-3 text-slate-600" /> Enterprise Security Standards
             </span>
             <span className="text-slate-300">|</span>
             <Link
@@ -125,12 +125,12 @@ export function Navigation() {
 
           {/* Action CTAs */}
           <div className="hidden items-center gap-3 sm:flex">
-            <a
-              href="https://app.aivisibilityos.com/login"
+            <Link
+              href="/login"
               className="px-3 py-2 text-sm font-semibold text-slate-700 hover:text-slate-950 transition-colors"
             >
               Sign In
-            </a>
+            </Link>
             <Link
               href="/pricing"
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-slate-800 transition-all active:scale-[0.99]"

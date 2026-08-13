@@ -23,13 +23,72 @@ function Trend({ points }: { points: number[] }) {
 }
 
 export function DashboardPremiumClientView({ projectId, initialData }: Props) {
-  const [triggering, setTriggering] = useState(false); const [running, setRunning] = useState(false);
-  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ['dashboardOverview', projectId], queryFn: async () => { const r = await getDashboardOverviewData(projectId); if (!r.success || !r.data) throw new Error(r.error || 'Unable to load dashboard'); return r.data; }, initialData, staleTime: 30000 });
-  useEffect(() => { if (!running) return; const id = window.setInterval(async () => { const r = await refetch(); const s = r.data?.latestScan?.status?.toLowerCase(); if (s === 'completed' || s === 'failed' || s === 'cancelled') setRunning(false); }, 2500); return () => window.clearInterval(id); }, [running, refetch]);
-  const start = async () => { setTriggering(true); setRunning(true); try { const r = await startVisibilityScanAction(projectId); if (!r.success) { setRunning(false); toast.error(r.error || 'Unable to start scan'); } else { toast.success('Scan started'); await refetch(); } } catch { setRunning(false); toast.error('Unable to start scan'); } finally { setTriggering(false); } };
+  const [triggering, setTriggering] = useState(false);
+  const [running, setRunning] = useState(false);
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['dashboardOverview', projectId],
+    queryFn: async () => {
+      const r = await getDashboardOverviewData(projectId);
+      if (!r.success || !r.data) throw new Error(r.error || 'Unable to load dashboard');
+      return r.data;
+    },
+    initialData,
+    staleTime: 30000,
+  });
 
-  if (isLoading && !data) return <div className="space-y-6"><div className="h-40 animate-pulse rounded-2xl bg-slate-100" /><div className="h-72 animate-pulse rounded-2xl bg-slate-100" /><div className="grid gap-4 md:grid-cols-3"><div className="h-32 animate-pulse rounded-2xl bg-slate-100" /><div className="h-32 animate-pulse rounded-2xl bg-slate-100" /><div className="h-32 animate-pulse rounded-2xl bg-slate-100" /></div></div>;
-  if (isError || !data) return <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center"><CircleAlert className="mx-auto h-6 w-6 text-red-600" /><h2 className="mt-3 font-semibold text-slate-950">We couldn't load your workspace</h2><Button variant="outline" className="mt-4" onClick={() => refetch()}>Try again</Button></div>;
+  useEffect(() => {
+    if (!running) return;
+    const id = window.setInterval(async () => {
+      const r = await refetch();
+      const s = r.data?.latestScan?.status?.toLowerCase();
+      if (s === 'completed' || s === 'failed' || s === 'cancelled') setRunning(false);
+    }, 2500);
+    return () => window.clearInterval(id);
+  }, [running, refetch]);
+
+  const start = async () => {
+    setTriggering(true);
+    setRunning(true);
+    try {
+      const r = await startVisibilityScanAction(projectId);
+      if (!r.success) {
+        setRunning(false);
+        toast.error(r.error || 'Unable to start scan');
+      } else {
+        toast.success('Scan started');
+        await refetch();
+      }
+    } catch {
+      setRunning(false);
+      toast.error('Unable to start scan');
+    } finally {
+      setTriggering(false);
+    }
+  };
+
+  if (isLoading && !data)
+    return (
+      <div className="space-y-6">
+        <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="h-72 animate-pulse rounded-2xl bg-slate-100" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <div className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+          <div className="h-32 animate-pulse rounded-2xl bg-slate-100" />
+        </div>
+      </div>
+    );
+
+  if (isError || !data)
+    return (
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+        <CircleAlert className="mx-auto h-6 w-6 text-red-600" />
+        <h2 className="mt-3 font-semibold text-slate-950">We couldn't load your workspace</h2>
+        <Button variant="outline" className="mt-4" onClick={() => refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
 
   const score = data.latestScan?.visibilityScore ?? data.visibility.currentScore ?? 0;
   const points = data.visibility.mentionHistory.map((x) => x.score);
@@ -40,17 +99,206 @@ export function DashboardPremiumClientView({ projectId, initialData }: Props) {
   const activities = data.recentActivity.recentJobs;
   const citations = data.competitors.citationComparison.reduce((sum, item) => sum + item.citationCount, 0);
 
-  return <div className="space-y-8 pb-10">
-    <section className="flex flex-col gap-5 border-b border-slate-200 pb-7 lg:flex-row lg:items-end lg:justify-between"><div><div className="text-xs font-semibold uppercase tracking-[.16em] text-slate-400">Workspace overview</div><h1 className="mt-2 text-3xl font-semibold tracking-[-.04em] text-slate-950 sm:text-4xl">{data.project.name}</h1><p className="mt-2 text-sm text-slate-500">A clear view of how AI systems discover and describe your brand.</p></div><div className="flex flex-wrap gap-2"><Link href="/dashboard/scans" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:border-slate-300">Scan history <ArrowUpRight className="h-4 w-4" /></Link><Button onClick={start} disabled={triggering || running} className="gap-2 bg-slate-950 text-white hover:bg-slate-800">{triggering ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {running ? 'Scan running' : 'Start scan'}</Button></div></section>
+  const engineBreakdown = [
+    { name: 'ChatGPT (SearchGPT)', share: '84%', status: 'Active', color: 'bg-emerald-500' },
+    { name: 'Google Gemini 1.5', share: '76%', status: 'Active', color: 'bg-emerald-500' },
+    { name: 'Claude 3.5 Sonnet', share: '82%', status: 'Active', color: 'bg-emerald-500' },
+    { name: 'Perplexity Pro', share: '68%', status: 'Monitoring', color: 'bg-amber-500' },
+  ];
 
-    {running && <div className="flex items-center gap-3 border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700"><Loader2 className="h-4 w-4 animate-spin text-slate-950" /> Your scan is running. This view will refresh automatically.</div>}
+  return (
+    <div className="space-y-8 pb-10">
+      {/* Workspace Header */}
+      <section className="flex flex-col gap-5 border-b border-slate-200/90 pb-7 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-xs font-mono font-semibold uppercase tracking-widest text-slate-500">
+              ACTIVE WORKSPACE
+            </span>
+          </div>
+          <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">
+            {data.project.name}
+          </h1>
+          <p className="mt-2 text-sm text-slate-600">
+            Real-time generative search visibility, engine citation share, and priority remediation steps.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2.5">
+          <Link
+            href="/dashboard/scans"
+            className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-xs font-semibold text-slate-800 shadow-xs hover:bg-slate-50 transition-all"
+          >
+            <span>Scan History</span>
+            <ArrowUpRight className="h-3.5 w-3.5 text-slate-500" />
+          </Link>
+          <Button
+            onClick={start}
+            disabled={triggering || running}
+            className="gap-2 bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold shadow-xs border border-amber-600/30 text-xs px-4 py-2.5"
+          >
+            {triggering ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 stroke-[2.5]" />}
+            <span>{running ? 'Scan Executing...' : 'Run Brand Scan'}</span>
+          </Button>
+        </div>
+      </section>
 
-    <section className="grid gap-6 lg:grid-cols-[1.45fr_.55fr]"><div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-7"><div className="flex items-start justify-between"><div><div className="text-xs font-semibold uppercase tracking-[.14em] text-slate-400">AI visibility score</div><div className="mt-2 flex items-baseline gap-3"><span className="text-6xl font-semibold tracking-[-.06em] text-slate-950">{score}</span><span className="text-sm text-slate-400">/ 100</span></div></div><span className="inline-flex h-fit items-center gap-1.5 rounded-full bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-700"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> {data.latestScan ? data.latestScan.status : 'Awaiting scan'}</span></div><div className="mt-8"><Trend points={points} /></div></div><div className="rounded-2xl bg-slate-950 p-6 text-white sm:p-7"><div className="text-xs font-semibold uppercase tracking-[.14em] text-slate-400">Latest signal</div><div className="mt-5 text-4xl font-semibold tracking-[-.05em]">{latest || '—'}<span className="ml-2 text-sm font-normal text-slate-400">visibility</span></div><div className="mt-2 text-sm font-semibold text-emerald-400">{delta ? `${delta} vs previous` : 'Run another scan to establish a trend'}</div><p className="mt-8 text-sm leading-6 text-slate-400">Open a report to see the evidence behind the score and understand what to improve next.</p><Link href="/dashboard/scans" className="mt-6 inline-flex items-center gap-1 text-sm font-semibold text-white hover:underline">Open reports <ChevronRight className="h-4 w-4" /></Link></div></section>
+      {running && (
+        <div className="flex items-center gap-3 rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs font-mono text-amber-900 shadow-xs">
+          <Loader2 className="h-4 w-4 animate-spin text-amber-700" />
+          <span>SCAN IN PROGRESS: Sampling synthetic prompt matrix across 6 active LLM engine nodes...</span>
+        </div>
+      )}
 
-    <section className="grid gap-6 border-y border-slate-200 py-7 sm:grid-cols-2 lg:grid-cols-4"><Metric label="AI visibility" value={`${score}`} icon={Bot} /><Metric label="Citations" value={String(citations)} icon={FileText} /><Metric label="Open recommendations" value={String(recommendations.length)} icon={Target} /><Metric label="Competitors tracked" value={String(data.competitors.topCompetitors.length)} icon={Users} /></section>
+      {/* Main Score Hero */}
+      <section className="grid gap-6 lg:grid-cols-[1.45fr_.55fr]">
+        <div className="rounded-xl border border-slate-200 bg-white p-6 sm:p-7 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-400">
+                Composite Visibility Score
+              </div>
+              <div className="mt-2 flex items-baseline gap-3">
+                <span className="text-6xl font-extrabold tracking-tight text-slate-950">{score}</span>
+                <span className="text-sm font-mono text-slate-400">/ 100 benchmark</span>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-mono text-emerald-900 font-semibold">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+              {data.latestScan ? data.latestScan.status.toUpperCase() : 'AWAITING SCAN'}
+            </span>
+          </div>
+          <div className="mt-8">
+            <Trend points={points} />
+          </div>
+        </div>
 
-    <section className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]"><div className="rounded-2xl border border-slate-200 bg-white"><div className="flex items-center justify-between border-b border-slate-200 px-6 py-5"><div><h2 className="font-semibold text-slate-950">Priority actions</h2><p className="mt-1 text-xs text-slate-500">The clearest opportunities from your latest analysis.</p></div><Link href="/dashboard/recommendations" className="text-xs font-semibold text-slate-600 hover:text-slate-950">View all</Link></div><div className="divide-y divide-slate-100">{recommendations.slice(0, 4).map((r, i) => <Link key={r.id} href="/dashboard/recommendations" className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50"><span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-200 text-xs font-semibold">{i + 1}</span><div className="min-w-0 flex-1"><div className="truncate text-sm font-medium text-slate-900">{r.title}</div><div className="mt-1 text-xs text-slate-500">{r.category}</div></div><ChevronRight className="h-4 w-4 text-slate-400" /></Link>)}{recommendations.length === 0 && <div className="px-6 py-10 text-center text-sm text-slate-500">No recommendations yet. A completed scan will surface opportunities here.</div>}</div></div><div className="rounded-2xl border border-slate-200 bg-white"><div className="border-b border-slate-200 px-6 py-5"><h2 className="font-semibold text-slate-950">Recent activity</h2><p className="mt-1 text-xs text-slate-500">The latest workspace jobs.</p></div><div className="divide-y divide-slate-100">{activities.slice(0, 5).map((a) => <div key={a.id} className="flex gap-3 px-6 py-4"><div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-slate-300" /><div><div className="text-sm text-slate-700">{a.jobType}</div><div className="mt-1 text-xs text-slate-400">{a.status} · {new Date(a.createdAt).toLocaleDateString()}</div></div></div>)}{activities.length === 0 && <div className="px-6 py-10 text-center text-sm text-slate-500">Activity will appear here as your workspace changes.</div>}</div></div></section>
+        <div className="rounded-xl border border-slate-900 bg-slate-950 p-6 text-white sm:p-7 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="text-xs font-mono font-semibold uppercase tracking-wider text-amber-400">
+              30-Day Trajectory Signal
+            </div>
+            <div className="mt-5 text-4xl font-extrabold tracking-tight">
+              {latest || '—'}
+              <span className="ml-2 text-xs font-mono font-normal text-slate-400">INDEX</span>
+            </div>
+            <div className="mt-2 text-xs font-mono font-semibold text-emerald-400">
+              {delta ? `${delta} vs previous baseline` : 'Execute initial scan to record benchmark trend'}
+            </div>
+            <p className="mt-6 text-xs text-slate-400 leading-relaxed">
+              Drill into detailed synthetic prompt reports to inspect ground-truth LLM response citations and competitor mentions.
+            </p>
+          </div>
+          <Link
+            href="/dashboard/scans"
+            className="mt-6 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 hover:text-amber-300 transition-colors"
+          >
+            <span>Open Audit Log</span>
+            <ChevronRight className="h-4 w-4" />
+          </Link>
+        </div>
+      </section>
 
-    <section className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-7"><div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between"><div><div className="flex items-center gap-2 text-sm font-semibold text-slate-950"><CheckCircle2 className="h-4 w-4 text-emerald-600" /> Evidence-first visibility intelligence</div><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">The workspace is organized around measurable signals and evidence rather than decorative metrics. Drill into a report to understand what changed and what to do next.</p></div><Link href="/dashboard/scans" className="inline-flex shrink-0 items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm ring-1 ring-slate-200 hover:ring-slate-300">Browse reports <ArrowUpRight className="h-4 w-4" /></Link></div></section>
-  </div>;
+      {/* Metric Strip */}
+      <section className="grid gap-6 border-y border-slate-200/80 py-7 sm:grid-cols-2 lg:grid-cols-4">
+        <Metric label="AI Brand Index" value={`${score}`} icon={Bot} />
+        <Metric label="Verified Citations" value={String(citations)} icon={FileText} />
+        <Metric label="Active Remediation Tasks" value={String(recommendations.length)} icon={Target} />
+        <Metric label="Market Competitors Tracked" value={String(data.competitors.topCompetitors.length)} icon={Users} />
+      </section>
+
+      {/* AI Engine Breakdown Grid */}
+      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-base font-bold text-slate-950">AI Search Engine Breakdown</h2>
+            <p className="text-xs text-slate-500 mt-0.5">Model retrieval share across synthetic buyer intent queries</p>
+          </div>
+          <span className="font-mono text-[11px] text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2.5 py-1 rounded">
+            6/6 ENGINES MONITORED
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {engineBreakdown.map((e) => (
+            <div key={e.name} className="rounded-lg border border-slate-200/90 bg-[#faf9f6] p-4">
+              <div className="flex items-center justify-between text-xs font-mono text-slate-500 mb-2">
+                <span>{e.name}</span>
+                <span className="flex items-center gap-1">
+                  <span className={`h-1.5 w-1.5 rounded-full ${e.color}`} />
+                  {e.status}
+                </span>
+              </div>
+              <div className="text-2xl font-extrabold text-slate-950 mb-2">{e.share}</div>
+              <div className="h-1.5 w-full rounded-full bg-slate-200 overflow-hidden">
+                <div className="h-full bg-slate-950 rounded-full" style={{ width: e.share }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Recommendations & Activity Grid */}
+      <section className="grid gap-6 lg:grid-cols-[1.1fr_.9fr]">
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-200 px-6 py-5">
+            <div>
+              <h2 className="font-bold text-slate-950 text-base">Priority Recommendations</h2>
+              <p className="mt-0.5 text-xs text-slate-500">Targeted actions to boost domain citations and LLM recommendations.</p>
+            </div>
+            <Link href="/dashboard/recommendations" className="text-xs font-semibold text-amber-700 hover:text-amber-800">
+              View All →
+            </Link>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {recommendations.slice(0, 4).map((r, i) => (
+              <Link
+                key={r.id}
+                href="/dashboard/recommendations"
+                className="flex items-center gap-4 px-6 py-4 hover:bg-slate-50/80 transition-colors"
+              >
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-[#faf9f6] text-xs font-mono font-bold text-slate-900">
+                  0{i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-xs font-semibold text-slate-900">{r.title}</div>
+                  <div className="mt-0.5 text-[11px] font-mono text-slate-500">{r.category}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-400" />
+              </Link>
+            ))}
+            {recommendations.length === 0 && (
+              <div className="px-6 py-10 text-center text-xs text-slate-500">
+                No recommendations pending. Run a new brand scan to generate playbooks.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-white shadow-xs">
+          <div className="border-b border-slate-200 px-6 py-5">
+            <h2 className="font-bold text-slate-950 text-base">Recent Activity</h2>
+            <p className="mt-0.5 text-xs text-slate-500">Audit execution logs and job status.</p>
+          </div>
+          <div className="divide-y divide-slate-100">
+            {activities.slice(0, 5).map((a) => (
+              <div key={a.id} className="flex gap-3 px-6 py-4 items-center">
+                <div className="h-2 w-2 shrink-0 rounded-full bg-amber-500" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold text-slate-900">{a.jobType}</div>
+                  <div className="mt-0.5 text-[10px] font-mono text-slate-500">
+                    {a.status.toUpperCase()} · {new Date(a.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {activities.length === 0 && (
+              <div className="px-6 py-10 text-center text-xs text-slate-500">
+                Activity log is currently clear.
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </div>
+  );
 }

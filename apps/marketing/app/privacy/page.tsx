@@ -41,7 +41,7 @@ export default function PrivacyPage() {
               <section>
                 <h2 className="text-base font-bold text-slate-900 mb-2">3. Compliance & Security</h2>
                 <p>
-                  Our infrastructure is SOC2 Type II certified. All data in transit is encrypted using TLS 1.3, and data at rest is encrypted using AES-256. Tenants may request complete data deletion at any time via the Admin Console.
+                  Our infrastructure strictly implements enterprise security controls. All data in transit is encrypted using TLS 1.3, and data at rest is encrypted using AES-256. Tenants may request complete data deletion at any time via the Admin Console.
                 </p>
               </section>
             </div>

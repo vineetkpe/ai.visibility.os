@@ -22,7 +22,7 @@ export function Footer() {
 
           <div className="flex items-center gap-4 text-slate-500 font-mono text-[11px]">
             <span className="flex items-center gap-1">
-              <Shield className="h-3.5 w-3.5 text-slate-700" /> SOC2 Type II Certified
+              <Shield className="h-3.5 w-3.5 text-slate-700" /> Enterprise Security Standards
             </span>
             <span>|</span>
             <span>Zero-Retention Audit Guarantee</span>
@@ -155,12 +155,12 @@ export function Footer() {
                 </Link>
               </li>
               <li className="pt-2 border-t border-slate-200/60">
-                <a
-                  href="https://app.aivisibilityos.com/login"
+                <Link
+                  href="/login"
                   className="font-semibold text-slate-900 hover:text-amber-600 transition-colors"
                 >
                   Sign In →
-                </a>
+                </Link>
               </li>
               <li>
                 <Link

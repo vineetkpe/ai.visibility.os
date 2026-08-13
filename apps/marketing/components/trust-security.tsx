@@ -6,9 +6,9 @@ import { ShieldCheck, Lock, Server, FileCheck, Award, EyeOff } from 'lucide-reac
 const trustFeatures = [
   {
     icon: ShieldCheck,
-    title: 'SOC2 Type II Certified',
+    title: 'Enterprise Security Architecture',
     description:
-      'Independently audited controls ensuring enterprise-grade data security, confidentiality, and operational availability for sensitive brand data.',
+      'Rigorous security controls ensuring enterprise-grade data protection, confidentiality, and operational availability for sensitive brand data.',
   },
   {
     icon: EyeOff,
@@ -43,7 +43,7 @@ export function TrustSecurity() {
             Built for Global Fortune 500 Security Standards
           </h2>
           <p className="mt-4 text-base sm:text-lg text-slate-600 leading-relaxed">
-            Enterprise brands trust AI Visibility OS with their core competitive strategy. We safeguard your data with strict zero-retention policies, custom proxy routing, and independent SOC2 compliance.
+            Enterprise brands trust AI Visibility OS with their core competitive strategy. We safeguard your data with strict zero-retention policies, custom proxy routing, and enterprise security controls.
           </p>
         </div>
 

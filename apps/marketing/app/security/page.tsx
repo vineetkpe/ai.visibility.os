@@ -7,7 +7,7 @@ import { Footer } from '@/components/footer';
 export const metadata: Metadata = {
   title: 'Security & Trust Center — AI Visibility OS',
   description:
-    'SOC2 Type II compliance, zero-retention audit infrastructure, and enterprise data privacy standards.',
+    'Enterprise security standards, zero-retention audit infrastructure, and data privacy controls.',
 };
 
 export default function SecurityPage() {
@@ -22,7 +22,7 @@ export default function SecurityPage() {
               Enterprise Trust & Security Infrastructure
             </h1>
             <p className="mt-4 text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
-              Built with zero-retention guarantees, strict SOC2 Type II compliance, and isolated tenant environments.
+              Built with zero-retention guarantees, enterprise security standards, and isolated tenant environments.
             </p>
           </div>
         </section>

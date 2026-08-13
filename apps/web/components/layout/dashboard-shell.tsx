@@ -230,7 +230,58 @@ function AdminShell({
             </div>
           </header>
 
-          <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-[#faf9f6]">{children}</main>
+          <main className="flex-1 p-4 pb-20 sm:p-6 lg:p-8 lg:pb-8 bg-[#faf9f6]">{children}</main>
+
+          {/* Mobile Bottom Navigation Bar for Admin */}
+          <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-14 items-center justify-around border-t border-[#e2e4e9] bg-white px-2 lg:hidden shadow-xs">
+            <Link
+              href="/admin"
+              className={cn(
+                'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+                pathname === '/admin' ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+              )}
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              <span>Overview</span>
+            </Link>
+            <Link
+              href="/admin/users"
+              className={cn(
+                'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+                pathname.startsWith('/admin/users') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+              )}
+            >
+              <Users className="h-4 w-4" />
+              <span>Users</span>
+            </Link>
+            <Link
+              href="/admin/scans"
+              className={cn(
+                'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+                pathname.startsWith('/admin/scans') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+              )}
+            >
+              <ScanLine className="h-4 w-4" />
+              <span>Scans</span>
+            </Link>
+            <Link
+              href="/admin/jobs"
+              className={cn(
+                'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+                pathname.startsWith('/admin/jobs') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+              )}
+            >
+              <Activity className="h-4 w-4" />
+              <span>Jobs</span>
+            </Link>
+            <button
+              onClick={() => setOpen(true)}
+              className="flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium text-slate-500 hover:text-slate-900"
+            >
+              <Menu className="h-4 w-4" />
+              <span>More</span>
+            </button>
+          </nav>
         </div>
       </div>
     </div>
@@ -263,7 +314,58 @@ export function DashboardShell({
           displayName={displayName}
           avatarUrl={avatarUrl}
         />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 pb-20 sm:p-6 lg:p-8 lg:pb-8">{children}</main>
+
+        {/* Mobile Bottom Navigation Bar for User App */}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-14 items-center justify-around border-t border-[#e2e4e9] bg-white px-2 lg:hidden shadow-xs">
+          <Link
+            href="/dashboard"
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+              pathname === '/dashboard' ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+            )}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            <span>Home</span>
+          </Link>
+          <Link
+            href="/projects"
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+              pathname.startsWith('/projects') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+            )}
+          >
+            <Database className="h-4 w-4" />
+            <span>Projects</span>
+          </Link>
+          <Link
+            href="/dashboard/scans"
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+              pathname.startsWith('/dashboard/scans') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+            )}
+          >
+            <ScanLine className="h-4 w-4" />
+            <span>Scans</span>
+          </Link>
+          <Link
+            href="/recommendations"
+            className={cn(
+              'flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium transition-colors',
+              pathname.startsWith('/recommendations') ? 'text-amber-600 font-bold' : 'text-slate-500 hover:text-slate-900'
+            )}
+          >
+            <FileText className="h-4 w-4" />
+            <span>Insights</span>
+          </Link>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="flex flex-col items-center gap-0.5 py-1 text-[10px] font-medium text-slate-500 hover:text-slate-900"
+          >
+            <Menu className="h-4 w-4" />
+            <span>More</span>
+          </button>
+        </nav>
       </div>
     </div>
   );

@@ -54,34 +54,34 @@
 }
 
 :root {
-  /* Light Theme tokens only - hardcoded B2B SaaS palette */
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* Light Theme tokens only - Enterprise editorial palette matching marketing */
+  --background: #faf9f6;
+  --foreground: #090d16;
 
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #090d16;
 
   --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover-foreground: #090d16;
 
-  --primary: #0f172a;
+  --primary: #090d16;
   --primary-foreground: #ffffff;
 
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
+  --secondary: #f4f5f8;
+  --secondary-foreground: #090d16;
 
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --muted: #f4f5f8;
+  --muted-foreground: #525866;
 
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  --accent: #f59e0b;
+  --accent-foreground: #090d16;
 
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
 
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #0f172a;
+  --border: #e2e4e9;
+  --input: #e2e4e9;
+  --ring: #090d16;
 
   --radius: 0.5rem;
 }
