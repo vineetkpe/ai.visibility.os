@@ -9,6 +9,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "jsx": "preserve",
+    "noUncheckedIndexedAccess": false,
     "plugins": [
       {
         "name": "next"
