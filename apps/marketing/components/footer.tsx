@@ -2,14 +2,14 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Target, Shield, Activity, Globe } from 'lucide-react';
+import { Target, Shield } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-[#fafafb] text-slate-600 text-xs">
-      {/* Upper Newsletter & Status Bar */}
-      <div className="border-b border-slate-200 py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+    <footer className="border-t border-slate-200/90 bg-[#faf9f6] text-slate-600 text-xs">
+      {/* Upper System Status Bar */}
+      <div className="border-b border-slate-200/80 py-6">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
@@ -30,13 +30,13 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Main 4-Column Grid */}
-      <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-10">
+      {/* Main 5-Group Enterprise Footer Grid */}
+      <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
           {/* Brand Info Column */}
-          <div className="lg:col-span-2 space-y-4">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded border border-slate-900 bg-slate-950 text-white">
+          <div className="col-span-2 lg:col-span-2 space-y-4">
+            <Link href="/" className="flex items-center gap-2.5 group">
+              <div className="flex h-8 w-8 items-center justify-center rounded border border-slate-900 bg-slate-950 text-white transition-transform group-hover:scale-[1.02]">
                 <Target className="h-4 w-4" />
               </div>
               <span className="text-base font-bold tracking-tight text-slate-950">
@@ -44,101 +44,131 @@ export function Footer() {
               </span>
             </Link>
             <p className="text-xs text-slate-600 leading-relaxed max-w-sm">
-              The authoritative enterprise platform for tracking, auditing, and optimizing how AI answer engines (ChatGPT, Gemini, Claude, Perplexity) represent and cite your brand.
+              The enterprise GEO platform for auditing, tracking, and optimizing brand presence across ChatGPT, Gemini, Claude, and Perplexity.
             </p>
             <div className="pt-2 font-mono text-[11px] text-slate-400">
-              © {new Date().getFullYear()} AI Visibility OS Inc. All rights reserved.
+              © 2026 AI Visibility OS Inc. All rights reserved.
             </div>
           </div>
 
-          {/* Column 2: Platform */}
+          {/* Group 1: Product */}
           <div className="space-y-3">
-            <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-950">
-              Platform
+            <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-950">
+              Product
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 text-slate-600">
               <li>
-                <a href="#visibility-score" className="hover:text-slate-950 transition-colors">
-                  Visibility Score Engine
-                </a>
+                <Link href="/platform" className="hover:text-slate-950 transition-colors">
+                  Platform
+                </Link>
               </li>
               <li>
-                <a href="#engines" className="hover:text-slate-950 transition-colors">
-                  Multi-Engine Coverage
-                </a>
+                <Link href="/solutions" className="hover:text-slate-950 transition-colors">
+                  Solutions
+                </Link>
               </li>
               <li>
-                <a href="#competitive" className="hover:text-slate-950 transition-colors">
-                  Share of Voice Benchmarks
-                </a>
+                <Link href="/methodology" className="hover:text-slate-950 transition-colors">
+                  Methodology
+                </Link>
               </li>
               <li>
-                <a href="#workflow" className="hover:text-slate-950 transition-colors">
-                  Automated GEO Blueprints
-                </a>
-              </li>
-              <li>
-                <a href="#analytics" className="hover:text-slate-950 transition-colors">
-                  Executive Reports
-                </a>
+                <Link href="/pricing" className="hover:text-slate-950 transition-colors">
+                  Pricing
+                </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 3: Solutions */}
+          {/* Group 2: Company */}
           <div className="space-y-3">
-            <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-950">
-              Solutions
+            <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-950">
+              Company
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 text-slate-600">
               <li>
-                <a href="#pricing" className="hover:text-slate-950 transition-colors">
-                  Enterprise B2B SaaS
-                </a>
+                <Link href="/resources" className="hover:text-slate-950 transition-colors">
+                  About
+                </Link>
               </li>
               <li>
-                <a href="#pricing" className="hover:text-slate-950 transition-colors">
-                  Fintech & Payments
-                </a>
+                <Link href="/contact" className="hover:text-slate-950 transition-colors">
+                  Contact
+                </Link>
               </li>
               <li>
-                <a href="#pricing" className="hover:text-slate-950 transition-colors">
-                  Cybersecurity & Cloud
-                </a>
-              </li>
-              <li>
-                <a href="#pricing" className="hover:text-slate-950 transition-colors">
-                  Developer Infrastructure
-                </a>
+                <Link href="/resources" className="hover:text-slate-950 transition-colors">
+                  Resources
+                </Link>
               </li>
             </ul>
           </div>
 
-          {/* Column 4: Security & Legal */}
+          {/* Group 3: Security */}
           <div className="space-y-3">
-            <h4 className="font-mono text-xs font-bold uppercase tracking-wider text-slate-950">
-              Trust & Legal
+            <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-950">
+              Security
             </h4>
-            <ul className="space-y-2">
+            <ul className="space-y-2 text-slate-600">
               <li>
-                <a href="#trust" className="hover:text-slate-950 transition-colors">
-                  SOC2 Type II Report
-                </a>
+                <Link href="/security" className="hover:text-slate-950 transition-colors">
+                  Security
+                </Link>
               </li>
               <li>
-                <a href="#trust" className="hover:text-slate-950 transition-colors">
-                  Security Portal
-                </a>
+                <Link href="/security" className="hover:text-slate-950 transition-colors">
+                  Trust Center
+                </Link>
               </li>
               <li>
-                <a href="#trust" className="hover:text-slate-950 transition-colors">
+                <Link href="/security" className="hover:text-slate-950 transition-colors">
+                  Status
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Group 4: Legal & Application */}
+          <div className="space-y-3">
+            <h4 className="font-mono text-[11px] font-bold uppercase tracking-wider text-slate-950">
+              Legal & App
+            </h4>
+            <ul className="space-y-2 text-slate-600">
+              <li>
+                <Link href="/privacy" className="hover:text-slate-950 transition-colors">
                   Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/terms" className="hover:text-slate-950 transition-colors">
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link href="/cookies" className="hover:text-slate-950 transition-colors">
+                  Cookie Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/acceptable-use" className="hover:text-slate-950 transition-colors">
+                  Acceptable Use
+                </Link>
+              </li>
+              <li className="pt-2 border-t border-slate-200/60">
+                <a
+                  href="https://app.aivisibilityos.com/login"
+                  className="font-semibold text-slate-900 hover:text-amber-600 transition-colors"
+                >
+                  Sign In →
                 </a>
               </li>
               <li>
-                <a href="#trust" className="hover:text-slate-950 transition-colors">
-                  Terms of Service
-                </a>
+                <Link
+                  href="/pricing"
+                  className="font-semibold text-amber-600 hover:text-amber-700 transition-colors"
+                >
+                  Get Started →
+                </Link>
               </li>
             </ul>
           </div>
@@ -147,3 +177,4 @@ export function Footer() {
     </footer>
   );
 }
+

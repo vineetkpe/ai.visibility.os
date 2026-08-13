@@ -3,55 +3,48 @@ import { Navigation } from '@/components/navigation';
 import { Hero } from '@/components/hero';
 import { ValueProp } from '@/components/value-prop';
 import { VisibilityScore } from '@/components/visibility-score';
-import { HowItWorks } from '@/components/how-it-works';
 import { EngineCoverage } from '@/components/engine-coverage';
 import { CompetitiveIntelligence } from '@/components/competitive-intelligence';
 import { RecommendationsWorkflow } from '@/components/recommendations-workflow';
-import { AnalyticsReport } from '@/components/analytics-report';
 import { TrustSecurity } from '@/components/trust-security';
 import { PricingCTA } from '@/components/pricing-cta';
 import { Footer } from '@/components/footer';
 
 export default function MarketingPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-[#fafafb] text-[#090d16] selection:bg-[#090d16] selection:text-white">
+    <div className="flex min-h-screen flex-col bg-[#faf9f6] text-[#090d16] selection:bg-amber-100 selection:text-amber-900">
       {/* 1. Navigation */}
       <Navigation />
 
       <main className="flex-1">
-        {/* 2. Hero */}
+        {/* 2. Conversion Hero */}
         <Hero />
 
-        {/* 3. Product / Value Proposition */}
+        {/* 3. Value Proposition */}
         <ValueProp />
 
-        {/* 4. AI Visibility Score Visualization */}
+        {/* 4. Core Metric: AI Visibility Score */}
         <VisibilityScore />
 
-        {/* 5. How It Works Methodology */}
-        <HowItWorks />
-
-        {/* 6. AI Engine Coverage */}
+        {/* 5. Engine Coverage */}
         <EngineCoverage />
 
-        {/* 7. Competitive Intelligence */}
+        {/* 6. Competitive Intelligence Showcase */}
         <CompetitiveIntelligence />
 
-        {/* 8. Recommendations / Action Workflow */}
+        {/* 7. Action Playbook Workflow */}
         <RecommendationsWorkflow />
 
-        {/* 9. Example Analytics / Report Section */}
-        <AnalyticsReport />
-
-        {/* 10. Trust / Security Section */}
+        {/* 8. Enterprise Trust & Security */}
         <TrustSecurity />
 
-        {/* 11. Pricing / CTA Section */}
+        {/* 9. Conversion CTA & Pricing Tier */}
         <PricingCTA />
       </main>
 
-      {/* 12. Professional Footer */}
+      {/* 10. Professional Enterprise Footer */}
       <Footer />
     </div>
   );
 }
+

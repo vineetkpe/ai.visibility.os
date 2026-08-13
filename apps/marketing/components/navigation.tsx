@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Target, ArrowUpRight, Menu, X, Shield, Activity, ChevronDown } from 'lucide-react';
+import { Target, ArrowUpRight, Menu, X, Shield, ChevronDown } from 'lucide-react';
 
 export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -31,18 +31,18 @@ export function Navigation() {
               <Shield className="h-3 w-3 text-slate-600" /> SOC2 Type II Certified
             </span>
             <span className="text-slate-300">|</span>
-            <a
-              href="#trust"
+            <Link
+              href="/security"
               className="hover:text-slate-900 transition-colors underline decoration-slate-300 underline-offset-2"
             >
               Zero-Retention Infrastructure
-            </a>
+            </Link>
           </div>
         </div>
       </div>
 
       {/* Main Header Nav */}
-      <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-[#fafafb]/95 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-slate-200/90 bg-[#faf9f6]/95 backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
           {/* Brand Emblem & Name */}
           <Link href="/" className="flex items-center gap-2.5 group">
@@ -60,7 +60,7 @@ export function Navigation() {
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 lg:flex">
+          <nav className="hidden items-center gap-7 text-sm font-medium text-slate-600 lg:flex">
             <div className="relative" onMouseLeave={() => setPlatformDropdown(false)}>
               <button
                 onMouseEnter={() => setPlatformDropdown(true)}
@@ -72,49 +72,55 @@ export function Navigation() {
               </button>
               {platformDropdown && (
                 <div className="absolute top-full left-0 w-64 rounded-md border border-slate-200 bg-white p-2 shadow-lg shadow-slate-900/5">
-                  <a
-                    href="#visibility-score"
+                  <Link
+                    href="/platform"
                     className="block rounded p-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
                   >
-                    Visibility Score Engine
+                    Platform Overview
                     <span className="block font-normal text-slate-500 mt-0.5">
-                      0-100 Synthetic Answer Index
+                      Visibility score engine & analytics
                     </span>
-                  </a>
-                  <a
-                    href="#how-it-works"
+                  </Link>
+                  <Link
+                    href="/solutions"
+                    className="block rounded p-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
+                  >
+                    Solutions
+                    <span className="block font-normal text-slate-500 mt-0.5">
+                      Enterprise SaaS, Fintech, Security
+                    </span>
+                  </Link>
+                  <Link
+                    href="/methodology"
                     className="block rounded p-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
                   >
                     Methodology Workflow
                     <span className="block font-normal text-slate-500 mt-0.5">
-                      Prompt sampling to remediation
+                      Synthetic prompt sampling to remediation
                     </span>
-                  </a>
-                  <a
-                    href="#analytics"
-                    className="block rounded p-2 text-xs font-semibold text-slate-900 hover:bg-slate-50"
-                  >
-                    Executive Reporting
-                    <span className="block font-normal text-slate-500 mt-0.5">
-                      C-Suite visibility metrics
-                    </span>
-                  </a>
+                  </Link>
                 </div>
               )}
             </div>
 
-            <a href="#engines" className="hover:text-slate-950 transition-colors">
-              Engine Coverage
-            </a>
-            <a href="#competitive" className="hover:text-slate-950 transition-colors">
+            <Link href="/solutions" className="hover:text-slate-950 transition-colors">
+              Solutions
+            </Link>
+            <Link href="/methodology" className="hover:text-slate-950 transition-colors">
+              Methodology
+            </Link>
+            <Link href="/competitive-intelligence" className="hover:text-slate-950 transition-colors">
               Competitive Intelligence
-            </a>
-            <a href="#workflow" className="hover:text-slate-950 transition-colors">
-              Action Playbooks
-            </a>
-            <a href="#pricing" className="hover:text-slate-950 transition-colors">
+            </Link>
+            <Link href="/pricing" className="hover:text-slate-950 transition-colors">
               Pricing
-            </a>
+            </Link>
+            <Link href="/security" className="hover:text-slate-950 transition-colors">
+              Security
+            </Link>
+            <Link href="/resources" className="hover:text-slate-950 transition-colors">
+              Resources
+            </Link>
           </nav>
 
           {/* Action CTAs */}
@@ -125,13 +131,13 @@ export function Navigation() {
             >
               Sign In
             </a>
-            <a
-              href="#pricing"
-              className="inline-flex items-center gap-1.5 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition-all active:scale-[0.99]"
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-1.5 rounded-md border border-slate-950 bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-slate-800 transition-all active:scale-[0.99]"
             >
               <span>Run Brand Audit</span>
               <ArrowUpRight className="h-4 w-4 text-slate-300" />
-            </a>
+            </Link>
           </div>
 
           {/* Mobile Menu Toggle */}
@@ -147,51 +153,72 @@ export function Navigation() {
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="border-b border-slate-200 bg-white px-4 py-6 lg:hidden">
-            <div className="flex flex-col gap-4 text-sm font-semibold text-slate-800">
-              <a
-                href="#visibility-score"
+            <div className="flex flex-col gap-3 text-sm font-semibold text-slate-800">
+              <Link
+                href="/platform"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 border-b border-slate-100"
+                className="py-1.5 border-b border-slate-100"
               >
-                Visibility Score Engine
-              </a>
-              <a
-                href="#engines"
+                Platform Overview
+              </Link>
+              <Link
+                href="/solutions"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 border-b border-slate-100"
+                className="py-1.5 border-b border-slate-100"
               >
-                AI Engine Coverage
-              </a>
-              <a
-                href="#competitive"
+                Solutions
+              </Link>
+              <Link
+                href="/methodology"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 border-b border-slate-100"
+                className="py-1.5 border-b border-slate-100"
+              >
+                Methodology
+              </Link>
+              <Link
+                href="/competitive-intelligence"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 border-b border-slate-100"
               >
                 Competitive Intelligence
-              </a>
-              <a
-                href="#workflow"
+              </Link>
+              <Link
+                href="/pricing"
                 onClick={() => setMobileMenuOpen(false)}
-                className="py-1 border-b border-slate-100"
-              >
-                Action Workflow
-              </a>
-              <a
-                href="#pricing"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-1 border-b border-slate-100"
+                className="py-1.5 border-b border-slate-100"
               >
                 Pricing & Plans
-              </a>
+              </Link>
+              <Link
+                href="/security"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 border-b border-slate-100"
+              >
+                Security & Compliance
+              </Link>
+              <Link
+                href="/resources"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 border-b border-slate-100"
+              >
+                Resources & Case Studies
+              </Link>
+              <Link
+                href="/contact"
+                onClick={() => setMobileMenuOpen(false)}
+                className="py-1.5 border-b border-slate-100"
+              >
+                Contact Sales
+              </Link>
               <div className="pt-4 flex flex-col gap-2">
-                <a
-                  href="#pricing"
+                <Link
+                  href="/pricing"
                   onClick={() => setMobileMenuOpen(false)}
                   className="flex w-full items-center justify-center gap-2 rounded-md bg-slate-950 py-3 text-center text-sm font-semibold text-white"
                 >
                   Run Free Brand Audit
                   <ArrowUpRight className="h-4 w-4" />
-                </a>
+                </Link>
               </div>
             </div>
           </div>
@@ -200,3 +227,4 @@ export function Navigation() {
     </>
   );
 }
+
