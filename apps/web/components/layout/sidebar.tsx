@@ -16,6 +16,8 @@ export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
 
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Score Breakdown', href: '/dashboard/score', icon: Sparkles },
+  { label: 'AI Engine Registry', href: '/dashboard/engines', icon: Shield },
   { label: 'Projects', href: '/projects', icon: FolderKanban },
   { label: 'Scan History', href: '/dashboard/scans', icon: Scan },
   { label: 'Recommendations', href: '/recommendations', icon: Lightbulb },
@@ -32,7 +34,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
     <>
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-xs lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/20 backdrop-blur-xs lg:hidden"
           onClick={onClose}
           aria-hidden="true"
         />
@@ -48,7 +50,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
         {/* Workspace Identity Header */}
         <div className="flex h-13 items-center justify-between px-4 border-b border-[#e2e4e9] bg-white">
           <Link href="/dashboard" className="flex items-center gap-2 group" onClick={onClose}>
-            <div className="flex h-7 w-7 items-center justify-center rounded border border-slate-900 bg-slate-950 text-white shadow-2xs">
+            <div className="flex h-6 w-6 items-center justify-center rounded border border-slate-900 bg-slate-950 text-white shadow-2xs">
               <Shield className="h-3.5 w-3.5" />
             </div>
             <div className="flex flex-col">
@@ -78,7 +80,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
           <div className="mb-2 rounded border border-[#e2e4e9] bg-[#faf9f6] p-2">
             <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono mb-0.5">
               <span>WORKSPACE</span>
-              <span className="text-amber-700 font-bold">ACTIVE</span>
+              <span className="text-slate-900 font-bold">ACTIVE</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-900 truncate">
@@ -143,8 +145,8 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
           {/* Privileged Access Navigation (If Admin) */}
           {isAdmin && (
             <div>
-              <p className="px-2.5 text-[10px] font-mono font-bold uppercase tracking-widest text-amber-800 mb-1.5 flex items-center gap-1">
-                <ShieldAlert className="h-3 w-3 text-amber-600" />
+              <p className="px-2.5 text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 mb-1.5 flex items-center gap-1">
+                <ShieldAlert className="h-3 w-3 text-slate-500" />
                 Administration
               </p>
               <nav className="space-y-0.5">
@@ -154,15 +156,15 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
                   className={cn(
                     'flex items-center justify-between rounded px-2.5 py-1.5 text-xs font-semibold border transition-all',
                     pathname.startsWith('/admin')
-                      ? 'bg-amber-500 text-slate-950 border-amber-600 shadow-2xs'
-                      : 'bg-amber-50/70 text-amber-900 border-amber-200/80 hover:bg-amber-100/80'
+                      ? 'bg-slate-950 text-white border-slate-900 shadow-2xs'
+                      : 'bg-white text-slate-700 border-[#e2e4e9] hover:bg-slate-100'
                   )}
                 >
                   <div className="flex items-center space-x-2">
-                    <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+                    <ShieldAlert className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                     <span>Admin Operations</span>
                   </div>
-                  <span className="rounded bg-amber-200/70 px-1 py-0.2 text-[8px] font-mono uppercase text-amber-900 font-bold">
+                  <span className="rounded bg-slate-100 px-1 py-0.2 text-[8px] font-mono uppercase text-slate-700 font-bold border border-[#e2e4e9]">
                     Ops
                   </span>
                 </Link>
@@ -177,7 +179,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 ENGINES ACTIVE
               </span>
-              <span className="font-bold text-slate-900">6/6</span>
+              <span className="font-bold text-slate-900">4/4</span>
             </div>
             <p className="text-[10px] text-slate-500 leading-tight">
               ChatGPT, Gemini, Claude & Perplexity nodes online.

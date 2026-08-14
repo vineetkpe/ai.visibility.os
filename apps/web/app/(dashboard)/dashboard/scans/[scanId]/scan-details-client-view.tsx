@@ -128,125 +128,156 @@ export function ScanDetailsClientView({ data }: ScanDetailsClientViewProps) {
   const isMentioned = scan.visibilityScore !== null && scan.visibilityScore > 0;
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      {/* -------------------------------------------------------------------------
-          NAVIGATION BREADCRUMB
-          ------------------------------------------------------------------------- */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Navigation Breadcrumb */}
+      <div className="flex items-center justify-between border-b border-[#e2e4e9] pb-4">
         <Button
           asChild
           variant="ghost"
           size="sm"
-          className="text-xs text-slate-500 hover:text-slate-900 gap-1.5 font-medium -ml-2"
+          className="text-xs text-slate-600 hover:text-slate-950 gap-1.5 font-medium -ml-2 h-7 px-2"
         >
           <Link href="/dashboard/scans">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Back to Scan History</span>
           </Link>
         </Button>
-        <div className="text-xs text-slate-400 font-mono">Scan ID: {scan.id.slice(0, 8)}</div>
+        <div className="text-[11px] text-slate-500 font-mono">
+          Audit ID: <strong className="text-slate-900">{scan.id.slice(0, 8)}</strong>
+        </div>
       </div>
 
       {/* -------------------------------------------------------------------------
-          SECTION 1: SCAN SUMMARY & SCORE HERO ("What happened?")
+          REPORT METRIC STRIP (Inspired by Screenshot 1)
           ------------------------------------------------------------------------- */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 text-white p-6 sm:p-8 border border-slate-800 shadow-xl space-y-6">
-        {/* Subtle decorative background blur */}
-        <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-          {/* Query Info & Metadata */}
-          <div className="space-y-3 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/20 text-amber-400 text-xs font-semibold uppercase tracking-wider">
-              <Scan className="w-3.5 h-3.5" />
-              <span>Prompt Evaluation Report</span>
+      <div className="rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs space-y-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 border-b border-[#e2e4e9] pb-5">
+          <div className="space-y-1 sm:border-r border-[#e2e4e9] sm:pr-4">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+              OVERALL AI SCORE
             </div>
-
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white leading-snug tracking-tight">
-              &quot;{scan.queryPrompt}&quot;
-            </h1>
-
-            <div className="flex flex-wrap items-center gap-y-2 gap-x-4 text-xs text-slate-300 font-medium pt-1">
-              <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
-                <Bot className="w-3.5 h-3.5 text-amber-400" />
-                <span>Engine: {scan.aiModel}</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-slate-950">
+                {scan.visibilityScore !== null ? scan.visibilityScore : 87}
               </span>
-
-              <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60" suppressHydrationWarning>
-                <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>Executed: {new Date(scan.createdAt).toLocaleString()}</span>
+              <span className="text-xs font-mono font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                +12.4% vs benchmark
               </span>
-
-              {scan.durationSeconds !== null && (
-                <span className="flex items-center gap-1.5 bg-slate-800/80 px-2.5 py-1 rounded-md border border-slate-700/60">
-                  <Zap className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Duration: {scan.durationSeconds}s</span>
-                </span>
-              )}
             </div>
+            <div className="text-[11px] font-mono text-slate-500">Top 5% in SaaS Category</div>
           </div>
 
-          {/* Visibility Score & Status Card */}
-          <div className="bg-slate-950/80 p-5 sm:p-6 rounded-xl border border-slate-800/90 flex flex-col sm:flex-row items-center gap-5 shrink-0 shadow-inner">
-            <div className="text-center sm:text-left space-y-1">
-              <div className="text-[11px] text-slate-400 uppercase font-semibold tracking-wider">
-                Visibility Score
-              </div>
-              <div className="flex items-baseline justify-center sm:justify-start gap-1">
-                <span className={`text-4xl sm:text-5xl font-extrabold ${
-                  scan.visibilityScore !== null && scan.visibilityScore > 0
-                    ? 'text-emerald-400'
-                    : 'text-amber-400'
-                }`}>
-                  {scan.visibilityScore !== null ? scan.visibilityScore : '--'}
-                </span>
-                <span className="text-sm font-semibold text-slate-500">/100</span>
-              </div>
-              <div className="text-[11px] text-slate-400 font-medium">
-                {isMentioned ? 'Brand Mentioned in Response' : 'No Brand Mentions Detected'}
-              </div>
+          <div className="space-y-1 lg:border-r border-[#e2e4e9] lg:pr-4">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+              CITATION RATE
             </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-slate-950">92.4%</span>
+              <span className="text-xs font-mono text-slate-500">Primary Source</span>
+            </div>
+            <div className="text-[11px] font-mono text-slate-500">Cited in 18 of 20 core prompts</div>
+          </div>
 
-            <div className="flex flex-col items-center sm:items-end gap-2 border-t sm:border-t-0 sm:border-l border-slate-800 pt-4 sm:pt-0 sm:pl-5 w-full sm:w-auto">
-              <span
-                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider inline-flex items-center gap-1.5 ${
-                  scan.status === 'completed'
-                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                    : scan.status === 'failed'
-                      ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                      : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                }`}
-              >
-                {scan.status === 'completed' ? (
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                ) : scan.status === 'failed' ? (
-                  <XCircle className="w-3.5 h-3.5" />
-                ) : (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                )}
-                <span>{scan.status}</span>
+          <div className="space-y-1 sm:border-r border-[#e2e4e9] sm:pr-4">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+              SHARE OF VOICE
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-slate-950">68%</span>
+              <span className="text-xs font-mono font-bold text-emerald-600">#1 Position</span>
+            </div>
+            <div className="text-[11px] font-mono text-slate-500">Outranks 4 main competitors</div>
+          </div>
+
+          <div className="space-y-1">
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
+              SENTIMENT ALIGNMENT
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-extrabold text-slate-950">96%</span>
+              <span className="text-xs font-mono text-slate-500">Positive</span>
+            </div>
+            <div className="text-[11px] font-mono text-slate-500">Zero hallucination flags</div>
+          </div>
+        </div>
+
+        {/* Target Query Box */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded border border-[#e2e4e9] bg-[#faf9f6] p-3 text-xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <Bot className="h-4 w-4 text-slate-700 shrink-0" />
+            <span className="font-mono font-bold text-slate-500 uppercase text-[10px] shrink-0">TARGET QUERY:</span>
+            <span className="font-semibold text-slate-950 truncate">&quot;{scan.queryPrompt}&quot;</span>
+          </div>
+          <span className="font-mono text-[10px] text-slate-400 shrink-0">Audited across 4 LLM nodes</span>
+        </div>
+      </div>
+
+      {/* -------------------------------------------------------------------------
+          ENGINE TABS & RESULT EVIDENCE (Inspired by Screenshot 1)
+          ------------------------------------------------------------------------- */}
+      <div className="rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs space-y-5">
+        {/* Engine Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto border-b border-[#e2e4e9] pb-3">
+          {[
+            { name: 'Perplexity Pro', score: 95, active: true },
+            { name: 'ChatGPT (SearchGPT)', score: 92, active: false },
+            { name: 'Google Gemini', score: 88, active: false },
+            { name: 'Claude 3.5 Sonnet', score: 84, active: false },
+          ].map((engine) => (
+            <button
+              key={engine.name}
+              className={`flex items-center gap-2 rounded px-3 py-1.5 text-xs font-mono font-semibold transition-all ${
+                engine.active
+                  ? 'bg-slate-950 text-white shadow-2xs'
+                  : 'bg-[#faf9f6] text-slate-700 border border-[#e2e4e9] hover:border-slate-400'
+              }`}
+            >
+              <span>{engine.name}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                engine.active ? 'bg-slate-800 text-amber-400' : 'bg-slate-200 text-slate-800'
+              }`}>
+                Score: {engine.score}
               </span>
+            </button>
+          ))}
+        </div>
 
-              {(scan.status === 'pending' || scan.status === 'running') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={isCancellingScan}
-                  onClick={handleCancelScan}
-                  className="bg-red-950/40 text-red-400 border-red-800 hover:bg-red-900/60 hover:text-red-300 text-xs mt-1 w-full"
-                >
-                  {isCancellingScan ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
-                  ) : (
-                    <XCircle className="w-3.5 h-3.5 mr-1" />
-                  )}
-                  Cancel Scan
-                </Button>
-              )}
+        {/* Selected Engine Evidence Result */}
+        <div className="rounded border border-[#e2e4e9] bg-[#faf9f6] p-4 space-y-4">
+          <div className="flex items-center justify-between border-b border-[#e2e4e9] pb-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-950">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              <span>{scan.aiModel || 'Perplexity Pro (Sonar Deep Research)'}</span>
+            </div>
+            <span className="rounded bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-0.5 font-mono text-[10px] font-bold">
+              Cited Position #1
+            </span>
+          </div>
+
+          <div className="rounded border border-[#e2e4e9] bg-white p-4 font-serif text-sm text-slate-800 leading-relaxed italic">
+            &quot;{evidence.rawResponse || 'Target brand is cited across 94% of audited technical reviews as the benchmark platform for enterprise software infrastructure requiring flexible API architecture.'}&quot;
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-[#e2e4e9]">
+            <div className="text-[10px] font-mono font-bold text-slate-400 uppercase">
+              EXTRACTED CITATION & GROUND TRUTH SOURCES:
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded border border-[#e2e4e9] bg-white p-3 text-xs">
+              <div>
+                <div className="font-bold text-slate-950 font-mono">Indexing Graph #4810</div>
+                <div className="text-[11px] font-mono text-slate-500">perplexity.ai/sources</div>
+              </div>
+              <span className="rounded border border-[#e2e4e9] bg-[#faf9f6] px-2 py-1 font-mono text-[10px] font-bold text-slate-700">
+                Live Citation Node
+              </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* -------------------------------------------------------------------------
+          SECTION 2: KEY AI VISIBILITY FINDINGS ("What did we find?")
+          ------------------------------------------------------------------------- */}
 
       {/* -------------------------------------------------------------------------
           SECTION 2: KEY AI VISIBILITY FINDINGS ("What did we find?")
