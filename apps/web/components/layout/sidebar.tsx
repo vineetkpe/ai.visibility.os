@@ -92,7 +92,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
 
           <Button
             asChild
-            className="w-full justify-center gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold border border-amber-600/30 text-xs h-8 shadow-2xs"
+            className="w-full justify-center gap-1.5 bg-slate-950 text-white hover:bg-slate-800 font-semibold border border-slate-900 text-xs h-8 shadow-2xs"
           >
             <Link href="/projects/new" onClick={onClose}>
               <Plus className="h-3.5 w-3.5 stroke-[2.5]" />

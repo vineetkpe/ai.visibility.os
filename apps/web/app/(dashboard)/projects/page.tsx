@@ -70,7 +70,7 @@ export default async function ProjectsPage() {
           </div>
           <Button
             asChild
-            className="inline-flex items-center gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold border border-amber-600/30 text-xs px-3.5 h-8 shadow-2xs shrink-0"
+            className="inline-flex items-center gap-1.5 bg-slate-950 text-white hover:bg-slate-800 font-semibold border border-slate-900 text-xs px-3.5 h-8 shadow-2xs shrink-0"
           >
             <Link href="/projects/new">
               <Plus className="h-3.5 w-3.5 stroke-[2.5]" />

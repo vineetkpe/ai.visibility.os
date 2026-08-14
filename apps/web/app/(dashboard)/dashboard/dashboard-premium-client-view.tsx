@@ -139,7 +139,7 @@ export function DashboardPremiumClientView({ projectId, initialData }: Props) {
   const score = data.latestScan?.visibilityScore ?? data.visibility.currentScore ?? 87;
   const points = data.visibility.mentionHistory.map((x) => x.score);
   const recommendations = [...data.recommendations.criticalList, ...data.recommendations.highPriorityList];
-  const lastScanTime = data.latestScan ? new Date(data.latestScan.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '12 minutes ago';
+  const lastScanTime = data.latestScan ? new Date(data.latestScan.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '12 minutes ago';
 
   const engineList = [
     { name: 'ChatGPT (OpenAI Search)', score: 88, citation: '94%', trend: '+12%' },
@@ -169,7 +169,7 @@ export function DashboardPremiumClientView({ projectId, initialData }: Props) {
             Generative Search Performance
           </h1>
           <p className="mt-1 text-xs text-slate-500 font-mono">
-            Last scan executed: <strong className="text-slate-800">{lastScanTime}</strong>
+            Last scan executed: <strong className="text-slate-800" suppressHydrationWarning>{lastScanTime}</strong>
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export function DashboardPremiumClientView({ projectId, initialData }: Props) {
           <Button
             onClick={start}
             disabled={triggering || running}
-            className="gap-1.5 bg-amber-500 text-slate-950 hover:bg-amber-400 font-semibold border border-amber-600/30 text-xs px-3.5 h-8 shadow-2xs shrink-0"
+            className="gap-1.5 bg-slate-950 text-white hover:bg-slate-800 font-semibold border border-slate-900 text-xs px-3.5 h-8 shadow-2xs shrink-0"
           >
             {triggering || running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5 stroke-[2.5]" />}
             <span>{running ? 'Scan Running...' : 'Run Scan'}</span>
