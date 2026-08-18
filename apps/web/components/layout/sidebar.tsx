@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   BarChart3,
   Building,
@@ -11,7 +11,6 @@ import {
   Gauge,
   Lightbulb,
   ScanLine,
-  Settings,
   Shield,
   ShieldAlert,
   X,
@@ -26,6 +25,7 @@ export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   isOpen?: boolean;
   onClose?: () => void;
   isAdmin?: boolean;
+  activeProject?: { id: string; name: string } | null;
 }
 
 const navGroups = [
@@ -33,7 +33,7 @@ const navGroups = [
     label: 'Workspace',
     items: [
       { label: 'Overview', href: '/dashboard', icon: Gauge },
-      { label: 'Projects', href: '/projects', icon: FolderKanban },
+      { label: 'Projects', href: '/projects', icon: FolderKanban, preserveProject: false },
     ],
   },
   {
@@ -41,7 +41,7 @@ const navGroups = [
     items: [
       { label: 'Score', href: '/dashboard/score', icon: BarChart3 },
       { label: 'AI Engines', href: '/dashboard/engines', icon: Database },
-      { label: 'Scan History', href: '/dashboard/scans', icon: ScanLine },
+      { label: 'Scans', href: '/dashboard/scans', icon: ScanLine },
     ],
   },
   {
@@ -54,9 +54,14 @@ const navGroups = [
   },
 ];
 
-export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, ...props }: SidebarProps) {
+export function Sidebar({ isOpen = false, onClose, isAdmin = false, activeProject = null, className, ...props }: SidebarProps) {
   const pathname = usePathname();
-  const { isAdmin: _isAdmin, isOpen: _isOpen, onClose: _onClose, ...asideProps } = props as Record<string, unknown>;
+  const searchParams = useSearchParams();
+  const currentProjectId = searchParams.get('projectId') || activeProject?.id || null;
+  const projectQuery = currentProjectId ? `?projectId=${encodeURIComponent(currentProjectId)}` : '';
+  const { isAdmin: _isAdmin, isOpen: _isOpen, onClose: _onClose, activeProject: _activeProject, ...asideProps } = props as Record<string, unknown>;
+
+  const getHref = (href: string, preserveProject = true) => preserveProject && projectQuery ? `${href}${projectQuery}` : href;
 
   return (
     <>
@@ -77,7 +82,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
         {...asideProps}
       >
         <div className="flex h-14 items-center justify-between border-b border-[#e2e4e9] px-4">
-          <Link href="/dashboard" className="flex items-center gap-2.5" onClick={onClose}>
+          <Link href={getHref('/dashboard')} className="flex items-center gap-2.5" onClick={onClose}>
             <div className="flex h-7 w-7 items-center justify-center rounded-md bg-slate-950 text-white">
               <Shield className="h-3.5 w-3.5" />
             </div>
@@ -95,13 +100,16 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
 
         <div className="border-b border-[#e2e4e9] p-3">
           <Link
-            href="/projects"
+            href={getHref('/projects')}
             onClick={onClose}
             className="flex items-center justify-between rounded-md border border-[#e2e4e9] bg-[#faf9f6] px-3 py-2.5 hover:border-slate-300 hover:bg-slate-50 transition-colors"
+            aria-label={activeProject ? `Current project: ${activeProject.name}` : 'Choose a project'}
           >
             <div className="min-w-0">
               <div className="text-[9px] font-mono font-bold uppercase tracking-wider text-slate-400">Project</div>
-              <div className="mt-0.5 truncate text-xs font-semibold text-slate-900">Choose a project</div>
+              <div className="mt-0.5 truncate text-xs font-semibold text-slate-900">
+                {activeProject?.name || 'Choose a project'}
+              </div>
             </div>
             <FolderKanban className="h-4 w-4 shrink-0 text-slate-400" />
           </Link>
@@ -129,7 +137,7 @@ export function Sidebar({ isOpen = false, onClose, isAdmin = false, className, .
                   return (
                     <Link
                       key={item.href}
-                      href={item.href}
+                      href={getHref(item.href, item.preserveProject !== false)}
                       onClick={onClose}
                       className={cn(
                         'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-xs font-medium transition-colors',
