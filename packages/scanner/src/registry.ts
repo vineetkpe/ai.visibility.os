@@ -19,19 +19,21 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
 
 type ConfiguredProviderRow = { id: string; slug: string; display_name: string; adapter: string; primary_model: string | null; fallback_models: string[] | null; base_url: string | null; is_active: boolean; is_default: boolean; };
 
-async function loadConfiguredProvider(slug: string) {
+async function loadConfiguredProvider(slug: string): Promise<AIVisibilityProvider> {
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   if (!secret || !supabaseUrl) throw new Error('Supabase worker configuration is missing.');
 
-  const db = createServiceClient(secret) as any;
-  const query = db.from('providers').select('id,slug,display_name,adapter,primary_model,fallback_models,base_url,is_active,is_default');
-  const { data: config, error } = slug === 'gemini'
-    ? await query.eq('is_default', true).eq('is_active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
-    : await query.eq('slug', slug).maybeSingle();
+  const db = createServiceClient(secret);
+  const { data: config, error } = await db
+    .from('providers')
+    .select('id,slug,display_name,adapter,primary_model,fallback_models,base_url,is_active,is_default')
+    .eq('slug', slug)
+    .eq('is_active', true)
+    .maybeSingle();
 
   if (error) throw new Error(`Failed to load AI engine configuration: ${error.message}`);
-  if (!config || !config.is_active) throw new Error(`No active default AI engine is configured. Open Admin → AI Engines.`);
+  if (!config) throw new Error(`No active AI engine is configured for '${slug}'. Open Admin → AI Engines.`);
 
   const row = config as ConfiguredProviderRow;
   const { data: secretRow, error: secretError } = await db
@@ -77,12 +79,7 @@ class ConfiguredProvider implements AIVisibilityProvider {
     return (await this.resolve()).runGroundedQuery(promptText);
   }
 
-  async analyzeResponse(
-    promptText: string,
-    rawText: string,
-    citations: GroundingCitation[],
-    targetDomainName: string
-  ): Promise<ScanAnalysisResult> {
+  async analyzeResponse(promptText: string, rawText: string, citations: GroundingCitation[], targetDomainName: string): Promise<ScanAnalysisResult> {
     return (await this.resolve()).analyzeResponse(promptText, rawText, citations, targetDomainName);
   }
 }
