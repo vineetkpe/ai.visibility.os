@@ -19,8 +19,8 @@ export interface ProviderConfig {
   capabilities: ProviderCapabilities;
 }
 
-const GEMINI_PRIMARY_MODEL = 'gemini-flash-latest';
-const GEMINI_FALLBACK_MODELS = ['gemini-2.5-flash-lite'];
+const GEMINI_PRIMARY_MODEL = 'gemini-3.6-flash';
+const GEMINI_FALLBACK_MODELS = ['gemini-3.5-flash-lite'];
 
 export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
   gemini: {
@@ -29,83 +29,63 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
     isActive: true,
     primaryModel: GEMINI_PRIMARY_MODEL,
     fallbackModels: GEMINI_FALLBACK_MODELS,
-    capabilities: {
-      searchGrounded: true,
-      structuredOutput: true,
-      supportedModels: [GEMINI_PRIMARY_MODEL, ...GEMINI_FALLBACK_MODELS],
-    },
+    capabilities: { searchGrounded: true, structuredOutput: true, supportedModels: [GEMINI_PRIMARY_MODEL, ...GEMINI_FALLBACK_MODELS] },
   },
   chatgpt: {
-    slug: 'chatgpt',
-    displayName: 'ChatGPT',
-    isActive: false,
-    primaryModel: 'gpt-4o',
-    fallbackModels: ['gpt-4o-mini'],
-    capabilities: {
-      searchGrounded: false,
-      structuredOutput: true,
-      supportedModels: ['gpt-4o', 'gpt-4o-mini'],
-    },
+    slug: 'chatgpt', displayName: 'ChatGPT', isActive: false, primaryModel: 'gpt-4o', fallbackModels: ['gpt-4o-mini'],
+    capabilities: { searchGrounded: false, structuredOutput: true, supportedModels: ['gpt-4o', 'gpt-4o-mini'] },
   },
   claude: {
-    slug: 'claude',
-    displayName: 'Claude',
-    isActive: false,
-    primaryModel: 'claude-3-5-sonnet',
-    fallbackModels: ['claude-3-5-haiku'],
-    capabilities: {
-      searchGrounded: false,
-      structuredOutput: true,
-      supportedModels: ['claude-3-5-sonnet', 'claude-3-5-haiku'],
-    },
+    slug: 'claude', displayName: 'Claude', isActive: false, primaryModel: 'claude-3-5-sonnet', fallbackModels: ['claude-3-5-haiku'],
+    capabilities: { searchGrounded: false, structuredOutput: true, supportedModels: ['claude-3-5-sonnet', 'claude-3-5-haiku'] },
   },
   perplexity: {
-    slug: 'perplexity',
-    displayName: 'Perplexity',
-    isActive: false,
-    primaryModel: 'sonar-pro',
-    fallbackModels: ['sonar'],
-    capabilities: {
-      searchGrounded: true,
-      structuredOutput: true,
-      supportedModels: ['sonar-pro', 'sonar'],
-    },
+    slug: 'perplexity', displayName: 'Perplexity', isActive: false, primaryModel: 'sonar-pro', fallbackModels: ['sonar'],
+    capabilities: { searchGrounded: true, structuredOutput: true, supportedModels: ['sonar-pro', 'sonar'] },
   },
 };
+
+function normalizeFallbackModels(value: unknown, fallback: string[]): string[] {
+  if (!Array.isArray(value)) return fallback;
+  return value.filter((model): model is string => typeof model === 'string' && model.trim().length > 0).map((model) => model.trim());
+}
 
 async function loadConfiguredProvider(slug: string): Promise<AIVisibilityProvider> {
   const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  const defaults = DEFAULT_PROVIDER_CONFIGS[slug];
 
-  if (secret && supabaseUrl) {
-    const db = createServiceClient(secret);
-    const { data: config, error } = await db
-      .from('providers')
-      .select('id, slug, display_name, is_active')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .maybeSingle();
+  if (!defaults) throw new Error(`Unsupported AI engine provider '${slug}'.`);
+  if (!secret || !supabaseUrl) throw new Error('Supabase service configuration is required to load the active AI provider.');
 
-    if (error) {
-      console.warn(`[SCANNER WARNING] Could not query providers table: ${error.message}`);
-    } else if (config && !config.is_active) {
-      throw new Error(`AI engine '${slug}' is currently inactive.`);
-    }
+  const db = createServiceClient(secret);
+  const { data: config, error } = await db
+    .from('providers')
+    .select('slug, display_name, adapter, primary_model, fallback_models, base_url, is_active')
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error) throw new Error(`Failed to load provider configuration: ${error.message}`);
+  if (!config) throw new Error(`AI engine '${slug}' is not configured.`);
+  if (!config.is_active) throw new Error(`AI engine '${slug}' is currently inactive.`);
+
+  const primaryModel = config.primary_model?.trim() || defaults.primaryModel;
+  const fallbackModels = normalizeFallbackModels(config.fallback_models, defaults.fallbackModels);
+  const adapter = config.adapter || (slug === 'gemini' ? 'gemini' : 'openai_compatible');
+
+  if (adapter === 'gemini' && slug === 'gemini') {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error('GEMINI_API_KEY environment variable is not configured.');
+    return new GeminiProvider({ apiKey, primaryModel, fallbackModels });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey && slug === 'gemini') {
-    throw new Error(`GEMINI_API_KEY environment variable is not configured.`);
+  if (adapter === 'openai_compatible') {
+    const apiKey = process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error(`API key is not configured for provider '${slug}'.`);
+    return new OpenAICompatibleProvider({ apiKey, primaryModel, baseUrl: config.base_url || undefined, providerName: config.display_name || slug });
   }
 
-  const primaryModel = DEFAULT_PROVIDER_CONFIGS[slug]?.primaryModel || GEMINI_PRIMARY_MODEL;
-  const fallbackModels = DEFAULT_PROVIDER_CONFIGS[slug]?.fallbackModels || GEMINI_FALLBACK_MODELS;
-
-  if (slug === 'gemini') {
-    return new GeminiProvider({ apiKey: apiKey!, primaryModel, fallbackModels });
-  }
-
-  throw new Error(`Unsupported AI engine provider '${slug}'.`);
+  throw new Error(`Unsupported provider adapter '${adapter}' for '${slug}'.`);
 }
 
 class ConfiguredProvider implements AIVisibilityProvider {
@@ -120,53 +100,26 @@ class ConfiguredProvider implements AIVisibilityProvider {
     this.modelName = DEFAULT_PROVIDER_CONFIGS[slug]?.primaryModel || 'configured';
   }
 
-  private resolve() {
-    this.resolved ??= loadConfiguredProvider(this.slug);
-    return this.resolved;
-  }
-
-  async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> {
-    return (await this.resolve()).runGroundedQuery(promptText);
-  }
-
-  async analyzeResponse(
-    promptText: string,
-    rawText: string,
-    citations: GroundingCitation[],
-    targetDomainName: string
-  ): Promise<ScanAnalysisResult> {
+  private resolve() { this.resolved ??= loadConfiguredProvider(this.slug); return this.resolved; }
+  async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> { return (await this.resolve()).runGroundedQuery(promptText); }
+  async analyzeResponse(promptText: string, rawText: string, citations: GroundingCitation[], targetDomainName: string): Promise<ScanAnalysisResult> {
     return (await this.resolve()).analyzeResponse(promptText, rawText, citations, targetDomainName);
   }
 }
 
-export function getProvider(
-  slug: string,
-  options?: {
-    apiKey?: string;
-    primaryModel?: string;
-    fallbackModels?: string[];
-    adapter?: string;
-    baseUrl?: string;
-    displayName?: string;
-  }
-): AIVisibilityProvider {
+export function getProvider(slug: string, options?: {
+  apiKey?: string; primaryModel?: string; fallbackModels?: string[]; adapter?: string; baseUrl?: string; displayName?: string;
+}): AIVisibilityProvider {
   const normalizedSlug = slug.toLowerCase().trim();
   if (!options) return new ConfiguredProvider(normalizedSlug);
 
-  const primaryModel =
-    options.primaryModel || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.primaryModel || 'gpt-4o-mini';
-  const fallbackModels =
-    options.fallbackModels || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.fallbackModels || [];
+  const primaryModel = options.primaryModel || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.primaryModel || 'gpt-4o-mini';
+  const fallbackModels = options.fallbackModels || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.fallbackModels || [];
   const adapter = options.adapter || (normalizedSlug === 'gemini' ? 'gemini' : 'openai_compatible');
 
   if (adapter === 'openai_compatible') {
     if (!options.apiKey) throw new Error(`API key is not configured for provider '${slug}'.`);
-    return new OpenAICompatibleProvider({
-      apiKey: options.apiKey,
-      primaryModel,
-      baseUrl: options.baseUrl,
-      providerName: options.displayName || slug,
-    });
+    return new OpenAICompatibleProvider({ apiKey: options.apiKey, primaryModel, baseUrl: options.baseUrl, providerName: options.displayName || slug });
   }
 
   if (normalizedSlug === 'gemini') {
