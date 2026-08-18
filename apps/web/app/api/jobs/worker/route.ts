@@ -22,7 +22,7 @@ function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: s
   const customHeader = request.headers.get('x-job-worker-secret')?.trim() || ''; const supabaseCron = request.headers.get('x-supabase-worker') === '1';
   if (workerSecret && token && safeCompare(token, workerSecret)) return { authorized: true, token };
   if (workerSecret && customHeader && safeCompare(customHeader, workerSecret)) return { authorized: true, token: customHeader };
-  if (supabaseCron && cronSecret && token && safeCompare(token, cronSecret)) return { authorized: true, token };
+  if (cronSecret && token && safeCompare(token, cronSecret)) return { authorized: true, token };
   if (!workerSecret && !cronSecret) return { authorized: false, error: 'Server configuration error: Worker authorization secret is not configured.' };
   return { authorized: false, error: 'Unauthorized worker request.' };
 }
@@ -78,4 +78,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ success: false, claimed: true, jobId: job.id, error: errorMessage }, { status: 500 });
   }
 }
-export function GET(): NextResponse { return NextResponse.json({ success: false, error: 'Method not allowed.' }, { status: 405, headers: { Allow: 'POST' } }); }
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  return POST(request);
+}
