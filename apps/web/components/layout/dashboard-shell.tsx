@@ -9,10 +9,11 @@ export interface DashboardShellProps {
   displayName?: string | null;
   avatarUrl?: string | null;
   isAdmin?: boolean;
+  activeProject?: { id: string; name: string } | null;
   children: ReactNode;
 }
 
-export function DashboardShell({ displayName, avatarUrl, isAdmin = false, children }: DashboardShellProps) {
+export function DashboardShell({ displayName, avatarUrl, isAdmin = false, activeProject = null, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
@@ -21,6 +22,7 @@ export function DashboardShell({ displayName, avatarUrl, isAdmin = false, childr
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         isAdmin={isAdmin}
+        activeProject={activeProject}
       />
       <div className="flex min-w-0 flex-1 flex-col">
         <Header
