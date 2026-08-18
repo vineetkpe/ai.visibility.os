@@ -8,86 +8,82 @@ export interface GeneratedPrompt {
 }
 
 /**
- * Generates natural user search prompts grouped by search intent from project business context fields.
+ * Generates search prompts from the business-context fields that the scanner
+ * actually loads from business_context_versions.
+ *
+ * Do not invent company/product/service data here: those fields are not part
+ * of the current business_context_versions projection used by the scanner.
  */
 export function generatePromptsFromContext(
   fields: BusinessContextFieldRecord[]
 ): GeneratedPrompt[] {
+  const getValue = (name: string) =>
+    fields.find((field) => field.field_name === name)?.field_value?.trim() || '';
+
+  const industry = getValue('industry');
+  const description = getValue('description');
+  const valueProposition = getValue('value_proposition');
+  const targetAudience = getValue('target_audience');
+
   const prompts: GeneratedPrompt[] = [];
 
-  const getValues = (name: string) =>
-    fields.filter((f) => f.field_name === name).map((f) => f.field_value);
-
-  const companyNames = getValues('companyName');
-  const industries = getValues('industry');
-  const products = getValues('products');
-  const services = getValues('services');
-  const locations = getValues('locations');
-
-  const primaryCompany = companyNames[0] || 'the company';
-  const primaryIndustry = industries[0] || 'services';
-  const primaryLocation = locations[0];
-
-  // 1. Navigational Prompts
-  if (companyNames.length > 0) {
+  if (industry) {
     prompts.push({
-      promptText: `What is ${primaryCompany} and what services do they provide?`,
-      intent: 'navigational',
-      sourceFields: ['companyName'],
-    });
-  }
-
-  // 2. Informational Prompts
-  if (industries.length > 0) {
-    const locString = primaryLocation ? ` in ${primaryLocation}` : '';
-    prompts.push({
-      promptText: `What are the best ${primaryIndustry} solutions${locString}?`,
+      promptText: `What are the best ${industry} solutions for businesses?`,
       intent: 'informational',
-      sourceFields: primaryLocation ? ['industry', 'locations'] : ['industry'],
+      sourceFields: ['industry'],
     });
-  }
 
-  products.slice(0, 2).forEach((prod) => {
     prompts.push({
-      promptText: `How does ${prod} work and what are its key features?`,
-      intent: 'informational',
-      sourceFields: ['products'],
-    });
-  });
-
-  // 3. Comparison Prompts
-  if (products.length > 0 || services.length > 0) {
-    const mainOffering = products[0] || services[0];
-    prompts.push({
-      promptText: `Top alternatives and competitors for ${mainOffering} in 2026`,
+      promptText: `What should businesses look for when choosing a ${industry} provider?`,
       intent: 'comparison',
-      sourceFields: products.length > 0 ? ['products'] : ['services'],
-    });
-  }
-
-  // 4. Transactional Prompts
-  if (services.length > 0) {
-    prompts.push({
-      promptText: `Best ${services[0]} provider for modern companies`,
-      intent: 'transactional',
-      sourceFields: ['services'],
-    });
-  }
-
-  // Fallback prompt if no field data generated prompts
-  if (prompts.length === 0) {
-    prompts.push({
-      promptText: `Best ${primaryIndustry} tools and services in 2026`,
-      intent: 'informational',
       sourceFields: ['industry'],
     });
   }
 
-  return prompts;
+  if (description) {
+    prompts.push({
+      promptText: `What companies or solutions are known for ${description}?`,
+      intent: 'informational',
+      sourceFields: ['description'],
+    });
+  }
+
+  if (valueProposition) {
+    prompts.push({
+      promptText: `Which companies offer solutions that ${valueProposition}?`,
+      intent: 'comparison',
+      sourceFields: ['value_proposition'],
+    });
+  }
+
+  if (targetAudience && industry) {
+    prompts.push({
+      promptText: `What are the best ${industry} options for ${targetAudience}?`,
+      intent: 'transactional',
+      sourceFields: ['industry', 'target_audience'],
+    });
+  }
+
+  // A scan without usable business context should fail rather than silently
+  // producing generic prompts that can generate misleading visibility data.
+  if (prompts.length === 0) {
+    return [];
+  }
+
+  // De-duplicate prompts while preserving intent/source metadata.
+  const seen = new Set<string>();
+  return prompts.filter((prompt) => {
+    const key = prompt.promptText.trim().toLowerCase();
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**
- * Persists generated prompts into prompt_library table, respecting UNIQUE (project_id, prompt_text) constraint.
+ * Persists generated prompts into prompt_library, respecting the unique
+ * (project_id, prompt_text) constraint.
  */
 export async function syncPromptLibrary(
   supabase: SupabaseClient<Database>,
@@ -96,28 +92,24 @@ export async function syncPromptLibrary(
 ): Promise<Array<{ id: string; prompt_text: string }>> {
   if (!prompts || prompts.length === 0) return [];
 
-  const rows = prompts.map((p) => ({
+  const rows = prompts.map((prompt) => ({
     project_id: projectId,
-    prompt_text: p.promptText,
-    category: p.intent,
+    prompt_text: prompt.promptText,
+    category: prompt.intent,
     is_active: true,
   }));
 
-  // Upsert or insert ignoring duplicates on (project_id, prompt_text)
   const { data: upserted, error } = await supabase
     .from('prompt_library')
     .upsert(rows, { onConflict: 'project_id, prompt_text' })
     .select('id, prompt_text');
 
-  if (error || !upserted) {
-    // If upsert fails, fetch existing active prompts for project
-    const { data: existing } = await supabase
-      .from('prompt_library')
-      .select('id, prompt_text')
-      .eq('project_id', projectId)
-      .eq('is_active', true);
+  if (error) {
+    throw new Error(`Failed to sync scan prompts: ${error.message}`);
+  }
 
-    return existing || [];
+  if (!upserted || upserted.length === 0) {
+    throw new Error('Failed to sync scan prompts: database returned no prompt rows.');
   }
 
   return upserted;
