@@ -1,14 +1,18 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import type { Database } from '@ai-visibility-os/database';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface ReportListItem { id: string; reportType: string; status: string; fileFormat: string; createdAt: string; generatedAt: string | null; fileSizeBytes: number | null; }
 export interface ReportResult { id: string; fileName: string; contentType: 'text/html'; content: string; }
 
-async function getOwnedProject(supabase: Awaited<ReturnType<typeof createClient>>, projectId?: string) {
+type WebSupabaseClient = SupabaseClient<Database>;
+
+async function getOwnedProject(supabase: WebSupabaseClient, projectId?: string) {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error('Authentication required.');
-  let query = supabase.from('projects').select('id, name, domains(host, is_primary)').eq('user_id', user.id).is('deleted_at', null);
+  let query = supabase.from('projects').select('id, name, domains(id, host, is_primary)').eq('user_id', user.id).is('deleted_at', null);
   if (projectId) query = query.eq('id', projectId); else query = query.order('created_at', { ascending: false }).limit(1);
   const { data: projects, error } = await query;
   if (error) throw new Error(error.message);
@@ -19,7 +23,7 @@ async function getOwnedProject(supabase: Awaited<ReturnType<typeof createClient>
 
 export async function getReportsData(projectId?: string): Promise<{ success: boolean; data?: { projectId: string; reports: ReportListItem[] }; error?: string }> {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient<Database>();
     const project = await getOwnedProject(supabase, projectId);
     const { data, error } = await supabase.from('reports').select('id, report_type, status, file_format, created_at, generated_at, file_size_bytes').eq('project_id', project.id).order('created_at', { ascending: false }).limit(25);
     if (error) throw new Error(error.message);
@@ -29,7 +33,7 @@ export async function getReportsData(projectId?: string): Promise<{ success: boo
 
 export async function generateReportAction(projectId: string): Promise<{ success: boolean; data?: ReportResult; error?: string }> {
   try {
-    const supabase = await createClient();
+    const supabase = await createClient<Database>();
     const project = await getOwnedProject(supabase, projectId);
     const primaryDomain = project.domains?.find((d) => d.is_primary)?.host || project.domains?.[0]?.host || 'Not configured';
 
