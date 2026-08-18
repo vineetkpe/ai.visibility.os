@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { createServerClient, createServiceClient, type SupabaseClient, type Database } from '@ai-visibility-os/database';
+import { createServiceClient, type SupabaseClient, type Database } from '@ai-visibility-os/database';
 import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob, runScannerJob, runCrawlerJob } from '@ai-visibility-os/jobs';
 
 export const maxDuration = 300;
