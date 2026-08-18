@@ -40,7 +40,9 @@ export async function persistPageResult(
     return null;
   }
 
-  // 2. Insert page record matching DB-04 schema
+  // 2. Upsert the page. DB-04 defines (project_id, url) as the canonical page key.
+  // Repeated crawls must update the existing page instead of creating duplicates or
+  // failing on the unique constraint.
   let pathname = '/';
   try {
     pathname = new URL(crawlResult.url).pathname || '/';
@@ -50,14 +52,17 @@ export async function persistPageResult(
 
   const { data: page, error: pageError } = await supabase
     .from('pages')
-    .insert({
-      project_id: domainRow.project_id,
-      domain_id: domainId,
-      url: crawlResult.url,
-      path: pathname,
-      status_code: crawlResult.httpStatus,
-      last_crawled_at: now,
-    })
+    .upsert(
+      {
+        project_id: domainRow.project_id,
+        domain_id: domainId,
+        url: crawlResult.url,
+        path: pathname,
+        status_code: crawlResult.httpStatus,
+        last_crawled_at: now,
+      },
+      { onConflict: 'project_id,url' }
+    )
     .select('id')
     .single();
 
@@ -65,19 +70,30 @@ export async function persistPageResult(
     return null;
   }
 
-  // 3. Insert page_metadata record
-  await supabase.from('page_metadata').insert({
-    page_id: page.id,
-    title: metadata?.title ?? null,
-    meta_description: metadata?.metaDescription ?? null,
-    canonical_url: metadata?.canonicalUrl ?? null,
-    language: metadata?.language ?? null,
-    schema_json: (structuredData?.jsonLd as unknown as Json) ?? null,
-    open_graph: (metadata?.openGraph as unknown as Json) ?? null,
-    twitter_cards: (metadata?.twitterCard as unknown as Json) ?? null,
-  });
+  // 3. Upsert page metadata. DB-04 defines page_id as unique, so each page has
+  // exactly one current metadata snapshot rather than one row per crawl.
+  const { error: metadataError } = await supabase
+    .from('page_metadata')
+    .upsert(
+      {
+        page_id: page.id,
+        title: metadata?.title ?? null,
+        meta_description: metadata?.metaDescription ?? null,
+        canonical_url: metadata?.canonicalUrl ?? null,
+        language: metadata?.language ?? null,
+        schema_json: (structuredData?.jsonLd as unknown as Json) ?? null,
+        open_graph: (metadata?.openGraph as unknown as Json) ?? null,
+        twitter_cards: (metadata?.twitterCard as unknown as Json) ?? null,
+      },
+      { onConflict: 'page_id' }
+    );
 
-  // 4. Route crawl errors to crawl_errors table if present
+  if (metadataError) {
+    return null;
+  }
+
+  // 4. Route crawl errors to crawl_errors table if present.
+  // This table is intentionally append-only so each crawl session retains its evidence.
   if (crawlResult.crawlError && crawlSessionId) {
     await supabase.from('crawl_errors').insert({
       crawl_session_id: crawlSessionId,
