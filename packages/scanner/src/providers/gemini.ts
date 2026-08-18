@@ -33,11 +33,9 @@ export class GeminiProvider implements AIVisibilityProvider {
 
   constructor(options?: GeminiProviderOptions) {
     this.apiKey = options?.apiKey || process.env.GEMINI_API_KEY || '';
-    // Do not pin production to retired 2.5 models. The current stable alias
-    // keeps the scanner on Google's supported generation without hard-coding
-    // a rapidly changing preview model name.
-    this.modelName = options?.primaryModel || 'gemini-flash-latest';
-    this.fallbackModels = options?.fallbackModels || ['gemini-2.5-flash-lite'];
+    // Use Google's current stable Gemini 3.x models. Avoid retired 2.x fallbacks.
+    this.modelName = options?.primaryModel || 'gemini-3.6-flash';
+    this.fallbackModels = options?.fallbackModels || ['gemini-3.5-flash-lite'];
   }
 
   private formatError(err: unknown): string {
@@ -64,7 +62,6 @@ export class GeminiProvider implements AIVisibilityProvider {
         break;
       } catch (err: unknown) {
         const formatted = this.formatError(err); attemptedErrors.push(`[${model}]: ${formatted}`); console.warn(`Gemini model ${model} grounded query failed:`, formatted);
-        if (formatted.includes('Quota') || formatted.includes('RESOURCE_EXHAUSTED') || formatted.includes('429')) await new Promise((resolve) => setTimeout(resolve, 1500));
       }
     }
     if (!response) throw new Error(`Gemini AI query failed across models (${modelsToTry.join(', ')}). Errors: ${attemptedErrors.join(' | ')}`);
