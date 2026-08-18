@@ -4,6 +4,17 @@ import { getProvider } from './registry';
 import { generatePromptsFromContext, syncPromptLibrary } from './prompts/generator';
 
 type ValidEntityType = 'organization' | 'person' | 'brand' | 'location' | 'other';
+type ConfiguredProviderRow = {
+  id: string;
+  slug: string;
+  display_name: string;
+  adapter: string | null;
+  primary_model: string | null;
+  fallback_models: unknown;
+  base_url: string | null;
+  is_active: boolean;
+  is_default: boolean;
+};
 
 function mapSentiment(sentiment?: 'positive' | 'neutral' | 'negative' | 'mixed' | string | null): 'positive' | 'neutral' | 'negative' | null {
   if (!sentiment) return null;
@@ -25,12 +36,18 @@ export async function runVisibilityScanPipeline(supabase: SupabaseClient<Databas
     const { error } = await supabase.from('jobs').update({ status, ...(errorMessage ? { error_message: errorMessage } : {}) }).eq('id', jobId);
     if (error) throw new Error(`Failed to persist scan job status: ${error.message}`);
   };
-  const finish = async (result: VisibilityScanPipelineResult) => {
+  const finish = async (result: VisibilityScanPipelineResult): Promise<VisibilityScanPipelineResult> => {
     if (!jobId) return result;
-    try { await setJobStatus(result.status === 'failed' ? 'failed' : 'completed', result.error); return result; }
-    catch (error) {
+    try {
+      await setJobStatus(result.status === 'failed' ? 'failed' : 'completed', result.error);
+      return result;
+    } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to persist scan job status.';
-      return { ...result, status: 'failed', error: result.error ? `${result.error}; ${message}` : message };
+      return {
+        ...result,
+        status: 'failed',
+        error: result.error ? `${result.error}; ${message}` : message,
+      };
     }
   };
 
@@ -71,19 +88,19 @@ export async function runVisibilityScanPipeline(supabase: SupabaseClient<Databas
     }
 
     const providerQuery = await supabase.from('providers')
-      .select('id, slug, display_name, adapter, primary_model, fallback_models, base_url, is_active, is_default')
+      .select('*')
       .eq('is_active', true).eq('is_default', true).maybeSingle();
     if (providerQuery.error) throw new Error(`Failed to load active default AI provider: ${providerQuery.error.message}`);
     if (!providerQuery.data) return finish({ projectId, scansExecuted: 0, status: 'failed', error: 'No active default AI provider is configured.' });
 
-    const providerConfig = providerQuery.data;
+    const providerConfig = providerQuery.data as unknown as ConfiguredProviderRow;
     const providerId = providerConfig.id;
     const provider = getProvider(providerConfig.slug);
     const fields: BusinessContextFieldRecord[] = [
       { field_name: 'industry', field_value: currentVersion.industry || '' },
       { field_name: 'description', field_value: currentVersion.description || '' },
       { field_name: 'value_proposition', field_value: currentVersion.value_proposition || '' },
-      { field_name: 'target_audience', field_value: currentVersion.target_audience || '' },
+      { field_name: 'target_audience', field_value: Array.isArray(currentVersion.target_audience) ? currentVersion.target_audience.join(', ') : '' },
     ];
     const generatedPrompts = generatePromptsFromContext(fields);
     const syncedPrompts = await syncPromptLibrary(supabase, projectId, generatedPrompts);
