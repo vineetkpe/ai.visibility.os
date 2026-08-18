@@ -42,9 +42,10 @@ export async function runVisibilityScanPipeline(supabase: SupabaseClient<Databas
       await setJobStatus(result.status === 'failed' ? 'failed' : 'completed', result.error);
       return result;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to persist scan job status.';
+      const message = error instanceof Error ? error.message : 'Failed to persist job status.';
       return {
-        ...result,
+        projectId: result.projectId,
+        scansExecuted: result.scansExecuted,
         status: 'failed',
         error: result.error ? `${result.error}; ${message}` : message,
       };
@@ -87,13 +88,16 @@ export async function runVisibilityScanPipeline(supabase: SupabaseClient<Databas
       if (host) competitorHostMap.set(host.toLowerCase().replace(/^www\./, ''), competitor.id);
     }
 
-    const providerQuery = await supabase.from('providers')
+    const providerQuery = await (supabase as any).from('providers')
       .select('*')
-      .eq('is_active', true).eq('is_default', true).maybeSingle();
+      .eq('is_active', true).eq('is_default', true).maybeSingle() as {
+        data: ConfiguredProviderRow | null;
+        error: { message: string } | null;
+      };
     if (providerQuery.error) throw new Error(`Failed to load active default AI provider: ${providerQuery.error.message}`);
     if (!providerQuery.data) return finish({ projectId, scansExecuted: 0, status: 'failed', error: 'No active default AI provider is configured.' });
 
-    const providerConfig = providerQuery.data as unknown as ConfiguredProviderRow;
+    const providerConfig = providerQuery.data;
     const providerId = providerConfig.id;
     const provider = getProvider(providerConfig.slug);
     const fields: BusinessContextFieldRecord[] = [
