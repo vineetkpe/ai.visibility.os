@@ -6,7 +6,7 @@ import { ScoreClientView } from './score-client-view';
 
 export const metadata = {
   title: 'AI Visibility Score Analytics | AI Visibility OS',
-  description: 'Mathematical breakdown and attribution weight analysis for composite visibility scores.',
+  description: 'Real AI visibility score calculations derived from persisted scans and citations.',
 };
 
 export default async function ScorePage() {
@@ -16,13 +16,22 @@ export default async function ScorePage() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    redirect('/login');
-  }
+  if (error || !user) redirect('/login?redirect=%2Fdashboard%2Fscore');
+
+  const { data: project } = await supabase
+    .from('projects')
+    .select('id')
+    .eq('user_id', user.id)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!project) redirect('/onboarding');
 
   return (
     <PageContainer title="" description="">
-      <ScoreClientView projectId={user.id} />
+      <ScoreClientView projectId={project.id} />
     </PageContainer>
   );
 }
