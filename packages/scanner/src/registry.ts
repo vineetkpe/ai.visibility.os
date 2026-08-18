@@ -71,16 +71,15 @@ async function loadConfiguredProvider(slug: string): Promise<AIVisibilityProvide
   if (!secret || !supabaseUrl) throw new Error('Supabase service configuration is required to load the active AI provider.');
 
   const db = createServiceClient(secret);
-  const { data, error } = await db
-    .from('providers')
+  const providerQuery = await (db as any).from('providers')
     .select('*')
     .eq('slug', slug)
-    .maybeSingle();
+    .maybeSingle() as { data: ConfiguredProviderRow | null; error: { message: string } | null };
 
-  if (error) throw new Error(`Failed to load provider configuration: ${error.message}`);
-  if (!data) throw new Error(`AI engine '${slug}' is not configured.`);
+  if (providerQuery.error) throw new Error(`Failed to load provider configuration: ${providerQuery.error.message}`);
+  if (!providerQuery.data) throw new Error(`AI engine '${slug}' is not configured.`);
 
-  const config = data as unknown as ConfiguredProviderRow;
+  const config = providerQuery.data;
   if (!config.is_active) throw new Error(`AI engine '${slug}' is currently inactive.`);
 
   const primaryModel = config.primary_model?.trim() || defaults.primaryModel;
