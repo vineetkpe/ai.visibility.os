@@ -9,7 +9,11 @@ export const metadata = {
   description: 'Real AI visibility score calculations derived from persisted scans and citations.',
 };
 
-export default async function ScorePage() {
+interface ScorePageProps {
+  searchParams: Promise<{ projectId?: string; project_id?: string }>;
+}
+
+export default async function ScorePage({ searchParams }: ScorePageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -18,15 +22,21 @@ export default async function ScorePage() {
 
   if (error || !user) redirect('/login?redirect=%2Fdashboard%2Fscore');
 
-  const { data: project } = await supabase
+  const params = await searchParams;
+  const requestedProjectId = params.projectId || params.project_id;
+  let query = supabase
     .from('projects')
     .select('id')
     .eq('user_id', user.id)
-    .is('deleted_at', null)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .is('deleted_at', null);
 
+  if (requestedProjectId) {
+    query = query.eq('id', requestedProjectId);
+  } else {
+    query = query.order('created_at', { ascending: false }).limit(1);
+  }
+
+  const { data: project } = await query.maybeSingle();
   if (!project) redirect('/onboarding');
 
   return (
