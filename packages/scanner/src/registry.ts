@@ -19,6 +19,18 @@ export interface ProviderConfig {
   capabilities: ProviderCapabilities;
 }
 
+type ConfiguredProviderRow = {
+  id: string;
+  slug: string;
+  display_name: string;
+  adapter: string | null;
+  primary_model: string | null;
+  fallback_models: unknown;
+  base_url: string | null;
+  is_active: boolean;
+  is_default: boolean;
+};
+
 const GEMINI_PRIMARY_MODEL = 'gemini-3.6-flash';
 const GEMINI_FALLBACK_MODELS = ['gemini-3.5-flash-lite'];
 
@@ -59,14 +71,16 @@ async function loadConfiguredProvider(slug: string): Promise<AIVisibilityProvide
   if (!secret || !supabaseUrl) throw new Error('Supabase service configuration is required to load the active AI provider.');
 
   const db = createServiceClient(secret);
-  const { data: config, error } = await db
+  const { data, error } = await db
     .from('providers')
-    .select('slug, display_name, adapter, primary_model, fallback_models, base_url, is_active')
+    .select('*')
     .eq('slug', slug)
     .maybeSingle();
 
   if (error) throw new Error(`Failed to load provider configuration: ${error.message}`);
-  if (!config) throw new Error(`AI engine '${slug}' is not configured.`);
+  if (!data) throw new Error(`AI engine '${slug}' is not configured.`);
+
+  const config = data as unknown as ConfiguredProviderRow;
   if (!config.is_active) throw new Error(`AI engine '${slug}' is currently inactive.`);
 
   const primaryModel = config.primary_model?.trim() || defaults.primaryModel;
