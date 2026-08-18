@@ -20,23 +20,39 @@ export const DEFAULT_PROVIDER_CONFIGS: Record<string, ProviderConfig> = {
 type ConfiguredProviderRow = { id: string; slug: string; display_name: string; adapter: string; primary_model: string | null; fallback_models: string[] | null; base_url: string | null; is_active: boolean; is_default: boolean; };
 
 async function loadConfiguredProvider(slug: string) {
-  const secret = process.env.SUPABASE_SECRET_KEY;
-  if (!secret || !process.env.NEXT_PUBLIC_SUPABASE_URL) throw new Error('Supabase worker configuration is missing.');
+  const secret = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+  if (!secret || !supabaseUrl) throw new Error('Supabase worker configuration is missing.');
+
   const db = createServiceClient(secret) as any;
   const query = db.from('providers').select('id,slug,display_name,adapter,primary_model,fallback_models,base_url,is_active,is_default');
   const { data: config, error } = slug === 'gemini'
     ? await query.eq('is_default', true).eq('is_active', true).order('updated_at', { ascending: false }).limit(1).maybeSingle()
     : await query.eq('slug', slug).maybeSingle();
+
   if (error) throw new Error(`Failed to load AI engine configuration: ${error.message}`);
   if (!config || !config.is_active) throw new Error(`No active default AI engine is configured. Open Admin → AI Engines.`);
+
   const row = config as ConfiguredProviderRow;
-  const { data: secretRow, error: secretError } = await db.from('provider_secrets').select('api_key').eq('provider_id', row.id).maybeSingle();
-  if (secretError || !secretRow?.api_key) throw new Error(`API key is not configured for AI engine '${row.display_name}'. Configure it in Admin → AI Engines.`);
+  const { data: secretRow, error: secretError } = await db
+    .from('provider_secrets')
+    .select('api_key')
+    .eq('provider_id', row.id)
+    .maybeSingle();
+
+  if (secretError || !secretRow?.api_key) {
+    throw new Error(`API key is not configured for AI engine '${row.display_name}'. Configure it in Admin → AI Engines.`);
+  }
 
   const primaryModel = row.primary_model || DEFAULT_PROVIDER_CONFIGS[row.slug]?.primaryModel || 'gpt-4o-mini';
   const fallbackModels = Array.isArray(row.fallback_models) ? row.fallback_models : [];
-  if (row.adapter === 'openai_compatible') return new OpenAICompatibleProvider({ apiKey: secretRow.api_key, primaryModel, baseUrl: row.base_url || undefined, providerName: row.display_name });
-  if (row.adapter === 'gemini') return new GeminiProvider({ apiKey: secretRow.api_key, primaryModel, fallbackModels });
+
+  if (row.adapter === 'openai_compatible') {
+    return new OpenAICompatibleProvider({ apiKey: secretRow.api_key, primaryModel, baseUrl: row.base_url || undefined, providerName: row.display_name });
+  }
+  if (row.adapter === 'gemini') {
+    return new GeminiProvider({ apiKey: secretRow.api_key, primaryModel, fallbackModels });
+  }
   throw new Error(`Unsupported adapter '${row.adapter}' for AI engine '${row.display_name}'.`);
 }
 
@@ -45,18 +61,40 @@ class ConfiguredProvider implements AIVisibilityProvider {
   readonly modelName: string;
   private readonly slug: string;
   private resolved?: Promise<AIVisibilityProvider>;
-  constructor(slug: string) { this.slug = slug; this.providerName = slug; this.modelName = DEFAULT_PROVIDER_CONFIGS[slug]?.primaryModel || 'configured'; }
-  private resolve() { this.resolved ??= loadConfiguredProvider(this.slug); return this.resolved; }
-  async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> { return (await this.resolve()).runGroundedQuery(promptText); }
-  async analyzeResponse(promptText: string, rawText: string, citations: GroundingCitation[], targetDomainName: string): Promise<ScanAnalysisResult> { return (await this.resolve()).analyzeResponse(promptText, rawText, citations, targetDomainName); }
+
+  constructor(slug: string) {
+    this.slug = slug;
+    this.providerName = slug;
+    this.modelName = DEFAULT_PROVIDER_CONFIGS[slug]?.primaryModel || 'configured';
+  }
+
+  private resolve() {
+    this.resolved ??= loadConfiguredProvider(this.slug);
+    return this.resolved;
+  }
+
+  async runGroundedQuery(promptText: string): Promise<GroundedQueryResult> {
+    return (await this.resolve()).runGroundedQuery(promptText);
+  }
+
+  async analyzeResponse(
+    promptText: string,
+    rawText: string,
+    citations: GroundingCitation[],
+    targetDomainName: string
+  ): Promise<ScanAnalysisResult> {
+    return (await this.resolve()).analyzeResponse(promptText, rawText, citations, targetDomainName);
+  }
 }
 
 export function getProvider(slug: string, options?: { apiKey?: string; primaryModel?: string; fallbackModels?: string[]; adapter?: string; baseUrl?: string; displayName?: string }): AIVisibilityProvider {
   const normalizedSlug = slug.toLowerCase().trim();
   if (!options) return new ConfiguredProvider(normalizedSlug);
+
   const primaryModel = options.primaryModel || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.primaryModel || 'gpt-4o-mini';
   const fallbackModels = options.fallbackModels || DEFAULT_PROVIDER_CONFIGS[normalizedSlug]?.fallbackModels || [];
   const adapter = options.adapter || (normalizedSlug === 'gemini' ? 'gemini' : 'openai_compatible');
+
   if (adapter === 'openai_compatible') {
     if (!options.apiKey) throw new Error(`API key is not configured for provider '${slug}'.`);
     return new OpenAICompatibleProvider({ apiKey: options.apiKey, primaryModel, baseUrl: options.baseUrl, providerName: options.displayName || slug });
