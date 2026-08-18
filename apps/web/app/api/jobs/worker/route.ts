@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'node:crypto';
-import { createServerClient, createServiceClient, createTokenClient, type SupabaseClient, type Database } from '@ai-visibility-os/database';
+import { createServerClient, createServiceClient, type SupabaseClient, type Database } from '@ai-visibility-os/database';
 import { claimNextJob, completeJob, retryJob, runRecommendationsJob, runBusinessContextJob, runCompetitorJob, runScannerJob, runCrawlerJob } from '@ai-visibility-os/jobs';
 
 export const maxDuration = 300;
@@ -19,7 +19,7 @@ function getClientIp(request: NextRequest): string {
 function checkWorkerAuth(request: NextRequest): { authorized: boolean; error?: string; token?: string } {
   const workerSecret = process.env.JOB_WORKER_SECRET?.trim(); const cronSecret = process.env.CRON_SECRET?.trim();
   const authHeader = request.headers.get('authorization') || ''; const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-  const customHeader = request.headers.get('x-job-worker-secret')?.trim() || ''; const supabaseCron = request.headers.get('x-supabase-worker') === '1';
+  const customHeader = request.headers.get('x-job-worker-secret')?.trim() || '';
   if (workerSecret && token && safeCompare(token, workerSecret)) return { authorized: true, token };
   if (workerSecret && customHeader && safeCompare(customHeader, workerSecret)) return { authorized: true, token: customHeader };
   if (cronSecret && token && safeCompare(token, cronSecret)) return { authorized: true, token };
@@ -44,17 +44,18 @@ async function checkDistributedRateLimit(supabase: SupabaseClient<Database>, ip:
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const clientIp = getClientIp(request); const authCheck = checkWorkerAuth(request);
-  const serviceKey = process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-  const authHeader = request.headers.get('authorization') || ''; const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.substring(7).trim() : '';
-  const supabaseCron = request.headers.get('x-supabase-worker') === '1';
-  let supabase: SupabaseClient<Database>;
-  if (serviceKey) supabase = createServiceClient(serviceKey);
-  else if (bearerToken && bearerToken.split('.').length === 3) supabase = createTokenClient(bearerToken);
-  else supabase = createServerClient({ getAll: () => [] });
-
-  const rateLimit = await checkDistributedRateLimit(supabase, clientIp, authCheck.authorized, supabaseCron);
-  if (!rateLimit.allowed) return NextResponse.json({ success: false, error: authCheck.authorized ? `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.` : 'Too many worker requests or rate-limit service unavailable.' }, { status: 429, headers: { 'Retry-After': '60' } });
   if (!authCheck.authorized) return NextResponse.json({ success: false, error: authCheck.error }, { status: authCheck.error?.startsWith('Server configuration error') ? 500 : 401 });
+
+  const serviceKey = process.env.SUPABASE_SECRET_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!serviceKey) {
+    console.error('[SECURITY ERROR] Worker service key is not configured. Refusing to run with an RLS-bound client.');
+    return NextResponse.json({ success: false, error: 'Server configuration error: Worker service key is not configured.' }, { status: 500 });
+  }
+  const supabase = createServiceClient(serviceKey);
+  const supabaseCron = request.headers.get('x-supabase-worker') === '1';
+
+  const rateLimit = await checkDistributedRateLimit(supabase, clientIp, true, supabaseCron);
+  if (!rateLimit.allowed) return NextResponse.json({ success: false, error: `Worker endpoint rate limit exceeded (${rateLimit.limit} requests/min). Please slow down.` }, { status: 429, headers: { 'Retry-After': '60' } });
 
   const options: { jobType?: string; projectId?: string } = {};
   try { const body = await request.json(); if (body && typeof body === 'object') { const allowed = ['site_crawl', 'competitor_sync', 'business_context', 'visibility_scan', 'recommendations']; if (typeof body.jobType === 'string' && allowed.includes(body.jobType.trim())) options.jobType = body.jobType.trim(); if (typeof body.projectId === 'string' && body.projectId.trim()) options.projectId = body.projectId.trim(); } } catch { /* ignore */ }
