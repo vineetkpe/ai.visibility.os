@@ -1,205 +1,156 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Sparkles, CheckCircle2, Shield, Info, HelpCircle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { getScoreAnalyticsData, type ScoreAnalyticsData, type ScoreMetric } from './actions';
 
-interface ScoreComponent {
-  id: string;
-  name: string;
-  weight: string;
-  score: number;
-  description: string;
-  formula: string;
-  attribution: string;
+function MetricCard({ metric, selected, onSelect }: { metric: ScoreMetric; selected: boolean; onSelect: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`w-full rounded border p-3.5 text-left transition-all ${
+        selected ? 'border-slate-950 bg-slate-950 text-white' : 'border-[#e2e4e9] bg-[#faf9f6] text-slate-900 hover:border-slate-400'
+      }`}
+    >
+      <div className="mb-2 flex items-center justify-between font-mono text-[10px]">
+        <span className={selected ? 'text-slate-400' : 'text-slate-500'}>{metric.weight}% weight</span>
+        <span className="text-xs font-extrabold">{metric.score}/100</span>
+      </div>
+      <div className="font-bold text-xs">{metric.name}</div>
+    </button>
+  );
 }
 
-const scoreComponents: ScoreComponent[] = [
-  {
-    id: 'citation_frequency',
-    name: 'Citation Frequency Index',
-    weight: '35% Weight',
-    score: 88,
-    description: 'Measures the proportion of synthetic buyer queries where your brand host domain is cited as an explicit primary source.',
-    formula: 'Direct Node Citations / Total Evaluated Prompts',
-    attribution: 'High Trust (88/100) — Cited in 18 of 20 core prompt matrices.',
-  },
-  {
-    id: 'sentiment_accuracy',
-    name: 'Sentiment & Accuracy Alignment',
-    weight: '25% Weight',
-    score: 94,
-    description: 'Evaluates fact alignment, feature accuracy, and zero hallucination risk across model generated synthesis.',
-    formula: 'Factual Statement Precision & Sentiment Weighting',
-    attribution: '96% Positive Alignment — Zero negative hallucination flags recorded.',
-  },
-  {
-    id: 'share_of_voice',
-    name: 'Share of Voice vs Market Competitors',
-    weight: '20% Weight',
-    score: 79,
-    description: 'Ranks your brand recommendation frequency against tracked category competitors in generative search responses.',
-    formula: 'User Mentions / (User Mentions + Competitor Mentions)',
-    attribution: '#1 Category Rank — Outranks 3 main category competitors.',
-  },
-  {
-    id: 'source_authority',
-    name: 'Source Authority Weighting',
-    weight: '20% Weight',
-    score: 86,
-    description: 'Scores the domain authority and indexing reliability of third-party sources (e.g., G2 reviews, docs, GitHub repositories) cited by LLMs on your behalf.',
-    formula: 'Weighted PageRank & Citation Index of Retrieval Sources',
-    attribution: 'High Trust (86/100) — Primary index coverage across G2 and GitHub.',
-  },
-];
-
 export function ScoreClientView({ projectId }: { projectId: string }) {
+  const [data, setData] = useState<ScoreAnalyticsData | null>(null);
   const [selectedId, setSelectedId] = useState<string>('citation_frequency');
-  const selected = scoreComponents.find((c) => c.id === selectedId) || scoreComponents[0];
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    const result = await getScoreAnalyticsData(projectId);
+    if (!result.success || !result.data) setError(result.error || 'Unable to load score analytics.');
+    else setData(result.data);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    void load();
+  }, [projectId]);
+
+  if (loading) {
+    return <div className="rounded-lg border border-[#e2e4e9] bg-white p-8 text-sm text-slate-500">Loading real score data…</div>;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="rounded-lg border border-red-200 bg-red-50 p-6 text-sm text-red-800">
+        <div className="font-bold">Score data could not be loaded.</div>
+        <div className="mt-1">{error || 'Unknown error.'}</div>
+        <Button onClick={load} className="mt-4 bg-slate-950 text-white">Retry</Button>
+      </div>
+    );
+  }
+
+  const selected = data.metrics.find((metric) => metric.id === selectedId) || data.metrics[0];
+  const score = data.compositeScore;
+  const circumference = 2 * Math.PI * 36;
+  const offset = score === null ? circumference : circumference * (1 - score / 100);
 
   return (
     <div className="space-y-6 pb-12">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[#e2e4e9] pb-5">
+      <div className="flex flex-col gap-4 border-b border-[#e2e4e9] pb-5 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="flex items-center gap-2 text-xs font-mono font-bold uppercase tracking-wider text-slate-500">
             <Sparkles className="h-4 w-4 text-slate-900" />
-            <span>ANALYTICAL DEEP-DIVE</span>
+            <span>REAL SCORE ANALYTICS</span>
           </div>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">
-            Score Components & Attribution Weights
-          </h1>
-          <p className="mt-1 text-xs text-slate-600">
-            Detailed mathematical breakdown of composite AI visibility index score calculations.
-          </p>
+          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-slate-950 sm:text-3xl">AI Visibility Score</h1>
+          <p className="mt-1 text-xs text-slate-600">Calculated from persisted completed scans and citations for {data.project.primaryDomain || data.project.name}.</p>
         </div>
-        <Button asChild size="sm" className="bg-slate-950 text-white hover:bg-slate-800 text-xs font-semibold h-8 px-3">
-          <Link href="/dashboard">← Back to Overview</Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load} className="h-8 text-xs"><RefreshCw className="mr-1.5 h-3 w-3" /> Refresh</Button>
+          <Button asChild size="sm" className="h-8 bg-slate-950 px-3 text-xs font-semibold text-white hover:bg-slate-800"><Link href="/dashboard"><ArrowLeft className="mr-1.5 h-3 w-3" /> Back</Link></Button>
+        </div>
       </div>
 
-      {/* Two-Column Analytics Layout (Inspired by Screenshot 2) */}
+      {data.dataStatus === 'insufficient_data' && (
+        <div className="flex items-start gap-3 rounded border border-amber-200 bg-amber-50 p-4 text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div className="text-xs leading-relaxed">
+            <div className="font-bold">Not enough real scan data to produce a composite score.</div>
+            <div className="mt-1">Completed scans: {data.completedScans}. The score becomes available after at least 3 completed scans. The component metrics below are still calculated from the records that exist.</div>
+          </div>
+        </div>
+      )}
+
       <div className="grid gap-6 lg:grid-cols-[1fr_1.3fr]">
-        {/* Left Column: Composite Index Card */}
-        <div className="rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs space-y-6">
+        <div className="space-y-6 rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs">
           <div className="flex items-center justify-between border-b border-[#e2e4e9] pb-3">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-              COMPOSITE INDEX
-            </span>
-            <span className="rounded bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 font-mono text-[10px] font-bold">
-              Tier 1 Enterprise
-            </span>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">COMPOSITE INDEX</span>
+            <span className="rounded border border-slate-200 bg-slate-100 px-2 py-0.5 font-mono text-[10px] font-bold text-slate-700">{data.completedScans} completed scans</span>
           </div>
 
-          <div className="flex flex-col items-center justify-center text-center py-4 bg-[#faf9f6] rounded border border-[#e2e4e9]">
-            <div className="relative flex items-center justify-center h-32 w-32">
+          <div className="flex flex-col items-center justify-center rounded border border-[#e2e4e9] bg-[#faf9f6] py-6 text-center">
+            <div className="relative flex h-32 w-32 items-center justify-center">
               <svg className="h-full w-full -rotate-90 transform" viewBox="0 0 90 90">
                 <circle cx="45" cy="45" r="36" className="stroke-slate-200" strokeWidth="6" fill="transparent" />
-                <circle
-                  cx="45"
-                  cy="45"
-                  r="36"
-                  className="stroke-slate-950"
-                  strokeWidth="6"
-                  strokeDasharray={2 * Math.PI * 36}
-                  strokeDashoffset={2 * Math.PI * 36 * (1 - 87 / 100)}
-                  strokeLinecap="round"
-                  fill="transparent"
-                />
+                {score !== null && <circle cx="45" cy="45" r="36" className="stroke-slate-950" strokeWidth="6" strokeDasharray={circumference} strokeDashoffset={offset} strokeLinecap="round" fill="transparent" />}
               </svg>
               <div className="absolute flex flex-col items-center justify-center">
-                <span className="text-3xl font-extrabold text-slate-950">87</span>
-                <span className="text-[9px] font-mono text-slate-400">OUT OF 100</span>
+                <span className="text-3xl font-extrabold text-slate-950">{score === null ? '—' : score}</span>
+                <span className="text-[9px] font-mono text-slate-400">{score === null ? 'INSUFFICIENT DATA' : 'OUT OF 100'}</span>
               </div>
             </div>
-            <div className="mt-3 inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-700">
-              <span>+14.2 points in Q3 after GEO remediation</span>
+            <div className="mt-3 text-[11px] font-mono font-bold text-slate-600">
+              {score === null ? 'No invented score shown.' : 'Weighted from persisted scan evidence.'}
             </div>
           </div>
 
-          {/* Model Engine Breakdown */}
           <div className="space-y-3 pt-2">
-            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-              MODEL ENGINE BREAKDOWN:
-            </div>
-            <div className="divide-y divide-[#e2e4e9] border border-[#e2e4e9] rounded bg-white">
-              {[
-                { name: 'Google Gemini 1.5 Pro', desc: 'Leading Citation', trend: '+6%', score: 89 },
-                { name: 'ChatGPT (OpenAI Search)', desc: 'High Accuracy', trend: '+12%', score: 85 },
-                { name: 'Perplexity Sonar Deep', desc: 'Primary Source', trend: '+4%', score: 92 },
-                { name: 'Claude 3.5 Sonnet', desc: 'Solid Presence', trend: '+8%', score: 81 },
-              ].map((engine) => (
-                <div key={engine.name} className="flex items-center justify-between p-3 text-xs">
-                  <div>
-                    <div className="font-semibold text-slate-950">{engine.name}</div>
-                    <div className="text-[10px] font-mono text-slate-400">{engine.desc}</div>
-                  </div>
-                  <div className="flex items-center gap-2 font-mono">
-                    <span className="text-emerald-600 font-bold text-[11px]">{engine.trend}</span>
-                    <span className="font-extrabold text-slate-950 text-xs bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded">
-                      {engine.score}
-                    </span>
-                  </div>
+            <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">MODEL BREAKDOWN</div>
+            <div className="divide-y divide-[#e2e4e9] rounded border border-[#e2e4e9] bg-white">
+              {data.models.length === 0 ? (
+                <div className="p-3 text-xs text-slate-500">No completed model scans yet.</div>
+              ) : data.models.map((model) => (
+                <div key={model.name} className="flex items-center justify-between p-3 text-xs">
+                  <div><div className="font-semibold text-slate-950">{model.name}</div><div className="font-mono text-[10px] text-slate-400">{model.scans} completed scans</div></div>
+                  <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-extrabold text-slate-950">{model.score}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* Right Column: Score Components Interactive Grid */}
-        <div className="rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs space-y-6">
+        <div className="space-y-6 rounded-lg border border-[#e2e4e9] bg-white p-5 shadow-2xs">
           <div className="border-b border-[#e2e4e9] pb-3">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">
-              SCORE COMPONENTS & ATTRIBUTION WEIGHTS
-            </span>
-            <h2 className="text-sm font-extrabold text-slate-950 mt-0.5">Click to Inspect Score Calculations</h2>
+            <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400">SCORE COMPONENTS</span>
+            <h2 className="mt-0.5 text-sm font-extrabold text-slate-950">Every number comes from stored evidence</h2>
           </div>
 
-          {/* 2x2 Component Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {scoreComponents.map((c) => {
-              const isSelected = c.id === selectedId;
-              return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelectedId(c.id)}
-                  className={`p-3.5 rounded border text-left transition-all ${
-                    isSelected
-                      ? 'bg-slate-950 text-white border-slate-950 shadow-2xs'
-                      : 'bg-[#faf9f6] text-slate-900 border-[#e2e4e9] hover:border-slate-400'
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-[10px] font-mono mb-2">
-                    <span className={isSelected ? 'text-slate-400' : 'text-slate-500'}>{c.weight}</span>
-                    <span className={`font-extrabold text-xs ${isSelected ? 'text-white' : 'text-slate-950'}`}>
-                      {c.score}/100
-                    </span>
-                  </div>
-                  <div className="font-bold text-xs truncate">{c.name}</div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {data.metrics.map((metric) => <MetricCard key={metric.id} metric={metric} selected={metric.id === selected?.id} onSelect={() => setSelectedId(metric.id)} />)}
           </div>
 
-          {/* Selected Component Detail Panel */}
-          <div className="rounded border border-[#e2e4e9] bg-[#faf9f6] p-4 space-y-4">
-            <div className="flex items-center justify-between border-b border-[#e2e4e9] pb-2">
-              <h3 className="font-bold text-xs text-slate-950">{selected.name} Detail</h3>
-              <span className="font-mono text-[10px] font-bold text-slate-700 bg-white border border-[#e2e4e9] px-2 py-0.5 rounded">
-                {selected.attribution}
-              </span>
+          {selected && (
+            <div className="space-y-4 rounded border border-[#e2e4e9] bg-[#faf9f6] p-4">
+              <div className="flex items-center justify-between border-b border-[#e2e4e9] pb-2">
+                <h3 className="text-xs font-bold text-slate-950">{selected.name}</h3>
+                <span className="font-mono text-[10px] font-bold text-slate-700">{selected.score}/100</span>
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600">{selected.description}</p>
+              <div className="border-t border-[#e2e4e9] pt-2">
+                <div className="mb-1 text-[10px] font-mono uppercase text-slate-400">Formula</div>
+                <code className="block rounded border border-[#e2e4e9] bg-white px-2.5 py-1.5 font-mono text-[11px] text-slate-900">{selected.formula}</code>
+              </div>
+              <div className="flex items-start gap-2 text-[11px] text-slate-600"><CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" />{selected.evidence}</div>
             </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">{selected.description}</p>
-
-            <div className="pt-2 border-t border-[#e2e4e9]">
-              <div className="text-[10px] font-mono text-slate-400 uppercase mb-1">Calculation Formula</div>
-              <code className="block rounded border border-[#e2e4e9] bg-white px-2.5 py-1.5 font-mono text-[11px] text-slate-900">
-                {selected.formula}
-              </code>
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
